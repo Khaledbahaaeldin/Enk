@@ -8,4 +8,5 @@
 .externalNativeBuild
 .cxx
 */build/
+.kotlin/
 docs/antigravity/
