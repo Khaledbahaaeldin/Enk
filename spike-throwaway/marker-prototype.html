@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Enk marker spike (throwaway)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#ff5a1f; --accent-hi:#ff7a47; --accent-lo:#d9440f;
+  --body:#e6e3dc; --body-lo:#d6d2c9; --ink:#2a2724; --muted:#8c867b;
+  --paper:#f3eee2; --paper-ink:#2b2824; --stage:#16151a;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--stage);font-family:system-ui,sans-serif}
+body{display:flex;align-items:center;justify-content:center}
+.phone{position:relative;width:min(100vw,400px);height:min(100vh,820px);background:var(--body);border-radius:34px;overflow:hidden;display:flex;flex-direction:column;padding:18px 16px 14px;transition:background .5s;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+@media (max-width:420px){.phone{border-radius:0}}
+.top{display:flex;justify-content:space-between;align-items:center;padding:2px 8px 12px;color:var(--ink);transition:color .5s}
+.mark{display:flex;align-items:center;gap:8px;font:600 13px/1 system-ui;letter-spacing:.14em;text-transform:lowercase}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.count{font:11px/1 "Courier Prime",monospace;color:var(--muted);letter-spacing:.04em}
+.panel{position:relative;background:linear-gradient(#ebe8e1,#dcd8cf);border-radius:20px;padding:12px 24px 14px;box-shadow:inset 0 1px 0 #fff,inset 0 -1px 0 rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.12);transition:background .5s,box-shadow .5s;z-index:3}
+.track{position:relative;height:50px}
+.ticks{position:absolute;left:0;right:0;top:4px;height:16px}
+.tick{position:absolute;bottom:0;width:1px;background:#8c867b;height:5px;transform:translateX(-.5px)}
+.tick.five{height:8px}.tick.ten{height:12px;background:#2a2724}
+.tl{position:absolute;top:-10px;font:9px/1 "Courier Prime",monospace;color:var(--muted);transform:translateX(-50%)}
+.slot{position:absolute;left:-6px;right:-6px;top:28px;height:9px;border-radius:5px;background:#bdb8ad;box-shadow:inset 0 2px 3px rgba(0,0,0,.35),0 1px 0 #fff}
+.cap{position:absolute;top:17px;left:0;width:42px;height:32px;margin-left:-21px;border-radius:11px;background:linear-gradient(var(--accent-hi),var(--accent) 45%,var(--accent-lo));box-shadow:0 1px 0 rgba(255,255,255,.45) inset,0 -2px 0 rgba(0,0,0,.18) inset,0 6px 10px rgba(80,30,0,.35),0 1px 2px rgba(0,0,0,.4);touch-action:none;cursor:grab;will-change:transform;transition:transform 110ms cubic-bezier(.2,.9,.3,1.15)}
+.cap.drag{transition:none;cursor:grabbing}
+.cap.snap{transition:transform 380ms cubic-bezier(.3,1.6,.5,1)}
+.cap::before{content:"";position:absolute;left:11px;right:11px;top:8px;height:10px;background:repeating-linear-gradient(90deg,rgba(0,0,0,.28) 0 1.5px,transparent 1.5px 5px);border-radius:2px;opacity:.7}
+.cap::after{content:"";position:absolute;left:50%;bottom:5px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#fff6;box-shadow:0 0 0 1px rgba(0,0,0,.18) inset}
+.phone.night .cap::after{background:#ffe3a6;box-shadow:0 0 8px 2px #ffc766}
+.paperwrap{position:relative;flex:1;margin-top:-18px;padding-top:26px;min-height:0}
+.paper{position:absolute;inset:0;background:var(--paper);border-radius:6px 6px 22px 22px;box-shadow:0 2px 0 rgba(0,0,0,.08),0 10px 24px rgba(40,30,10,.18);overflow:hidden;transition:background .5s,box-shadow .5s}
+.grain{position:absolute;inset:0;pointer-events:none;opacity:.35;mix-blend-mode:multiply;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='4'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .4  0 0 0 0 .3  0 0 0 .5 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");transition:opacity .5s}
+.scroll{position:absolute;inset:0;overflow:hidden;padding:46px 24px 24px;cursor:text}
+.text{position:relative;font-family:"Courier Prime","Courier New",monospace;color:var(--paper-ink);line-height:1.7;white-space:pre;transition:color .5s,-webkit-mask-image .3s}
+.line{height:1.7em}
+.ch{display:inline-block;transform:translateY(var(--dy,0)) rotate(var(--rot,0deg));opacity:var(--op,1)}
+.caret{position:absolute;width:1ch;height:2px;background:var(--accent);bottom:calc(100% - 1.7em + .1em);animation:blink 1s steps(2) infinite;transition:left 90ms,top 90ms}
+@keyframes blink{50%{opacity:.15}}
+#input{position:absolute;opacity:0;pointer-events:none;left:0;top:0;width:1px;height:1px}
+.cone{position:absolute;top:60px;width:300px;height:420px;margin-left:-150px;left:0;pointer-events:none;opacity:0;transition:opacity .5s;clip-path:polygon(47% 0,53% 0,100% 100%,0 100%);background:linear-gradient(rgba(255,196,110,.42),rgba(255,196,110,0) 85%);z-index:2;mix-blend-mode:screen}
+.phone.night{background:#12110f}
+.phone.night .top{color:#cdbfa4}
+.phone.night .panel{background:linear-gradient(#2a2825,#1e1c1a);box-shadow:inset 0 1px 0 #3a3733,0 1px 2px #000}
+.phone.night .tick{background:#6b655a}.phone.night .tick.ten{background:#d8cdb3}
+.phone.night .tl{color:#7d7667}.phone.night .slot{background:#0f0e0d;box-shadow:inset 0 2px 3px #000,0 1px 0 #3a3733}
+.phone.night .paper{background:#1a1917;box-shadow:0 10px 24px rgba(0,0,0,.6)}
+.phone.night .grain{opacity:.12}
+.phone.night .text{color:#e6d6b0;-webkit-mask-image:radial-gradient(circle 190px at var(--lx,50%) var(--ly,80px),#000 0,rgba(0,0,0,.18) 100%);mask-image:radial-gradient(circle 190px at var(--lx,50%) var(--ly,80px),#000 0,rgba(0,0,0,.18) 100%)}
+.phone.night .cone{opacity:1}
+.foot{display:flex;justify-content:space-between;padding:10px 8px 0;font:10px/1.4 "Courier Prime",monospace;color:var(--muted)}
+.foot b{color:var(--accent);font-weight:400}
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+  <div class="top"><div class="mark"><span class="dot"></span>enk</div><div class="count" id="count">0 / 3000</div></div>
+  <div class="panel">
+    <div class="track" id="track">
+      <div class="ticks" id="ticks"></div>
+      <div class="slot"></div>
+      <div class="cap" id="cap" aria-label="Typing marker. Drag to scrub, long-press for lamp"></div>
+    </div>
+  </div>
+  <div class="cone" id="cone"></div>
+  <div class="paperwrap">
+    <div class="paper"><div class="scroll" id="scroll"><div class="text" id="text"></div></div><div class="grain"></div></div>
+  </div>
+  <textarea id="input" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
+  <div class="foot"><span>SPIKE · throwaway</span><span id="pos">ln 1 · col 0</span><span><b>drag</b> scrub · <b>hold</b> lamp</span></div>
+</div>
+<script>
+const COLS=30, LH=1.7;
+const $=id=>document.getElementById(id);
+const phone=$('phone'),track=$('track'),cap=$('cap'),ticks=$('ticks'),textEl=$('text'),input=$('input'),scroll=$('scroll'),cone=$('cone');
+let dragging=false,dragX=0,fired=false,lastLine=-1,dinged=false;
+input.value="dear future me,\nthe rain is soft on the roof today.\nI left the window open a little.";
+
+for(let i=0;i<=COLS;i++){
+  const t=document.createElement('div');
+  t.className='tick'+(i%10===0?' ten':i%5===0?' five':'');
+  t.style.left=(i/COLS*100)+'%';
+  ticks.appendChild(t);
+  if(i%10===0&&i>0){const l=document.createElement('div');l.className='tl';l.textContent=i;l.style.left=(i/COLS*100)+'%';ticks.appendChild(l)}
+}
+
+function layout(t){
+  const lines=[];let idx=0;
+  t.split('\n').forEach(p=>{
+    if(!p.length){lines.push({s:idx,e:idx})}
+    else{let i=0;while(i<p.length){
+      if(p.length-i<=COLS){lines.push({s:idx+i,e:idx+p.length});break}
+      const cut=i+COLS,sp=p.lastIndexOf(' ',cut);
+      if(sp>i){lines.push({s:idx+i,e:idx+sp+1});i=sp+1}else{lines.push({s:idx+i,e:idx+cut});i=cut}
+    }}
+    idx+=p.length+1;
+  });
+  return lines;
+}
+function hash(n){let x=Math.sin(n*127.1)*43758.5453;return x-Math.floor(x)}
+function metrics(){
+  const w=scroll.clientWidth-48;
+  const fs=w/(COLS*0.6);
+  textEl.style.fontSize=fs+'px';
+  return fs;
+}
+function caretPos(lines,i){
+  for(let k=lines.length-1;k>=0;k--) if(i>=lines[k].s) return {line:k,col:Math.min(i-lines[k].s,COLS)};
+  return {line:0,col:0};
+}
+function ding(){
+  try{
+    const ctx=ac();const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='sine';o.frequency.value=2350;g.gain.setValueAtTime(.0001,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.18,ctx.currentTime+.005);g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.9);
+    o.connect(g).connect(ctx.destination);o.start();o.stop(ctx.currentTime+.95);
+  }catch(e){}
+}
+let _ac;function ac(){return _ac||(_ac=new (window.AudioContext||window.webkitAudioContext)())}
+function click(big){
+  try{
+    const ctx=ac(),n=ctx.sampleRate*0.05,b=ctx.createBuffer(1,n,ctx.sampleRate),d=b.getChannelData(0);
+    for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,big?3:5);
+    const s=ctx.createBufferSource();s.buffer=b;
+    const f=ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=big?900:2400;f.Q.value=.9;
+    const g=ctx.createGain();g.gain.value=big?.6:.45;
+    s.connect(f).connect(g).connect(ctx.destination);s.start();
+  }catch(e){}
+  if(navigator.vibrate)try{navigator.vibrate(big?14:8)}catch(e){}
+}
+function render(){
+  const fs=metrics();
+  const t=input.value;
+  const lines=layout(t);
+  const sel=input.selectionStart;
+  const {line,col}=caretPos(lines,sel);
+  let html='';
+  lines.forEach(L=>{
+    let s='';
+    for(let i=L.s;i<L.e;i++){
+      const c=t[i];
+      const r=hash(i+1),r2=hash(i+99);
+      const esc=c==='<'?'&lt;':c==='&'?'&amp;':c;
+      s+=`<span class="ch" style="--dy:${((r-.5)*1.1).toFixed(2)}px;--rot:${((r2-.5)*2.2).toFixed(2)}deg;--op:${(.84+r*.16).toFixed(2)}">${esc}</span>`;
+    }
+    html+=`<div class="line">${s||'&nbsp;'}</div>`;
+  });
+  html+=`<div class="caret" id="caret" style="left:${col}ch;top:${line*LH}em"></div>`;
+  textEl.innerHTML=html;
+  $('count').textContent=`${t.length} / 3000`+(t.length>3000?' · p.2':'');
+  $('pos').textContent=`ln ${line+1} · col ${col}`;
+  const lineTop=line*LH*fs;
+  const target=Math.max(0,lineTop-110);
+  scroll.scrollTo({top:target,behavior:'smooth'});
+  placeCap(col);
+  lamp(line,fs);
+  if(line!==lastLine){lastLine=line;dinged=false}
+  if(col>=COLS-4&&!dinged&&!dragging){dinged=true;ding()}
+  return {line,col};
+}
+function trackW(){return track.getBoundingClientRect().width}
+function placeCap(col){
+  if(dragging)return;
+  const x=col/COLS*trackW();
+  cap.style.transform=`translateX(${x}px)`;
+  updateLight(x);
+}
+function updateLight(x){
+  const tr=track.getBoundingClientRect(),pr=phone.getBoundingClientRect();
+  const cx=tr.left-pr.left+x;
+  cone.style.left=cx+'px';
+  const sc=scroll.getBoundingClientRect();
+  phone.style.setProperty('--lx',(tr.left-sc.left+x)+'px');
+}
+function lamp(line,fs){
+  const sc=scroll.getBoundingClientRect(),paperTop=46;
+  const y=paperTop+line*LH*fs-scroll.scrollTop+fs*.9;
+  phone.style.setProperty('--ly',y+'px');
+}
+cap.addEventListener('pointerdown',e=>{
+  cap.setPointerCapture(e.pointerId);
+  dragging=true;fired=false;cap.classList.remove('snap');cap.classList.add('drag');
+  const startX=e.clientX;cap._sx=startX;cap._moved=false;
+  cap._lp=setTimeout(()=>{if(!cap._moved){fired=true;phone.classList.toggle('night');click(true);render()}},480);
+});
+cap.addEventListener('pointermove',e=>{
+  if(!dragging||fired)return;
+  if(Math.abs(e.clientX-cap._sx)>6)cap._moved=true;
+  if(!cap._moved)return;
+  clearTimeout(cap._lp);
+  const tr=track.getBoundingClientRect();
+  const x=Math.min(Math.max(e.clientX-tr.left,0),tr.width);
+  cap.style.transform=`translateX(${x}px)`;updateLight(x);
+  const idx=Math.round(x/tr.width*input.value.length);
+  input.setSelectionRange(idx,idx);
+  const keep=dragging;render();dragging=keep;
+  cap.style.transform=`translateX(${x}px)`;
+});
+function endDrag(){
+  clearTimeout(cap._lp);
+  if(!dragging)return;
+  dragging=false;cap.classList.remove('drag');cap.classList.add('snap');
+  render();
+  setTimeout(()=>cap.classList.remove('snap'),400);
+}
+cap.addEventListener('pointerup',endDrag);
+cap.addEventListener('pointercancel',endDrag);
+scroll.addEventListener('pointerdown',()=>setTimeout(()=>input.focus({preventScroll:true}),0));
+document.addEventListener('keydown',()=>{if(document.activeElement!==input)input.focus({preventScroll:true})});
+input.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){click(true);ding()}
+  else if(e.key===' ')click(true);
+  else if(e.key.length===1)click(false);
+});
+input.addEventListener('input',render);
+input.addEventListener('keyup',()=>{render()});
+window.addEventListener('resize',render);
+document.fonts&&document.fonts.ready.then(render);
+input.focus({preventScroll:true});
+input.setSelectionRange(input.value.length,input.value.length);
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Enk logo exploration</title>
+<style>
+:root{--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;background:#0f0e10;color:#cfc8ba;font-family:var(--sans)}
+h1{margin:0;font:700 26px/30px var(--sans);letter-spacing:-.03em;color:#f3eee3}
+.hd{padding:26px 28px 6px}.hd p{margin:6px 0 0;color:#8b8578;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(300px,1fr));gap:20px;padding:20px 28px 40px}
+.card{background:#161517;border:1px solid #232126;border-radius:22px;padding:22px 22px 26px}
+.card h2{margin:0 0 4px;font:600 17px var(--sans);letter-spacing:-.01em;color:#f3eee3}
+.card .d{margin:0 0 18px;font-size:12.5px;line-height:17px;color:#8b8578}
+.lab{font:11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:#6f6a62;margin:20px 0 8px}
+.row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.ico{position:relative;overflow:hidden;background:linear-gradient(#3a3835,#1d1c1b);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 10px 24px rgba(0,0,0,.5)}
+.ico svg{display:block}
+.big{width:200px;height:200px;border-radius:44px}
+.m{width:72px;height:72px}.m svg{position:absolute;left:-18px;top:-18px}
+.circ{border-radius:50%}.sq{border-radius:28%}.rr{border-radius:16px}
+.s48{width:48px;height:48px;border-radius:11px}.s32{width:32px;height:32px;border-radius:8px}
+.s48 svg{width:48px;height:48px}.s32 svg{width:32px;height:32px}
+.bgl{background:#e9e4d8;padding:12px;border-radius:14px;display:flex;gap:12px;align-items:center}
+.bgd{background:#2a2826;padding:12px;border-radius:14px;display:flex;gap:12px;align-items:center}
+.mono{position:relative;overflow:hidden}.mono svg{position:absolute;left:-18px;top:-18px}
+.lock{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:16px}
+.lock.dk{background:#1a1918}.lock.lt{background:#f2ecdf}
+.word{display:flex;align-items:baseline;font:700 40px/1 var(--sans);letter-spacing:-.045em}
+.word .cr{display:inline-block;width:.34em;height:.085em;margin-left:.06em;background:#ff5a1f;border-radius:.04em;align-self:flex-end;margin-bottom:.1em}
+.dk .word{color:#f3eee3}.lt .word{color:#2b2824}
+.splash{width:160px;height:285px;border-radius:26px;background:#161514;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;position:relative;overflow:hidden}
+.splash::before{content:"";position:absolute;inset:0;background:radial-gradient(260px 200px at 50% 0,rgba(255,190,130,.10),transparent 72%)}
+.splash .word{font-size:22px;color:#f3eee3;position:relative}
+.splash .sy{width:92px;height:92px;position:relative}
+.pick{margin-top:18px;font-size:12px;color:#8b8578}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<linearGradient id="gRail" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4f2"/><stop offset=".4" stop-color="#a9a9a6"/><stop offset=".62" stop-color="#6f6f6c"/><stop offset="1" stop-color="#c9c9c6"/></linearGradient>
+<linearGradient id="gColT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0f0ed"/><stop offset="1" stop-color="#a9a9a6"/></linearGradient>
+<linearGradient id="gColB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8d8d8a"/><stop offset="1" stop-color="#d2d2cf"/></linearGradient>
+<linearGradient id="gBody" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2a2927"/><stop offset=".2" stop-color="#3b3a37"/><stop offset=".8" stop-color="#3b3a37"/><stop offset="1" stop-color="#2a2927"/></linearGradient>
+<linearGradient id="gSlug" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9d9d9a"/><stop offset=".5" stop-color="#efefec"/><stop offset="1" stop-color="#8a8a87"/></linearGradient>
+<linearGradient id="gBr" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8b8b88"/><stop offset=".5" stop-color="#d8d8d5"/><stop offset="1" stop-color="#7a7a77"/></linearGradient>
+<linearGradient id="gPaper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7f2e6"/><stop offset="1" stop-color="#e8e0cd"/></linearGradient>
+<filter id="fB" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.7"/></filter>
+<clipPath id="cpBody"><rect x="-15" y="-10" width="30" height="21" rx="4.5"/></clipPath>
+<g id="car">
+  <ellipse cx="0" cy="15" rx="14.5" ry="3" fill="#000" opacity=".55" filter="url(#fB)"/>
+  <rect x="-5.2" y="-16.4" width="10.4" height="7" rx="1.7" fill="#141312"/>
+  <rect x="-3.5" y="-14.6" width="7" height="5" rx="1" fill="url(#gSlug)"/>
+  <g clip-path="url(#cpBody)">
+    <rect x="-15" y="-10" width="30" height="21" fill="url(#gBody)"/>
+    <rect x="-15" y="-10" width="30" height="3" fill="url(#gColT)"/>
+    <rect x="-15" y="8" width="30" height="3" fill="url(#gColB)"/>
+  </g>
+  <path d="M-8.4 4.1h16.8" stroke="#fff" stroke-opacity=".17" stroke-width="2.5" stroke-dasharray=".9 1.7"/>
+  <rect x="-4.3" y="-4.7" width="8.6" height="1.9" rx=".95" fill="#ff5a1f"/>
+</g>
+<g id="rail">
+  <rect x="0" y="6.2" width="80" height="3.4" fill="#000" opacity=".4" filter="url(#fB)"/>
+  <rect x="0" y="0" width="80" height="7" fill="url(#gRail)"/>
+</g>
+</defs></svg>
+
+<div class="hd"><h1>Enk logo, carriage on a rail</h1><p>Three takes on the same symbol. Each is shown as a launcher icon, as Android adaptive masks (circle, squircle, rounded square), at small sizes, as the themed monochrome icon, and as a splash with the wordmark. The orange appears only in the strip and the caret.</p></div>
+<div class="grid" id="grid"></div>
+<script>
+const NS='http://www.w3.org/2000/svg';
+/* each variant returns SVG markup for a 108 x 108 foreground (rail, carriage, details) */
+const rail=(y,h)=>`<rect x="6" y="${y+h-1.5}" width="96" height="4" fill="#000" opacity=".42" filter="url(#fB)"/><rect x="6" y="${y}" width="96" height="${h}" fill="url(#gRail)"/>`;
+const car=(x,y,s)=>`<use href="#car" transform="translate(${x} ${y}) scale(${s})"/>`;
+const monoCar=(x,y,s)=>`<rect x="${x-15*s}" y="${y-10*s}" width="${30*s}" height="${21*s}" rx="${4.5*s}" fill="#fff"/><rect x="${x-5.2*s}" y="${y-16.4*s}" width="${10.4*s}" height="${7*s}" rx="${1.7*s}" fill="#fff"/><rect x="${x-4.3*s}" y="${y-4.7*s}" width="${8.6*s}" height="${1.9*s}" rx="${.95*s}" fill="#000"/>`;
+const bar=(x,y,w,h,f,o)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h/2}" fill="${f}" opacity="${o}"/>`;
+const V={
+ a:{name:'A · Rail',desc:'The pure mark. A thick steel rail runs edge to edge with the carriage riding it. Strongest at tiny sizes and the quietest.',
+  fg:()=>rail(53,8.5)+car(54,57.25,1.3),
+  mono:()=>`<rect x="6" y="53" width="96" height="8.5" fill="#fff"/>`+monoCar(54,57.25,1.3)},
+ b:{name:'B · Rail and caret',desc:'Adds three lines of typed text and the orange caret above the carriage. Tells the writing story; reads best from 48 px up.',
+  fg:()=>bar(33,21,38,2.6,'#f3eee3',.26)+bar(33,26.5,28,2.6,'#f3eee3',.26)+bar(33,32,26,2.6,'#f3eee3',.26)+`<rect x="60.5" y="32" width="11" height="2.1" rx="1" fill="#ff5a1f"/>`+rail(55,8.5)+car(66,59.25,1.3),
+  mono:()=>bar(33,21,38,2.6,'#fff',.55)+bar(33,26.5,28,2.6,'#fff',.55)+bar(33,32,26,2.6,'#fff',.55)+`<rect x="60.5" y="32" width="11" height="2.1" rx="1" fill="#fff"/><rect x="6" y="55" width="96" height="8.5" fill="#fff"/>`+monoCar(66,59.25,1.3)},
+ c:{name:'C · The machine in miniature',desc:'A sheet of paper above the rail with the carriage and caret, a small scene. Richest at large sizes, simplifies at small ones.',
+  fg:()=>`<rect x="30" y="22" width="48" height="42" rx="4" fill="url(#gPaper)"/>`+bar(35,28,34,2.6,'#2b2824',.5)+bar(35,33.5,40,2.6,'#2b2824',.5)+bar(35,39,22,2.6,'#2b2824',.5)+`<rect x="58.5" y="39.1" width="9" height="2" rx="1" fill="#ff5a1f"/>`+rail(58,8)+car(63,62,1.15),
+  mono:()=>`<rect x="30" y="22" width="48" height="42" rx="4" fill="#fff"/>`+bar(35,28,34,2.6,'#000',1)+bar(35,33.5,40,2.6,'#000',1)+bar(35,39,22,2.6,'#000',1)+`<rect x="58.5" y="39.1" width="9" height="2" rx="1" fill="#000"/><rect x="6" y="58" width="96" height="8" fill="#fff"/>`+monoCar(63,62,1.15)}
+};
+function svg(inner,size){return `<svg viewBox="0 0 108 108" width="${size}" height="${size}">${inner}</svg>`}
+const grid=document.getElementById('grid');
+Object.entries(V).forEach(([k,v])=>{
+ const c=document.createElement('div');c.className='card';
+ const fg=v.fg(),mono=v.mono();
+ c.innerHTML=`<h2>${v.name}</h2><p class="d">${v.desc}</p>
+ <div class="lab">Launcher icon</div>
+ <div class="row"><div class="ico big">${svg(fg,200)}</div></div>
+ <div class="lab">Adaptive masks (72 dp visible of 108)</div>
+ <div class="row">
+  <div class="ico m circ">${svg(fg,108)}</div><div class="ico m sq">${svg(fg,108)}</div><div class="ico m rr">${svg(fg,108)}</div></div>
+ <div class="lab">Small sizes on light and dark</div>
+ <div class="row"><div class="bgd"><div class="ico s48">${svg(fg,48)}</div><div class="ico s32">${svg(fg,32)}</div></div><div class="bgl"><div class="ico s48">${svg(fg,48)}</div><div class="ico s32">${svg(fg,32)}</div></div></div>
+ <div class="lab">Themed monochrome icon (Android 13+)</div>
+ <div class="row">
+  <div class="mono m circ" style="background:#d6e3ff;color:#1b3a6b"><svg viewBox="0 0 108 108" width="108" height="108"><defs><mask id="mk-${k}-1" maskUnits="userSpaceOnUse" x="0" y="0" width="108" height="108">${mono}</mask></defs><rect width="108" height="108" fill="currentColor" mask="url(#mk-${k}-1)"/></svg></div>
+  <div class="mono m circ" style="background:#3d3a35;color:#f3e0c2"><svg viewBox="0 0 108 108" width="108" height="108"><defs><mask id="mk-${k}-2" maskUnits="userSpaceOnUse" x="0" y="0" width="108" height="108">${mono}</mask></defs><rect width="108" height="108" fill="currentColor" mask="url(#mk-${k}-2)"/></svg></div>
+  <div class="mono m circ" style="background:#d8f0dc;color:#17482a"><svg viewBox="0 0 108 108" width="108" height="108"><defs><mask id="mk-${k}-3" maskUnits="userSpaceOnUse" x="0" y="0" width="108" height="108">${mono}</mask></defs><rect width="108" height="108" fill="currentColor" mask="url(#mk-${k}-3)"/></svg></div>
+ </div>
+ <div class="lab">Wordmark lockup and splash</div>
+ <div class="lock dk"><div class="ico" style="width:56px;height:56px;border-radius:13px">${svg(fg,56)}</div><div class="word">enk<i class="cr"></i></div></div>
+ <div style="height:10px"></div>
+ <div class="lock lt"><div class="ico" style="width:56px;height:56px;border-radius:13px">${svg(fg,56)}</div><div class="word">enk<i class="cr"></i></div></div>
+ <div style="height:14px"></div>
+ <div class="splash"><div class="sy">${svg(fg,92)}</div><div class="word">enk<i class="cr"></i></div></div>`;
+ grid.appendChild(c)});
+</script>
+</body>
+</html>
