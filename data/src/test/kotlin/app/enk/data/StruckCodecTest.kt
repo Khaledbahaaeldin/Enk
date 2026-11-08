@@ -43,4 +43,33 @@ class StruckCodecTest {
         val mixed = "1-2,,foo-bar,7-7,9-4,10-12"
         assertEquals(listOf(1..2, 7..7, 10..12), StruckCodec.decode(mixed))
     }
+
+    @Test
+    fun whitespaceWithinTokensAndSurroundingCommas() {
+        // Spaces around tokens and extra commas
+        val input = "  1-2 ,,, 7-7  ,  10-15  "
+        assertEquals(listOf(1..2, 7..7, 10..15), StruckCodec.decode(input))
+    }
+
+    @Test
+    fun negativeNumbersAndReversedRanges() {
+        assertEquals(emptyList<IntRange>(), StruckCodec.decode("-1-2"))
+        assertEquals(emptyList<IntRange>(), StruckCodec.decode("1--2"))
+        assertEquals(emptyList<IntRange>(), StruckCodec.decode("-5--2"))
+        assertEquals(emptyList<IntRange>(), StruckCodec.decode("10-5"))
+    }
+
+    @Test
+    fun overlappingRangesArePreserved() {
+        // StruckCodec preserves ranges as-is without merging (merging is StruckPage responsibility)
+        val input = "1-5,3-7,0-2"
+        assertEquals(listOf(1..5, 3..7, 0..2), StruckCodec.decode(input))
+    }
+
+    @Test
+    fun singlePointRanges() {
+        assertEquals(listOf(0..0), StruckCodec.decode("0-0"))
+        assertEquals(listOf(999..999), StruckCodec.decode("999-999"))
+        assertEquals("0-0", StruckCodec.encode(listOf(0..0)))
+    }
 }

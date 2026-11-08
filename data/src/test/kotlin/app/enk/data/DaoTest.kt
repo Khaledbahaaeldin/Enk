@@ -150,4 +150,121 @@ class DaoTest {
         assertNotNull(recent)
         assertEquals("n1", recent?.id)
     }
+
+    @Test
+    fun deleteDividerAffectsOnlyTargetDivider() = runBlocking {
+        val div1 = dividerDao.insert(DividerEntity(name = "Work", position = 0))
+        val div2 = dividerDao.insert(DividerEntity(name = "Personal", position = 1))
+
+        val noteWork = NoteEntity("n-work", dividerId = div1, position = 0, createdAt = 10L, modifiedAt = 10L, trashedAt = null)
+        val notePersonal = NoteEntity("n-pers", dividerId = div2, position = 0, createdAt = 10L, modifiedAt = 10L, trashedAt = null)
+        val noteUnfiled = NoteEntity("n-unf", dividerId = null, position = 1, createdAt = 10L, modifiedAt = 10L, trashedAt = null)
+
+        noteDao.upsert(noteWork)
+        noteDao.upsert(notePersonal)
+        noteDao.upsert(noteUnfiled)
+
+        // Delete div1
+        dividerDao.delete(div1)
+
+        val unfiled = noteDao.observeByDivider(null).first()
+        assertEquals(2, unfiled.size)
+        assertTrue(unfiled.any { it.id == "n-work" && it.dividerId == null })
+        assertTrue(unfiled.any { it.id == "n-unf" && it.dividerId == null })
+
+        val personalNotes = noteDao.observeByDivider(div2).first()
+        assertEquals(1, personalNotes.size)
+        assertEquals("n-pers", personalNotes[0].id)
+        assertEquals(div2, personalNotes[0].dividerId)
+    }
+
+    @Test
+    fun purgeTrashedBeforeBoundaryAndUntrashedNeverPurged() = runBlocking {
+        val noteActive = NoteEntity("active", dividerId = null, position = 0, createdAt = 10L, modifiedAt = 10L, trashedAt = null)
+        val noteOlder = NoteEntity("older", dividerId = null, position = 1, createdAt = 10L, modifiedAt = 10L, trashedAt = 499L)
+        val noteEqual = NoteEntity("equal", dividerId = null, position = 2, createdAt = 10L, modifiedAt = 10L, trashedAt = 500L)
+        val noteNewer = NoteEntity("newer", dividerId = null, position = 3, createdAt = 10L, modifiedAt = 10L, trashedAt = 501L)
+
+        noteDao.upsert(noteActive)
+        noteDao.upsert(noteOlder)
+        noteDao.upsert(noteEqual)
+        noteDao.upsert(noteNewer)
+
+        // Cutoff is 500L -> only < 500L (noteOlder) should be purged
+        val purged = noteDao.purgeTrashedBefore(cutoff = 500L)
+        assertEquals(1, purged)
+
+        assertNull("trashedAt 499 < 500 must be purged", noteDao.get("older"))
+        assertNotNull("trashedAt 500 == 500 must NOT be purged", noteDao.get("equal"))
+        assertNotNull("trashedAt 501 > 500 must NOT be purged", noteDao.get("newer"))
+        assertNotNull("trashedAt null must NEVER be purged", noteDao.get("active"))
+    }
+
+    @Test
+    fun recentMultipleNotesAndOrdering() = runBlocking {
+        val n1 = NoteEntity("n1", dividerId = null, position = 0, createdAt = 10L, modifiedAt = 100L, trashedAt = null)
+        val n2 = NoteEntity("n2", dividerId = null, position = 1, createdAt = 10L, modifiedAt = 300L, trashedAt = null)
+        val n3 = NoteEntity("n3", dividerId = null, position = 2, createdAt = 10L, modifiedAt = 200L, trashedAt = null)
+        val n4 = NoteEntity("n4", dividerId = null, position = 3, createdAt = 10L, modifiedAt = 500L, trashedAt = 600L) // most recent but trashed
+
+        noteDao.upsert(n1)
+        noteDao.upsert(n2)
+        noteDao.upsert(n3)
+        noteDao.upsert(n4)
+
+        val recent = noteDao.recent()
+        assertNotNull(recent)
+        assertEquals("n2", recent?.id)
+        assertEquals(300L, recent?.modifiedAt)
+    }
+
+    @Test
+    fun observeByDividerOrderingAndSeparation() = runBlocking {
+        val divId = dividerDao.insert(DividerEntity(name = "Projects", position = 0))
+
+        val dNote2 = NoteEntity("d2", dividerId = divId, position = 2, createdAt = 1L, modifiedAt = 1L, trashedAt = null)
+        val dNote0 = NoteEntity("d0", dividerId = divId, position = 0, createdAt = 1L, modifiedAt = 1L, trashedAt = null)
+        val dNote1 = NoteEntity("d1", dividerId = divId, position = 1, createdAt = 1L, modifiedAt = 1L, trashedAt = null)
+
+        val uNote1 = NoteEntity("u1", dividerId = null, position = 1, createdAt = 1L, modifiedAt = 1L, trashedAt = null)
+        val uNote0 = NoteEntity("u0", dividerId = null, position = 0, createdAt = 1L, modifiedAt = 1L, trashedAt = null)
+
+        noteDao.upsert(dNote2)
+        noteDao.upsert(dNote0)
+        noteDao.upsert(dNote1)
+        noteDao.upsert(uNote1)
+        noteDao.upsert(uNote0)
+
+        val dividerNotes = noteDao.observeByDivider(divId).first()
+        assertEquals(listOf("d0", "d1", "d2"), dividerNotes.map { it.id })
+
+        val unfiledNotes = noteDao.observeByDivider(null).first()
+        assertEquals(listOf("u0", "u1"), unfiledNotes.map { it.id })
+    }
+
+    @Test
+    fun pageDaoDeleteFromAndIsolation() = runBlocking {
+        for (i in 0..4) {
+            pageDao.upsert(PageEntity("note-A", pageIndex = i, text = "Page $i", struck = ""))
+        }
+        for (i in 0..2) {
+            pageDao.upsert(PageEntity("note-B", pageIndex = i, text = "B Page $i", struck = ""))
+        }
+
+        // Delete from index 2 for note-A
+        pageDao.deleteFrom("note-A", pageIndex = 2)
+
+        val pagesA = pageDao.forNote("note-A")
+        assertEquals(2, pagesA.size)
+        assertEquals(listOf(0, 1), pagesA.map { it.pageIndex })
+
+        val pagesB = pageDao.forNote("note-B")
+        assertEquals(3, pagesB.size)
+        assertEquals(listOf(0, 1, 2), pagesB.map { it.pageIndex })
+
+        // Delete all for note-A
+        pageDao.deleteForNote("note-A")
+        assertTrue(pageDao.forNote("note-A").isEmpty())
+        assertEquals(3, pageDao.forNote("note-B").size)
+    }
 }
