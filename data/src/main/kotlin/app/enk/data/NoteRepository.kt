@@ -70,6 +70,7 @@ open class NoteRepository(
         val now = clock.now()
         db.withTransaction {
             db.pageDao().deleteForNote(noteId)
+            db.pageFtsDao().deleteForNote(noteId)
             if (pages.isEmpty()) {
                 db.pageDao().upsert(
                     PageEntity(
@@ -89,6 +90,16 @@ open class NoteRepository(
                             struck = StruckCodec.encode(p.struck)
                         )
                     )
+                    val searchableText = p.searchable()
+                    if (searchableText.isNotEmpty()) {
+                        db.pageFtsDao().insert(
+                            PageFts(
+                                noteId = noteId,
+                                pageIndex = idx,
+                                text = searchableText
+                            )
+                        )
+                    }
                 }
             }
             db.noteDao().updateModifiedAt(noteId, now)
@@ -161,6 +172,7 @@ open class NoteRepository(
             val expired = db.noteDao().findTrashedBefore(cutoff)
             for (n in expired) {
                 db.pageDao().deleteForNote(n.id)
+                db.pageFtsDao().deleteForNote(n.id)
                 onNotePurged(n.id)
             }
             db.noteDao().purgeTrashedBefore(cutoff)
