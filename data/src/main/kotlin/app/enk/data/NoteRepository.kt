@@ -29,7 +29,7 @@ data class TrashedSummary(
 )
 
 class NoteRepository(
-    private val db: EnkDatabase,
+    internal val db: EnkDatabase,
     private val clock: Clock
 ) {
 
