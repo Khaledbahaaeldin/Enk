@@ -28,8 +28,10 @@ Draft credits for the typewriter sounds in Enk. Source pages were read on 2026-1
 ## Typography
 
 - **Courier Prime** designed by Alan Dague-Greene for Quote-Unquote Apps. Licensed under the SIL Open Font License, Version 1.1 (OFL-1.1).
+- **Inter** designed by Rasmus Andersson (https://github.com/rsms/inter). Licensed under the SIL Open Font License, Version 1.1 (OFL-1.1).
 
 ## Third-Party Libraries
 
 - **AndroidX & Jetpack Compose** by Google LLC. Licensed under the Apache License, Version 2.0.
 - **Paparazzi** by Cash App. Licensed under the Apache License, Version 2.0.
+- **Backdrop** by Kyant (`io.github.kyant0:backdrop`). Licensed under the Apache License, Version 2.0.
