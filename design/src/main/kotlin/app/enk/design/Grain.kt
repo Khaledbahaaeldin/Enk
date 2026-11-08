@@ -22,7 +22,7 @@ object Grain {
 
     fun tile(): ImageBitmap = cachedTile
 
-    internal fun generatePixels(tile: Int = TILE, seed: Int = SEED): IntArray {
+    fun generatePixels(tile: Int = TILE, seed: Int = SEED): IntArray {
         val pixels = IntArray(tile * tile)
         val octaves = 2
         val baseFrequency = 0.9f

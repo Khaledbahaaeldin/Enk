@@ -28,20 +28,10 @@ object DynamicShellColors {
         val towardLightForSurface = dark
 
         // Ensure t1 on bg and g1 >= 4.5
-        while (Contrast.ratio(t1, bg) < 4.5 || Contrast.ratio(t1, g1) < 4.5) {
-            val prev = t1
-            if (Contrast.ratio(t1, bg) < 4.5) t1 = Contrast.ensure(t1, bg, 4.5, towardLightForSurface)
-            if (Contrast.ratio(t1, g1) < 4.5) t1 = Contrast.ensure(t1, g1, 4.5, towardLightForSurface)
-            if (t1 == prev) break
-        }
+        t1 = ensureAgainstBoth(t1, bg, g1, 4.5, towardLightForSurface)
 
         // Ensure t2 on bg and g1 >= 4.5
-        while (Contrast.ratio(t2, bg) < 4.5 || Contrast.ratio(t2, g1) < 4.5) {
-            val prev = t2
-            if (Contrast.ratio(t2, bg) < 4.5) t2 = Contrast.ensure(t2, bg, 4.5, towardLightForSurface)
-            if (Contrast.ratio(t2, g1) < 4.5) t2 = Contrast.ensure(t2, g1, 4.5, towardLightForSurface)
-            if (t2 == prev) break
-        }
+        t2 = ensureAgainstBoth(t2, bg, g1, 4.5, towardLightForSurface)
 
         // Ensure t3 on bg >= 3.0
         t3 = Contrast.ensure(t3, bg, 3.0, towardLightForSurface)
@@ -55,12 +45,7 @@ object DynamicShellColors {
 
         // Ensure danger on g1 >= 4.5 and on thick (composited on bg) >= 4.5
         val thickBg = thick.compositeOver(bg)
-        while (Contrast.ratio(danger, g1) < 4.5 || Contrast.ratio(danger, thickBg) < 4.5) {
-            val prev = danger
-            if (Contrast.ratio(danger, g1) < 4.5) danger = Contrast.ensure(danger, g1, 4.5, towardLightForSurface)
-            if (Contrast.ratio(danger, thickBg) < 4.5) danger = Contrast.ensure(danger, thickBg, 4.5, towardLightForSurface)
-            if (danger == prev) break
-        }
+        danger = ensureAgainstBoth(danger, g1, thickBg, 4.5, towardLightForSurface)
 
         return ShellColors(
             bg = bg,
@@ -77,5 +62,22 @@ object DynamicShellColors {
             auraSide = auraSide,
             auraBottom = auraBottom
         )
+    }
+
+    private fun ensureAgainstBoth(
+        initialColor: Color,
+        bg1: Color,
+        bg2: Color,
+        minRatio: Double,
+        towardLight: Boolean
+    ): Color {
+        var c = initialColor
+        while (Contrast.ratio(c, bg1) < minRatio || Contrast.ratio(c, bg2) < minRatio) {
+            val prev = c
+            if (Contrast.ratio(c, bg1) < minRatio) c = Contrast.ensure(c, bg1, minRatio, towardLight)
+            if (Contrast.ratio(c, bg2) < minRatio) c = Contrast.ensure(c, bg2, minRatio, towardLight)
+            if (c == prev) break
+        }
+        return c
     }
 }

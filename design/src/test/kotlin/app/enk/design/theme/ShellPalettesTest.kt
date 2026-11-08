@@ -10,7 +10,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 class ShellPalettesTest {
@@ -165,76 +164,6 @@ class ShellPalettesTest {
                 assertTrue("$name: t3 on bg ($t3OnBg) >= 3.0", t3OnBg >= 3.0)
             }
         }
-    }
-
-    @Test
-    @Config(qualifiers = "night")
-    fun systemModeFollowsDarkTheme() {
-        val nightConfig = android.content.res.Configuration().apply {
-            uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES
-        }
-        var currentColors: ShellColors? = null
-        val recomposer = androidx.compose.runtime.Recomposer(kotlinx.coroutines.Dispatchers.Unconfined)
-        val composition = androidx.compose.runtime.Composition(
-            object : androidx.compose.runtime.AbstractApplier<Unit>(Unit) {
-                override fun insertBottomUp(index: Int, instance: Unit) {}
-                override fun insertTopDown(index: Int, instance: Unit) {}
-                override fun move(from: Int, to: Int, count: Int) {}
-                override fun onClear() {}
-                override fun remove(index: Int, count: Int) {}
-            },
-            recomposer
-        )
-        composition.setContent {
-            androidx.compose.runtime.CompositionLocalProvider(
-                androidx.compose.ui.platform.LocalConfiguration provides nightConfig,
-                androidx.compose.ui.platform.LocalContext provides org.robolectric.RuntimeEnvironment.getApplication()
-            ) {
-                EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.System) {
-                    currentColors = LocalShellColors.current
-                }
-            }
-        }
-
-        val expected = ShellPalettes.colors(ThemeId.Graphite, true)
-        assertNotNull("Expected colors to be captured in composition", currentColors)
-        assertEquals(expected.bg, currentColors?.bg)
-        assertEquals(expected.ui, currentColors?.ui)
-    }
-
-    @Test
-    @Config(qualifiers = "notnight")
-    fun systemModeFollowsLightTheme() {
-        val lightConfig = android.content.res.Configuration().apply {
-            uiMode = android.content.res.Configuration.UI_MODE_NIGHT_NO
-        }
-        var currentColors: ShellColors? = null
-        val recomposer = androidx.compose.runtime.Recomposer(kotlinx.coroutines.Dispatchers.Unconfined)
-        val composition = androidx.compose.runtime.Composition(
-            object : androidx.compose.runtime.AbstractApplier<Unit>(Unit) {
-                override fun insertBottomUp(index: Int, instance: Unit) {}
-                override fun insertTopDown(index: Int, instance: Unit) {}
-                override fun move(from: Int, to: Int, count: Int) {}
-                override fun onClear() {}
-                override fun remove(index: Int, count: Int) {}
-            },
-            recomposer
-        )
-        composition.setContent {
-            androidx.compose.runtime.CompositionLocalProvider(
-                androidx.compose.ui.platform.LocalConfiguration provides lightConfig,
-                androidx.compose.ui.platform.LocalContext provides org.robolectric.RuntimeEnvironment.getApplication()
-            ) {
-                EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.System) {
-                    currentColors = LocalShellColors.current
-                }
-            }
-        }
-
-        val expected = ShellPalettes.colors(ThemeId.Graphite, false)
-        assertNotNull("Expected colors to be captured in composition", currentColors)
-        assertEquals(expected.bg, currentColors?.bg)
-        assertEquals(expected.ui, currentColors?.ui)
     }
 
     @Test

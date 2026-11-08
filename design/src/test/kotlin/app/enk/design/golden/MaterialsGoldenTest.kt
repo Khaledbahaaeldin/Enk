@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
+import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import app.enk.design.EnkMaterials
 import app.enk.design.EnkShadows
@@ -23,6 +24,10 @@ class MaterialsGoldenTest {
 
     @get:Rule
     val paparazzi = Paparazzi(
+        deviceConfig = DeviceConfig.NEXUS_5.copy(
+            screenWidth = 1200,
+            screenHeight = 2460
+        ),
         maxPercentDifference = 2.0
     )
 

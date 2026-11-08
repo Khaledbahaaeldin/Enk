@@ -17,9 +17,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+
+const val THEME_TRANSITION_MS = 500
 
 val LocalShellColors: ProvidableCompositionLocal<ShellColors> = staticCompositionLocalOf {
     ShellPalettes.colors(ThemeId.Graphite, dark = true)
@@ -41,8 +44,9 @@ fun EnkShellTheme(
         ThemeMode.System -> isSystemInDarkTheme()
     }
 
+    val context = LocalContext.current
+
     val targetColors = if (theme == ThemeId.Dynamic) {
-        val context = LocalContext.current
         val scheme = resolveDynamicColorScheme(isDark, context)
         DynamicShellColors.from(scheme, isDark)
     } else {
@@ -51,18 +55,19 @@ fun EnkShellTheme(
 
     val targetMaterial = ShellPalettes.material(isDark)
 
-    val reducedMotion = isReducedMotionEnabled()
+    val reducedMotion = remember(context) { isReducedMotionEnabled(context) }
     val animSpec: AnimationSpec<Color> = if (reducedMotion) {
         snap()
     } else {
-        tween(durationMillis = 500)
+        tween(durationMillis = THEME_TRANSITION_MS)
     }
 
     val animatedColors = animateShellColors(targetColors, animSpec)
+    val animatedMaterial = animateShellMaterial(targetMaterial, animSpec)
 
     CompositionLocalProvider(
         LocalShellColors provides animatedColors,
-        LocalShellMaterial provides targetMaterial,
+        LocalShellMaterial provides animatedMaterial,
         content = content
     )
 }
@@ -79,9 +84,8 @@ private fun resolveDynamicColorScheme(isDark: Boolean, context: Context): ColorS
     }
 }
 
-@Composable
-private fun isReducedMotionEnabled(): Boolean {
-    val context = runCatching { LocalContext.current }.getOrNull() ?: return false
+private fun isReducedMotionEnabled(context: Context?): Boolean {
+    if (context == null) return false
     return runCatching {
         Settings.Global.getFloat(
             context.contentResolver,
@@ -120,5 +124,45 @@ private fun animateShellColors(colors: ShellColors, animSpec: AnimationSpec<Colo
         auraTop = auraTop,
         auraSide = auraSide,
         auraBottom = auraBottom
+    )
+}
+
+@Composable
+private fun animateShellMaterial(
+    material: ShellMaterialTokens,
+    animSpec: AnimationSpec<Color>
+): ShellMaterialTokens {
+    val glassA by animateColorAsState(material.glassA, animSpec, label = "glassA")
+    val glassB by animateColorAsState(material.glassB, animSpec, label = "glassB")
+    val glassEdge by animateColorAsState(material.glassEdge, animSpec, label = "glassEdge")
+    val glassLine by animateColorAsState(material.glassLine, animSpec, label = "glassLine")
+    val sh1 by animateColorAsState(material.sh1, animSpec, label = "sh1")
+    val sh2 by animateColorAsState(material.sh2, animSpec, label = "sh2")
+    val lensA by animateColorAsState(material.lensA, animSpec, label = "lensA")
+    val lensB by animateColorAsState(material.lensB, animSpec, label = "lensB")
+    val lensEdge by animateColorAsState(material.lensEdge, animSpec, label = "lensEdge")
+    val track by animateColorAsState(material.track, animSpec, label = "track")
+    val field by animateColorAsState(material.field, animSpec, label = "field")
+    val field2 by animateColorAsState(material.field2, animSpec, label = "field2")
+    val scrim by animateColorAsState(material.scrim, animSpec, label = "scrim")
+    val grab by animateColorAsState(material.grab, animSpec, label = "grab")
+    val cardShadow by animateColorAsState(material.cardShadow, animSpec, label = "cardShadow")
+    return ShellMaterialTokens(
+        glassA = glassA,
+        glassB = glassB,
+        glassEdge = glassEdge,
+        glassLine = glassLine,
+        sh1 = sh1,
+        sh2 = sh2,
+        lensA = lensA,
+        lensB = lensB,
+        lensEdge = lensEdge,
+        track = track,
+        field = field,
+        field2 = field2,
+        scrim = scrim,
+        grab = grab,
+        cardShadow = cardShadow,
+        auraGrain = material.auraGrain
     )
 }

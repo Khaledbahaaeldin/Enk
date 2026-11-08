@@ -93,5 +93,19 @@ class ManifestTest {
             )
         }
     }
+
+    @Test
+    fun allowBackupIsFalse() {
+        val manifestFiles = findMergedManifestFiles()
+        assertTrue("Merged AndroidManifest.xml not found", manifestFiles.isNotEmpty())
+
+        for (manifestFile in manifestFiles) {
+            val content = manifestFile.readText()
+            assertTrue(
+                "Expected allowBackup=\"false\" in ${manifestFile.path}",
+                content.contains("android:allowBackup=\"false\"")
+            )
+        }
+    }
 }
 

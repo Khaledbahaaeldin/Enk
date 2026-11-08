@@ -61,22 +61,22 @@ object EnkMaterials {
 
     val panelFace: Brush = Brush.verticalGradient(
         colors = listOf(
-            Color(0xFF3A3936),
-            Color(0xFF262523)
+            EnkColors.panelTop,
+            EnkColors.panelBottom
         )
     )
 
     val chassisDay: Brush = Brush.verticalGradient(
         colors = listOf(
-            Color(0xFF34322F),
-            Color(0xFF222120)
+            EnkColors.chassisTop,
+            EnkColors.chassisBottom
         )
     )
 
     val chassisNight: Brush = Brush.verticalGradient(
         colors = listOf(
-            Color(0xFF171615),
-            Color(0xFF0D0C0C)
+            EnkColors.chassisNightTop,
+            EnkColors.chassisNightBottom
         )
     )
 }

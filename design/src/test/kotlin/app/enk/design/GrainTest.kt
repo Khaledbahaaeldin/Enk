@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.toPixelMap
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.math.roundToInt
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -25,9 +26,9 @@ class GrainTest {
 
     @Test
     fun grainDeterministic() {
-        val tile1 = Grain.tile()
-        val tile2 = Grain.tile()
-        assertArrayEquals(tile1.toPixelMap().buffer, tile2.toPixelMap().buffer)
+        val pixels1 = Grain.generatePixels()
+        val pixels2 = Grain.generatePixels()
+        assertArrayEquals(pixels1, pixels2)
     }
 
     @Test
@@ -38,23 +39,17 @@ class GrainTest {
     }
 
     @Test
-    fun generateGrainSourceFileExistsAndMatchesSpec() {
-        val candidatePaths = listOf(
-            File("tools/GenerateGrain.kt"),
-            File("../tools/GenerateGrain.kt"),
-            File("../../tools/GenerateGrain.kt")
-        )
-        val file = candidatePaths.firstOrNull { it.exists() }
-        assertTrue("tools/GenerateGrain.kt should exist", file != null && file.exists())
-
-        val content = file!!.readText()
-        assertTrue(content.contains("val tile = 200"))
-        assertTrue(content.contains("val seed = 4"))
-        assertTrue(content.contains("val octaves = 2"))
-        assertTrue(content.contains("val baseFrequency = 0.9f"))
-        assertTrue(content.contains("0x73"))
-        assertTrue(content.contains("0x66"))
-        assertTrue(content.contains("0x50"))
+    fun tileMatchesGeneratedPixels() {
+        val pixels = Grain.generatePixels()
+        val tile = Grain.tile().toPixelMap()
+        for (y in 0 until Grain.TILE) {
+            for (x in 0 until Grain.TILE) {
+                val expectedArgb = pixels[y * Grain.TILE + x]
+                val expectedA = (expectedArgb ushr 24) and 0xFF
+                val actualA = (tile[x, y].alpha * 255f).roundToInt().coerceIn(0, 255)
+                assertEquals("Alpha at ($x, $y) must match", expectedA, actualA)
+            }
+        }
     }
 
     @Test

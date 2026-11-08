@@ -32,6 +32,4 @@ Draft credits for the typewriter sounds in Enk. Source pages were read on 2026-1
 ## Third-Party Libraries
 
 - **AndroidX & Jetpack Compose** by Google LLC. Licensed under the Apache License, Version 2.0.
-- **Haze** by Chris Banes. Licensed under the Apache License, Version 2.0.
-- **Backdrop** by Kyant. Licensed under the Apache License, Version 2.0.
 - **Paparazzi** by Cash App. Licensed under the Apache License, Version 2.0.
