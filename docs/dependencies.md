@@ -1,6 +1,6 @@
 # Third-Party Dependencies and Provenance
 
-## Verified Libraries for Batch 2 & Batch 3
+## Verified Libraries for Batch 2, Batch 3 & Batch 4
 
 ### 1. Backdrop
 - **Coordinate:** `io.github.kyant0:backdrop:1.0.4`
@@ -35,6 +35,15 @@
   - Maven Central release metadata lists `2.3.13` as the matching KSP 2 plugin release compatible with Kotlin 2.4.x toolchains.
   - Passes Gradle configuration and compilation cleanly.
 - **Role in Enk:** Code generation for Room compiler without KAPT overhead.
+
+### 4. AndroidX Preferences DataStore
+- **Coordinate:** `androidx.datastore:datastore-preferences:1.3.0`
+- **Repository:** Google Maven (`dl.google.com/dl/android/maven2`)
+- **License:** Apache License, Version 2.0
+- **Version Verification:**
+  - Google Maven release metadata lists `1.3.0` as current stable release.
+  - Tested under AGP `8.13.2` and `compileSdk = 35`: passes `checkDebugAarMetadata` and `checkReleaseAarMetadata` cleanly with 0 issues.
+- **Role in Enk:** Asynchronous, transactional persistent preferences storage for app settings.
 
 ---
 
