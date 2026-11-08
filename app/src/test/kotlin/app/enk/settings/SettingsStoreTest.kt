@@ -217,4 +217,219 @@ class SettingsStoreTest {
         assertEquals(100, s.beam)
         assertEquals(1.0f, s.bellVolume, 0.0001f)
     }
+
+    @Test
+    fun exactReadTimeClampingWithParentSpecifiedValues() = runBlocking {
+        val file = File(tempFolder.root, "parent_specified_corrupted.preferences_pb")
+        val dataStore = PreferenceDataStoreFactory.create(produceFile = { file })
+
+        dataStore.edit { prefs ->
+            prefs[floatPreferencesKey("bell_volume")] = -5f
+            prefs[intPreferencesKey("warmth")] = 200
+            prefs[intPreferencesKey("intensity")] = 5
+            prefs[intPreferencesKey("beam")] = 10
+        }
+
+        val store = SettingsStore(dataStore)
+        val s = store.settings.first()
+
+        assertEquals(0f, s.bellVolume, 0.0001f)
+        assertEquals(100, s.warmth)
+        assertEquals(20, s.intensity)
+        assertEquals(30, s.beam)
+    }
+
+    @Test
+    fun readTimeCorruptedFloatNaNAndInfinityHandled() = runBlocking {
+        val fileNaN = File(tempFolder.root, "nan_float.preferences_pb")
+        val dataStoreNaN = PreferenceDataStoreFactory.create(produceFile = { fileNaN })
+        dataStoreNaN.edit { prefs ->
+            prefs[floatPreferencesKey("bell_volume")] = Float.NaN
+        }
+        val storeNaN = SettingsStore(dataStoreNaN)
+        assertEquals(0.6f, storeNaN.settings.first().bellVolume, 0.0001f)
+
+        val fileInf = File(tempFolder.root, "inf_float.preferences_pb")
+        val dataStoreInf = PreferenceDataStoreFactory.create(produceFile = { fileInf })
+        dataStoreInf.edit { prefs ->
+            prefs[floatPreferencesKey("bell_volume")] = Float.POSITIVE_INFINITY
+        }
+        val storeInf = SettingsStore(dataStoreInf)
+        assertEquals(0.6f, storeInf.settings.first().bellVolume, 0.0001f)
+    }
+
+    @Test
+    fun emptyAndUnknownEnumStringsOnReadFallbackToDefaults() = runBlocking {
+        val fileInvalid = File(tempFolder.root, "invalid_enums_fallback.preferences_pb")
+        val dataStoreInvalid = PreferenceDataStoreFactory.create(produceFile = { fileInvalid })
+
+        dataStoreInvalid.edit { prefs ->
+            prefs[stringPreferencesKey("correction")] = "GarbageMode"
+            prefs[stringPreferencesKey("sound_set")] = "DoesNotExist"
+            prefs[stringPreferencesKey("theme")] = "UnknownTheme"
+            prefs[stringPreferencesKey("theme_mode")] = "CrazyMode"
+        }
+
+        val store1 = SettingsStore(dataStoreInvalid)
+        val s1 = store1.settings.first()
+
+        assertEquals(CorrectionMode.CleanErase, s1.correction)
+        assertEquals(SoundSetId.Classic, s1.soundSet)
+        assertEquals(ThemeId.Graphite, s1.theme)
+        assertEquals(ThemeMode.System, s1.themeMode)
+
+        // Empty strings also safely fallback to defaults on separate file
+        val fileEmpty = File(tempFolder.root, "empty_enums_fallback.preferences_pb")
+        val dataStoreEmpty = PreferenceDataStoreFactory.create(produceFile = { fileEmpty })
+
+        dataStoreEmpty.edit { prefs ->
+            prefs[stringPreferencesKey("correction")] = ""
+            prefs[stringPreferencesKey("sound_set")] = ""
+            prefs[stringPreferencesKey("theme")] = ""
+            prefs[stringPreferencesKey("theme_mode")] = ""
+        }
+        val store2 = SettingsStore(dataStoreEmpty)
+        val s2 = store2.settings.first()
+        assertEquals(CorrectionMode.CleanErase, s2.correction)
+        assertEquals(SoundSetId.Classic, s2.soundSet)
+        assertEquals(ThemeId.Graphite, s2.theme)
+        assertEquals(ThemeMode.System, s2.themeMode)
+    }
+
+    @Test
+    fun booleanPreferencesRoundTripIndependently() = runBlocking {
+        val storeToggleTrue = createStore()
+        storeToggleTrue.update {
+            it.copy(
+                autocorrect = true,
+                muted = true,
+                haptics = false,
+                reduceEffects = true,
+                hintDismissed = true
+            )
+        }
+        val sTrue = storeToggleTrue.settings.first()
+        assertTrue(sTrue.autocorrect)
+        assertTrue(sTrue.muted)
+        assertFalse(sTrue.haptics)
+        assertTrue(sTrue.reduceEffects)
+        assertTrue(sTrue.hintDismissed)
+
+        val storeToggleFalse = createStore()
+        storeToggleFalse.update {
+            it.copy(
+                autocorrect = false,
+                muted = false,
+                haptics = true,
+                reduceEffects = false,
+                hintDismissed = false
+            )
+        }
+        val sFalse = storeToggleFalse.settings.first()
+        assertFalse(sFalse.autocorrect)
+        assertFalse(sFalse.muted)
+        assertTrue(sFalse.haptics)
+        assertFalse(sFalse.reduceEffects)
+        assertFalse(sFalse.hintDismissed)
+    }
+
+    @Test
+    fun allEnumValuesRoundTrip() = runBlocking {
+        // Test non-default combination 1
+        val store1 = createStore()
+        store1.update {
+            it.copy(
+                correction = CorrectionMode.StrikeThrough,
+                soundSet = SoundSetId.Antique,
+                theme = ThemeId.Slate,
+                themeMode = ThemeMode.Dark
+            )
+        }
+        val s1 = store1.settings.first()
+        assertEquals(CorrectionMode.StrikeThrough, s1.correction)
+        assertEquals(SoundSetId.Antique, s1.soundSet)
+        assertEquals(ThemeId.Slate, s1.theme)
+        assertEquals(ThemeMode.Dark, s1.themeMode)
+
+        // Test non-default combination 2
+        val store2 = createStore()
+        store2.update {
+            it.copy(
+                correction = CorrectionMode.CleanErase,
+                soundSet = SoundSetId.Soft,
+                theme = ThemeId.Sky,
+                themeMode = ThemeMode.Light
+            )
+        }
+        val s2 = store2.settings.first()
+        assertEquals(CorrectionMode.CleanErase, s2.correction)
+        assertEquals(SoundSetId.Soft, s2.soundSet)
+        assertEquals(ThemeId.Sky, s2.theme)
+        assertEquals(ThemeMode.Light, s2.themeMode)
+
+        // Test non-default combination 3
+        val store3 = createStore()
+        store3.update {
+            it.copy(
+                soundSet = SoundSetId.Keyboard,
+                theme = ThemeId.Dynamic,
+                themeMode = ThemeMode.System
+            )
+        }
+        val s3 = store3.settings.first()
+        assertEquals(SoundSetId.Keyboard, s3.soundSet)
+        assertEquals(ThemeId.Dynamic, s3.theme)
+        assertEquals(ThemeMode.System, s3.themeMode)
+    }
+
+    @Test
+    fun writeTimeClampingStrictChecks() = runBlocking {
+        val storeMin = createStore()
+        storeMin.update {
+            it.copy(
+                bellVolume = -100f,
+                warmth = -50,
+                intensity = -10,
+                beam = -5
+            )
+        }
+        val sMin = storeMin.settings.first()
+        assertEquals(0f, sMin.bellVolume, 0.0001f)
+        assertEquals(0, sMin.warmth)
+        assertEquals(20, sMin.intensity)
+        assertEquals(30, sMin.beam)
+
+        val storeMax = createStore()
+        storeMax.update {
+            it.copy(
+                bellVolume = 100f,
+                warmth = 250,
+                intensity = 500,
+                beam = 1000
+            )
+        }
+        val sMax = storeMax.settings.first()
+        assertEquals(1f, sMax.bellVolume, 0.0001f)
+        assertEquals(100, sMax.warmth)
+        assertEquals(100, sMax.intensity)
+        assertEquals(100, sMax.beam)
+
+        val storeNaN = createStore()
+        storeNaN.update { it.copy(bellVolume = Float.NaN) }
+        assertEquals(0.6f, storeNaN.settings.first().bellVolume, 0.0001f)
+
+        val storePosInf = createStore()
+        storePosInf.update { it.copy(bellVolume = Float.POSITIVE_INFINITY) }
+        assertEquals(0.6f, storePosInf.settings.first().bellVolume, 0.0001f)
+
+        val storeNegInf = createStore()
+        storeNegInf.update { it.copy(bellVolume = Float.NEGATIVE_INFINITY) }
+        assertEquals(0.6f, storeNegInf.settings.first().bellVolume, 0.0001f)
+    }
+
+    @Test
+    fun themesComeFromDesignThemePackage() {
+        assertEquals("app.enk.design.theme.ThemeId", ThemeId::class.java.name)
+        assertEquals("app.enk.design.theme.ThemeMode", ThemeMode::class.java.name)
+    }
 }
