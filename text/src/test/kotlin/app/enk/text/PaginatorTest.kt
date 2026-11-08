@@ -104,4 +104,51 @@ class PaginatorTest {
         val t = "x".repeat(2999) + "😀" + "tail"
         assertEquals(2999, Paginator.overflowBreak(t))
     }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun nonPositivePageSizeThrows() {
+        Paginator.split("hello", 0)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun negativePageSizeThrows() {
+        Paginator.split("hello", -5)
+    }
+
+    @Test
+    fun pageSizeOneLongSurrogateString() {
+        val emojis = "😀😁😂😃"
+        val pages = Paginator.split(emojis, 1)
+        assertEquals(listOf("😀", "😁", "😂", "😃"), pages)
+        assertEquals(emojis, pages.joinToString(""))
+    }
+
+    @Test
+    fun pageSizeTwoVariantsWithSurrogates() {
+        val p1 = Paginator.split("😀a", 2)
+        assertEquals(listOf("😀", "a"), p1)
+        assertEquals("😀a", p1.joinToString(""))
+
+        val p2 = Paginator.split("a😀", 2)
+        assertEquals(listOf("a", "😀"), p2)
+        assertEquals("a😀", p2.joinToString(""))
+    }
+
+    @Test
+    fun overflowBreakBeyondPageSizeWithoutWhitespace() {
+        val t = "x".repeat(3200)
+        assertEquals(3000, Paginator.overflowBreak(t))
+    }
+
+    @Test
+    fun overflowBreakWithWhitespaceFarFromEnd() {
+        // Length 3200, window is [3000..3199]. Space at 2900 is outside window.
+        val t = "x".repeat(2900) + " " + "y".repeat(299)
+        assertEquals(3000, Paginator.overflowBreak(t))
+    }
+
+    @Test
+    fun singleSurrogatePageSplit() {
+        assertEquals(listOf("😀"), Paginator.split("😀"))
+    }
 }

@@ -71,4 +71,36 @@ class StruckPageTest {
         assertEquals("", p.exported(false))
         assertEquals("abc", p.exported(true))
     }
+
+    @Test
+    fun withStruckReverseOrderMerges() {
+        var p = StruckPage("hello")
+        for (i in 4 downTo 0) {
+            p = p.withStruck(i)
+        }
+        assertEquals(listOf(0..4), p.struck)
+        assertEquals("", p.searchable())
+    }
+
+    @Test
+    fun firstAndLastCharacterStruck() {
+        val p = StruckPage("hello").withStruck(0).withStruck(4)
+        assertEquals(listOf(0..0, 4..4), p.struck)
+        assertEquals("ell", p.searchable())
+        assertEquals("hello", p.exported(true))
+    }
+
+    @Test
+    fun disjointMultipleRanges() {
+        val p = StruckPage("abcdefghij", listOf(1..2, 5..6, 8..8))
+        assertEquals("adehj", p.searchable())
+        assertEquals("adehj", p.exported(false))
+        assertEquals("abcdefghij", p.exported(true))
+    }
+
+    @Test
+    fun overlappingRangesInConstructor() {
+        val p = StruckPage("abcdef", listOf(1..3, 2..4))
+        assertEquals("af", p.searchable())
+    }
 }
