@@ -1,0 +1,8 @@
+source_url: https://freesound.org/people/ramsamba/sounds/318687/
+title: Typewriter Bell.wav
+author: ramsamba
+license: CC0
+license_url: http://creativecommons.org/publicdomain/zero/1.0/
+retrieved: 2026-11-08
+original_file: 318687__ramsamba__typewriter-bell.wav
+note: license read from the source page on the retrieval date by the project auditor; the cutter must re-confirm it against the live page.
