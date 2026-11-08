@@ -39,7 +39,7 @@
       ],
       "space": {
         "file": "sounds/classic/space.ogg",
-        "gain": 0.7
+        "gain": 1.0
       },
       "enter": {
         "file": "sounds/classic/enter.ogg",
@@ -51,7 +51,7 @@
       },
       "bell": {
         "file": "sounds/classic/bell.ogg",
-        "gain": 0.6
+        "gain": 1.0
       }
     },
     {
@@ -81,7 +81,7 @@
       ],
       "space": {
         "file": "sounds/antique/space.ogg",
-        "gain": 0.7
+        "gain": 1.0
       },
       "enter": {
         "file": "sounds/antique/enter.ogg",
@@ -93,7 +93,7 @@
       },
       "bell": {
         "file": "sounds/antique/bell.ogg",
-        "gain": 0.6
+        "gain": 1.0
       }
     },
     {
@@ -123,7 +123,7 @@
       ],
       "space": {
         "file": "sounds/soft/space.ogg",
-        "gain": 0.7
+        "gain": 1.0
       },
       "enter": {
         "file": "sounds/soft/enter.ogg",
@@ -135,7 +135,7 @@
       },
       "bell": {
         "file": "sounds/soft/bell.ogg",
-        "gain": 0.6
+        "gain": 1.0
       }
     },
     {
@@ -165,7 +165,7 @@
       ],
       "space": {
         "file": "sounds/keyboard/space.ogg",
-        "gain": 0.7
+        "gain": 1.0
       },
       "enter": {
         "file": "sounds/keyboard/enter.ogg",
@@ -177,7 +177,7 @@
       },
       "bell": {
         "file": "sounds/keyboard/bell.ogg",
-        "gain": 0.6
+        "gain": 1.0
       }
     }
   ]

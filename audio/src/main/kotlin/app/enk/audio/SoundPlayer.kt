@@ -92,20 +92,30 @@ class SoundPoolPlayer(private val context: Context) : SoundPlayer {
     private val isReleased = AtomicBoolean(false)
     private val picker = SoundPicker()
 
-    private val soundPool: SoundPool by lazy {
-        val attrs = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
+    // Created on first use and never created just to be released.
+    private var pool: SoundPool? = null
 
-        SoundPool.Builder()
+    @Synchronized
+    private fun soundPool(): SoundPool? {
+        if (isReleased.get()) return null
+        return pool ?: SoundPool.Builder()
             .setMaxStreams(8)
-            .setAudioAttributes(attrs)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
             .build()
+            .also { pool = it }
     }
 
-    private val loadedSampleIds = mutableMapOf<String, Int>()
+    private val loadedSampleIds = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
+    /**
+     * Starts loading every sample of [set]. SoundPool decodes asynchronously, so call this when the
+     * set is chosen (not on the first keystroke); a sample that has not finished loading is silent.
+     */
     fun prepare(set: SoundSet) {
         if (isReleased.get()) return
         val allSamples = set.keys + listOf(set.space, set.enter, set.backspace, set.bell)
@@ -119,9 +129,9 @@ class SoundPoolPlayer(private val context: Context) : SoundPlayer {
         val existing = loadedSampleIds[file]
         if (existing != null) return existing
 
+        val sp = soundPool() ?: return 0
         return try {
-            val afd = context.assets.openFd(file)
-            val id = soundPool.load(afd, 1)
+            val id = context.assets.openFd(file).use { sp.load(it, 1) }
             loadedSampleIds[file] = id
             id
         } catch (_: Exception) {
@@ -131,6 +141,7 @@ class SoundPoolPlayer(private val context: Context) : SoundPlayer {
 
     fun playTick(position: Int, volume: Float = 1f) {
         if (isReleased.get() || volume <= 0f) return
+        var track: AudioTrack? = null
         try {
             val pcm = TickSynth.render(position)
             val audioTrack = AudioTrack.Builder()
@@ -150,12 +161,20 @@ class SoundPoolPlayer(private val context: Context) : SoundPlayer {
                 .setBufferSizeInBytes(pcm.size * 2)
                 .setTransferMode(AudioTrack.MODE_STATIC)
                 .build()
+            track = audioTrack
 
             audioTrack.setVolume(volume.coerceIn(0f, 1f))
             audioTrack.write(pcm, 0, pcm.size)
+            // A static track must be released after it has played, or every tick leaks a native track.
+            audioTrack.setPlaybackPositionUpdateListener(object : AudioTrack.OnPlaybackPositionUpdateListener {
+                override fun onMarkerReached(track: AudioTrack) = track.release()
+                override fun onPeriodicNotification(track: AudioTrack) = Unit
+            })
+            audioTrack.setNotificationMarkerPosition(pcm.size)
             audioTrack.play()
         } catch (_: Exception) {
             // AudioTrack unavailable or headless environment
+            try { track?.release() } catch (_: Exception) {}
         }
     }
 
@@ -163,6 +182,7 @@ class SoundPoolPlayer(private val context: Context) : SoundPlayer {
         if (isReleased.get() || volume <= 0f) return
 
         if (event == SoundEvent.FaderTick) {
+            // The position-aware call is playTick(position); this generic event plays a mid-range tick.
             playTick(position = 50, volume = volume)
             return
         }
@@ -184,7 +204,7 @@ class SoundPoolPlayer(private val context: Context) : SoundPlayer {
         val effectiveVolume = (volume * sample.gain).coerceIn(0f, 1f)
 
         try {
-            soundPool.play(sampleId, effectiveVolume, effectiveVolume, 1, 0, rate)
+            soundPool()?.play(sampleId, effectiveVolume, effectiveVolume, 1, 0, rate)
         } catch (_: Exception) {
             // Ignored in headless/test environments
         }
@@ -192,9 +212,12 @@ class SoundPoolPlayer(private val context: Context) : SoundPlayer {
 
     override fun release() {
         if (isReleased.compareAndSet(false, true)) {
-            try {
-                soundPool.release()
-            } catch (_: Exception) {
+            synchronized(this) {
+                try {
+                    pool?.release()
+                } catch (_: Exception) {
+                }
+                pool = null
             }
             loadedSampleIds.clear()
         }

@@ -261,6 +261,7 @@ class ExportImportTest {
 
         val result = importer.import(ByteArrayInputStream(bombZip))
         assertTrue("Zip-bomb exceeding 50 MB must be rejected", result is ImportResult.Failed)
+        assertTrue((result as ImportResult.Failed).reason.contains("50 MB"))
     }
 
     @Test
@@ -336,8 +337,8 @@ class ExportImportTest {
         val bombZip = ByteArrayOutputStream().apply {
             ZipOutputStream(this).use { zos ->
                 val entry = ZipEntry("Unfiled/lying.md")
-                // Local header claims 10 bytes uncompressed
-                entry.size = 10L
+                // ZipOutputStream writes the real sizes in a data descriptor after the data, so the local
+                // header carries no usable size: only counting the bytes actually read can stop this entry.
                 zos.putNextEntry(entry)
                 val chunk = ByteArray(1024 * 1024) { 'X'.code.toByte() }
                 repeat(51) {
@@ -349,6 +350,7 @@ class ExportImportTest {
 
         val result = importer.import(ByteArrayInputStream(bombZip))
         assertTrue("Zip-bomb exceeding 50MB uncompressed must fail even if header lied", result is ImportResult.Failed)
+        assertTrue((result as ImportResult.Failed).reason.contains("50 MB"))
     }
 
     @Test
@@ -358,8 +360,9 @@ class ExportImportTest {
         val p2 = "" // Empty page
         val p3 = "Line 1\r\nLine 2\r\nLine 3"
         val p4 = "Emojis: 🌟🚀🎉 and non-Latin: مرحبا بك في إنك"
+        val p5 = "lone\rcarriage\rreturns\r"
 
-        repo.savePages(note.id, listOf(StruckPage(p1), StruckPage(p2), StruckPage(p3), StruckPage(p4)))
+        repo.savePages(note.id, listOf(StruckPage(p1), StruckPage(p2), StruckPage(p3), StruckPage(p4), StruckPage(p5)))
 
         val out = ByteArrayOutputStream()
         exporter.export(out)
@@ -374,12 +377,12 @@ class ExportImportTest {
 
         val loaded = repo.load(note.id)
         assertNotNull(loaded)
-        assertEquals(4, loaded?.pages?.size)
+        assertEquals(5, loaded?.pages?.size)
         assertEquals(p1, loaded?.pages?.get(0)?.text)
         assertEquals(p2, loaded?.pages?.get(1)?.text)
-        // CRLF is normalized to LF by markdown import
-        assertEquals("Line 1\nLine 2\nLine 3", loaded?.pages?.get(2)?.text)
+        assertEquals(p3, loaded?.pages?.get(2)?.text)
         assertEquals(p4, loaded?.pages?.get(3)?.text)
+        assertEquals(p5, loaded?.pages?.get(4)?.text)
     }
 
     @Test
@@ -530,8 +533,128 @@ class ExportImportTest {
         assertTrue("Empty file in archive must be rejected", importer.import(ByteArrayInputStream(emptyFileZip)) is ImportResult.Failed)
     }
 
+    private suspend fun roundTripDivider(name: String): Pair<List<String>, String?> {
+        val dividerId = db.dividerDao().insert(DividerEntity(name = name, position = 0))
+        val note = repo.createNote(dividerId)
+        repo.savePages(note.id, listOf(StruckPage("hello")))
+        val out = ByteArrayOutputStream()
+        exporter.export(out)
+        val entryNames = java.util.zip.ZipInputStream(ByteArrayInputStream(out.toByteArray())).let { z ->
+            generateSequence { z.nextEntry }.map { it.name }.toList()
+        }
+        db.pageDao().deleteForNote(note.id)
+        db.pageFtsDao().deleteForNote(note.id)
+        db.noteDao().delete(note.id)
+        db.dividerDao().delete(dividerId)
+        val result = importer.import(ByteArrayInputStream(out.toByteArray()))
+        assertTrue("import of divider '$name' failed: $result", result is ImportResult.Done)
+        val loaded = repo.load(note.id)
+        val importedName = loaded?.dividerId?.let { id -> db.dividerDao().all().firstOrNull { it.id == id }?.name }
+        return entryNames to importedName
+    }
+
+    @Test
+    fun awkwardDividerNamesRoundTripExactly() = runBlocking {
+        val names = listOf(".", "..", "A\nB", "\"Work\"", "  Work  ", "back\\slash", "a/b:c*d", "日本語", "x\r\ny", "\"", "\\")
+        for (name in names) {
+            val (entries, imported) = roundTripDivider(name)
+            for (e in entries) {
+                assertTrue("unsafe entry name '$e' for divider '$name'", !Importer.isZipSlip(e))
+            }
+            assertEquals("divider name changed", name, imported)
+        }
+    }
+
+    @Test
+    fun blankDividerNameImportsAsUnfiled() = runBlocking {
+        val (entries, imported) = roundTripDivider("   ")
+        assertTrue(entries.single().startsWith("Unfiled/"))
+        assertNull(imported)
+    }
+
+    @Test
+    fun longEmojiDividerNameDoesNotBreakArchive() = runBlocking {
+        val name = "😀".repeat(40)
+        val (entries, imported) = roundTripDivider(name)
+        val folder = entries.single().substringBefore('/')
+        assertEquals(folder, String(folder.toByteArray(Charsets.UTF_8), Charsets.UTF_8))
+        assertEquals(name, imported)
+    }
+
+    @Test
+    fun oversizedImportedPageIsSplitLikeTheWriter() = runBlocking {
+        val body = "word ".repeat(2000) // 10,000 characters
+        val zip = createZipWithNote("big-page-1", "", 1000L, 1000L, listOf(body))
+        assertTrue(importer.import(ByteArrayInputStream(zip)) is ImportResult.Done)
+        val pages = repo.load("big-page-1")!!.pages
+        assertTrue(pages.size > 1)
+        assertTrue(pages.all { it.text.length <= app.enk.text.Paginator.PAGE_SIZE })
+        assertEquals(body, pages.joinToString("") { it.text })
+    }
+
+    @Test
+    fun trashedNoteStaysTrashedAndFileIsSkipped() = runBlocking {
+        val note = repo.createNote(dividerId = null)
+        repo.savePages(note.id, listOf(StruckPage("keep me trashed")))
+        val out = ByteArrayOutputStream()
+        exporter.export(out)
+        db.noteDao().updateModifiedAt(note.id, 1L)
+        repo.trash(note.id)
+
+        val result = importer.import(ByteArrayInputStream(out.toByteArray()))
+        assertEquals(ImportResult.Done(added = 0, replaced = 0, skipped = 1), result)
+        assertNotNull(db.noteDao().get(note.id)?.trashedAt)
+    }
+
+    @Test
+    fun replacedNoteKeepsPositionWhenDividerUnchanged() = runBlocking {
+        val first = repo.createNote(dividerId = null)
+        val second = repo.createNote(dividerId = null) // newest note takes position 0
+        repo.savePages(first.id, listOf(StruckPage("first")))
+        repo.savePages(second.id, listOf(StruckPage("second")))
+        val out = ByteArrayOutputStream()
+        exporter.export(out)
+        val before = db.noteDao().get(first.id)!!.position
+        db.noteDao().updateModifiedAt(first.id, 1L)
+
+        val result = importer.import(ByteArrayInputStream(out.toByteArray()))
+        assertTrue(result is ImportResult.Done)
+        assertEquals(before, db.noteDao().get(first.id)!!.position)
+    }
+
+    @Test
+    fun databaseFailureMidImportRollsEverythingBack() = runBlocking {
+        val failing = object : DividerDao by db.dividerDao() {
+            override suspend fun insert(d: DividerEntity): Long = throw IllegalStateException("disk full")
+        }
+        val failingImporter = Importer(repo, failing)
+        val zip = ByteArrayOutputStream().apply {
+            ZipOutputStream(this).use { zos ->
+                zos.putNextEntry(ZipEntry("Unfiled/a.md"))
+                zos.write("---\nid: first\ndivider: \ncreated: 2024-01-01T00:00:00Z\nmodified: 2024-01-01T00:00:00Z\npages: 1\n---\nA".toByteArray())
+                zos.closeEntry()
+                zos.putNextEntry(ZipEntry("Journal/b.md"))
+                zos.write("---\nid: second\ndivider: Journal\ncreated: 2024-01-01T00:00:00Z\nmodified: 2024-01-01T00:00:00Z\npages: 1\n---\nB".toByteArray())
+                zos.closeEntry()
+            }
+        }.toByteArray()
+
+        val thrown = try {
+            failingImporter.import(ByteArrayInputStream(zip))
+            null
+        } catch (e: IllegalStateException) {
+            e
+        }
+        assertNotNull("the database failure must surface", thrown)
+        assertNull("first note must be rolled back", db.noteDao().get("first"))
+        assertTrue(db.noteDao().allActive().isEmpty())
+        assertEquals(0, db.pageDao().count("first"))
+    }
+
     @Test
     fun transactionRollsBackOnFailure() = runBlocking {
+        // Parse-phase failure: nothing reaches the database (see databaseFailureMidImportRollsEverythingBack
+        // for a failure inside the transaction).
         val validContent = "---\nid: valid-note\ncreated: 2024-01-01T00:00:00Z\nmodified: 2024-01-01T00:00:00Z\npages: 1\n---\nValid note body"
         val invalidContent = "This is not front matter at all"
 

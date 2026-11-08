@@ -29,7 +29,8 @@ import java.util.zip.ZipOutputStream
  * <page 2 text>
  *
  * Page Marker & Front Matter Delimiter Escaping:
- * - Pages are separated by `\n<!-- enk:page -->\n`.
+ * - Pages are separated by `\n<!-- enk:page -->\n`. Lines are split on `\n` only, so `\r` stays part of the text
+ *   and CRLF and lone CR round-trip byte for byte.
  * - Struck letters are omitted from export (`StruckPage.searchable()`).
  * - To prevent collisions, any line in page content matching `^\s*\\*(<!-- enk:page -->|---)\s*$`
  *   is escaped by prepending a leading backslash `\`.
@@ -83,7 +84,7 @@ class Exporter(
         private val ESCAPE_REGEX = Regex("""^(\s*)(\\*(?:<!-- enk:page -->|---)\s*)$""")
 
         fun escapePage(pageText: String): String {
-            val lines = pageText.lines()
+            val lines = pageText.split('\n')
             return lines.joinToString("\n") { line ->
                 val match = ESCAPE_REGEX.matchEntire(line)
                 if (match != null) {
@@ -113,8 +114,32 @@ class Exporter(
                 return "untitled"
             }
 
-            val truncated = sanitized.take(50).trimEnd('-', ' ')
+            val truncated = sanitized.takeSafe(50).trimEnd('-', ' ')
             return if (truncated.isEmpty()) "untitled" else truncated
+        }
+
+        /**
+         * The divider name in the front matter is the truth (the folder name is only a sanitised label).
+         * A plain single-line name is written as is. A name with a line break, a leading or trailing
+         * space, or a leading quote is written as a double-quoted string with `\\`, `\"`, `\n` and `\r`
+         * escapes. A blank name is written as empty and imports as Unfiled.
+         */
+        fun encodeDivider(name: String): String {
+            if (name.isBlank()) return ""
+            val needsQuote = name.any { it == '\n' || it == '\r' } || name != name.trim() || name.startsWith('"')
+            if (!needsQuote) return name
+            val body = name
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+            return "\"" + body + "\""
+        }
+
+        private fun String.takeSafe(n: Int): String {
+            if (length <= n) return this
+            val cut = if (Character.isHighSurrogate(this[n - 1])) n - 1 else n
+            return substring(0, cut)
         }
 
         fun sanitizePathSegment(name: String): String {
@@ -126,7 +151,7 @@ class Exporter(
                         append(c)
                     }
                 }
-            }.trim('-', ' ')
+            }.trim('-', ' ', '.').takeSafe(50).trimEnd('-', ' ', '.')
             return if (sanitized.isEmpty()) "Unfiled" else sanitized
         }
 
@@ -139,7 +164,7 @@ class Exporter(
             return buildString {
                 append("---\n")
                 append("id: ${note.id}\n")
-                append("divider: $dividerName\n")
+                append("divider: ${encodeDivider(dividerName)}\n")
                 append("created: ${Instant.ofEpochMilli(note.createdAt)}\n")
                 append("modified: ${Instant.ofEpochMilli(note.modifiedAt)}\n")
                 append("pages: ${effectivePages.size}\n")

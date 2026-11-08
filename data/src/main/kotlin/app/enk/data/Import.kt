@@ -1,6 +1,7 @@
 package app.enk.data
 
 import androidx.room.withTransaction
+import app.enk.text.Paginator
 import app.enk.text.StruckPage
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -15,6 +16,18 @@ sealed interface ImportResult {
     data class Failed(val reason: String) : ImportResult
 }
 
+/**
+ * Imports an archive made by [Exporter]. The whole import is validated first and written in one
+ * transaction; any problem returns `Failed` and changes nothing.
+ *
+ * Decisions:
+ * - A note is matched on `id`. A missing note is added; an existing note is replaced only when the
+ *   file's `modified` is newer; otherwise it is skipped.
+ * - A note that is in the trash stays there: its file is skipped, never restored.
+ * - Dividers are matched by exact name or created; two dividers with the same name merge into one.
+ *   A blank divider name means Unfiled.
+ * - Pages are split again with [Paginator] when a hand-edited page is longer than the page size.
+ */
 class Importer(
     private val repo: NoteRepository,
     private val dividers: DividerDao
@@ -98,6 +111,8 @@ class Importer(
                     }
                 }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             return ImportResult.Failed("Failed to read archive: ${e.message}")
         }
@@ -111,20 +126,19 @@ class Importer(
 
             suspend fun resolveDivider(dividerName: String): Long? {
                 if (dividerName.isBlank()) return null
-                val trimmed = dividerName.trim()
-                val cached = dividerCache[trimmed]
+                val cached = dividerCache[dividerName]
                 if (cached != null) return cached
 
                 val dbDividers = dividers.all()
-                val match = dbDividers.firstOrNull { it.name.equals(trimmed, ignoreCase = false) }
+                val match = dbDividers.firstOrNull { it.name == dividerName }
                 if (match != null) {
-                    dividerCache[trimmed] = match.id
+                    dividerCache[dividerName] = match.id
                     return match.id
                 }
 
                 val nextPos = dbDividers.size
-                val newId = dividers.insert(DividerEntity(name = trimmed, position = nextPos))
-                dividerCache[trimmed] = newId
+                val newId = dividers.insert(DividerEntity(name = dividerName, position = nextPos))
+                dividerCache[dividerName] = newId
                 return newId
             }
 
@@ -145,19 +159,20 @@ class Importer(
                     )
                     saveNotePages(note.id, note.pages)
                     added++
+                } else if (existing.trashedAt != null) {
+                    // A note the user trashed stays in the trash; the file is skipped.
+                    skipped++
                 } else {
                     if (note.modifiedAt > existing.modifiedAt) {
                         val dividerId = resolveDivider(note.divider)
-                        if (existing.dividerId != dividerId) {
-                            repo.db.noteDao().shiftPositions(dividerId)
-                            repo.db.noteDao().setDividerAndPosition(note.id, dividerId, 0)
-                        }
+                        val moved = existing.dividerId != dividerId
+                        if (moved) repo.db.noteDao().shiftPositions(dividerId)
                         repo.db.noteDao().upsert(
                             existing.copy(
                                 dividerId = dividerId,
+                                position = if (moved) 0 else existing.position,
                                 createdAt = note.createdAt,
                                 modifiedAt = note.modifiedAt,
-                                trashedAt = null
                             )
                         )
                         saveNotePages(note.id, note.pages)
@@ -172,7 +187,10 @@ class Importer(
         }
     }
 
-    private suspend fun saveNotePages(noteId: String, pages: List<String>) {
+    private suspend fun saveNotePages(noteId: String, importedPages: List<String>) {
+        // Pages from a file may be longer than the writer allows (hand-edited files): split them with
+        // the same Paginator the writer uses. A page already within the limit is kept as it is.
+        val pages = importedPages.flatMap { if (it.isEmpty()) listOf(it) else Paginator.split(it) }
         repo.db.pageDao().deleteForNote(noteId)
         repo.db.pageFtsDao().deleteForNote(noteId)
         pages.forEachIndexed { idx, text ->
@@ -214,6 +232,35 @@ class Importer(
             return false
         }
 
+        /** Inverse of [Exporter.encodeDivider]; null when a quoted value is malformed. */
+        fun decodeDivider(value: String): String? {
+            if (!value.startsWith('"')) return value
+            if (value.length < 2 || !value.endsWith('"')) return null
+            val out = StringBuilder()
+            var i = 1
+            val end = value.length - 1
+            while (i < end) {
+                val c = value[i]
+                if (c == '\\') {
+                    if (i + 1 >= end) return null
+                    when (value[i + 1]) {
+                        '\\' -> out.append('\\')
+                        '"' -> out.append('"')
+                        'n' -> out.append('\n')
+                        'r' -> out.append('\r')
+                        else -> return null
+                    }
+                    i += 2
+                } else if (c == '"') {
+                    return null
+                } else {
+                    out.append(c)
+                    i++
+                }
+            }
+            return out.toString()
+        }
+
         fun unescapeLine(line: String): String {
             val match = UNESCAPE_REGEX.matchEntire(line)
             return if (match != null) {
@@ -224,7 +271,7 @@ class Importer(
         }
 
         private fun parseNoteContent(entryName: String, content: String): ParseResult {
-            val lines = content.lines()
+            val lines = content.split('\n')
             if (lines.isEmpty() || lines[0].trim() != "---") {
                 return ParseResult.Failure("Missing opening front matter delimiter '---' in $entryName")
             }
@@ -256,10 +303,10 @@ class Importer(
                     return ParseResult.Failure("Malformed front matter line in $entryName: $line")
                 }
                 val key = trimmed.substring(0, colonIdx).trim()
-                val value = trimmed.substring(colonIdx + 1).trim().removeSurrounding("\"")
+                val value = trimmed.substring(colonIdx + 1).trim()
                 when (key) {
                     "id" -> id = value.ifEmpty { null }
-                    "divider" -> divider = value
+                    "divider" -> divider = decodeDivider(value) ?: return ParseResult.Failure("Malformed divider in $entryName: $value")
                     "created" -> createdStr = value
                     "modified" -> modifiedStr = value
                     "pages" -> pagesCount = value.toIntOrNull()

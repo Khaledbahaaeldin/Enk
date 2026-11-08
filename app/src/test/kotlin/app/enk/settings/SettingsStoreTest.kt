@@ -432,4 +432,12 @@ class SettingsStoreTest {
         assertEquals("app.enk.design.theme.ThemeId", ThemeId::class.java.name)
         assertEquals("app.enk.design.theme.ThemeMode", ThemeMode::class.java.name)
     }
+
+    @Test
+    fun corruptedFileFallsBackToDefaults() = runBlocking {
+        val file = File(tempFolder.root, "corrupt_${System.nanoTime()}.preferences_pb")
+        file.writeBytes(byteArrayOf(0x7F, 0x00, 0x13, 0x37, 0x42, 0x99.toByte(), 0xFF.toByte(), 0x01))
+        val store = createStore(file)
+        assertEquals(Settings(), store.settings.first())
+    }
 }

@@ -4,19 +4,23 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import java.io.IOException
 import kotlinx.coroutines.flow.map
 
 class SettingsStore(private val dataStore: DataStore<Preferences>) {
 
-    val settings: Flow<Settings> = dataStore.data.map { prefs ->
-        mapFromPreferences(prefs)
-    }
+    // An unreadable or corrupted file (IOException, CorruptionException) falls back to the defaults.
+    val settings: Flow<Settings> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { prefs -> mapFromPreferences(prefs) }
 
     suspend fun update(f: (Settings) -> Settings) {
         dataStore.edit { prefs ->

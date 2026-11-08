@@ -1,407 +1,248 @@
 #!/usr/bin/env python3
-import os
-import sys
-import subprocess
+"""Cuts the Enk sound sets from the archived CC0 originals (see tools/CutSamples.md).
+
+Needs Python 3, numpy and ffmpeg (on PATH, or set the FFMPEG environment variable).
+Run from anywhere:  python tools/cut_samples.py
+
+For every sample the script
+  1. decodes the archived original to mono float,
+  2. finds the real attack near the approximate time in the table below (the first sample within 12 dB
+     of the local peak) and starts the cut 2 ms before it,
+  3. fades the end, and
+  4. scales all samples to one loudness: RMS over the first 100 ms of the file, one common target for
+     every sample of every set, limited so the peak stays at -1.5 dBFS.
+Then it encodes Ogg Vorbis mono 44.1 kHz, re-measures the decoded files and fails if a rule is broken.
+"""
+import csv
 import json
-import re
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import wave
 
-FFMPEG = os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WinGet\Links\ffmpeg.exe")
-if not os.path.exists(FFMPEG):
-    FFMPEG = "ffmpeg"
+import numpy as np
 
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-ASSETS_DIR = os.path.join(REPO_ROOT, "app", "src", "main", "assets", "sounds")
-DOCS_DIR = os.path.join(REPO_ROOT, "docs")
-ARCHIVE_DIR = os.path.join(DOCS_DIR, "archive")
+SR = 44100
+PEAK_TARGET_DB = -1.5
+LOUD_MS = 100
+ATTACK_DB = 12.0   # attack = first sample within this many dB of the local peak
+LEAD_MS = 2.0      # cut starts this long before the attack
+FADE_IN_MS = 1.0
 
-def run_cmd(cmd):
-    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    if res.returncode != 0:
-        print(f"Command failed: {' '.join(cmd)}\n{res.stderr}", file=sys.stderr)
-        sys.exit(1)
-    return res.stdout, res.stderr
+FFMPEG = os.environ.get("FFMPEG") or shutil.which("ffmpeg") or "ffmpeg"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+ASSETS = os.path.join(ROOT, "app", "src", "main", "assets", "sounds")
+ARCHIVE = "docs/archive"
 
-def measure_volumes(file_path):
-    cmd = [FFMPEG, "-i", file_path, "-af", "volumedetect", "-f", "null", "-"]
-    _, err = run_cmd(cmd)
-    mean_m = re.search(r"mean_volume:\s+([-\d.]+)\s+dB", err)
-    max_m = re.search(r"max_volume:\s+([-\d.]+)\s+dB", err)
-    mean_v = float(mean_m.group(1)) if mean_m else -24.0
-    max_v = float(max_m.group(1)) if max_m else -1.5
-    return mean_v, max_v
+SRC = {
+    "classic": ("classic-keithpeter-123344/123344__keithpeter__typewriter-olivetti-lettra-22.wav",
+                "https://freesound.org/people/keithpeter/sounds/123344/", "keithpeter"),
+    "antique": ("antique-monotraum-434027/434027__monotraum__old-typewriter-working.wav",
+                "https://freesound.org/people/monotraum/sounds/434027/", "monotraum"),
+    "soft": ("soft-blukotek-246057/246057__blukotek__typewriter.wav",
+             "https://freesound.org/people/blukotek/sounds/246057/", "blukotek"),
+    "bell": ("bell-knufds-345955/345955__knufds__typewriter-bell-carriage-reset.wav",
+             "https://freesound.org/people/knufds/sounds/345955/", "knufds"),
+    "bell2": ("bell-ramsamba-318687/318687__ramsamba__typewriter-bell.wav",
+              "https://freesound.org/people/ramsamba/sounds/318687/", "ramsamba"),
+    "return": ("bell-ramsamba-318686/318686__ramsamba__typewriter-carriage-return.wav",
+               "https://freesound.org/people/ramsamba/sounds/318686/", "ramsamba"),
+}
+OGA = "keyboard-opengameart-soundpack-1/unicae_games_keyboard_soundpack_1/Single Keys/keypress-%03d.wav"
+OGA_URL = "https://opengameart.org/content/keyboard-soundpack-1-typing-and-single-keystrokes"
 
-def cut_and_normalize(src_path, out_path, ss=None, t=None, lowpass=None, target_peak_db=-1.5):
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    tmp_wav = out_path + ".tmp.wav"
-    
-    # 1. Cut and trim silence to ensure start within 5 ms of transient
-    filter_chain = ["silenceremove=start_periods=1:start_duration=0:start_threshold=-32dB:detection=peak"]
-    if lowpass:
-        filter_chain.append(f"lowpass=f={lowpass}")
-        
-    cmd = [FFMPEG, "-y"]
-    if ss is not None:
-        cmd.extend(["-ss", str(ss)])
-    if t is not None:
-        cmd.extend(["-t", str(t)])
-    cmd.extend(["-i", src_path, "-af", ",".join(filter_chain), "-ac", "1", "-ar", "44100", tmp_wav])
-    run_cmd(cmd)
-    
-    # 2. Measure max volume on uncompressed PCM
-    _, current_max = measure_volumes(tmp_wav)
-    gain_db = target_peak_db - current_max
-    
-    # 3. Apply volume adjustment and encode to Ogg Vorbis mono 44.1 kHz
-    cmd = [
-        FFMPEG, "-y", "-i", tmp_wav,
-        "-af", f"volume={gain_db:.2f}dB",
-        "-c:a", "libvorbis", "-q:a", "4",
-        "-ac", "1", "-ar", "44100",
-        out_path
-    ]
-    run_cmd(cmd)
-    
-    # 4. Check Vorbis encoded peak, adjust if compression shifted peak by > 0.3 dB
-    _, actual_max = measure_volumes(out_path)
-    diff = target_peak_db - actual_max
-    if abs(diff) > 0.3:
-        fine_gain = gain_db + diff
-        cmd = [
-            FFMPEG, "-y", "-i", tmp_wav,
-            "-af", f"volume={fine_gain:.2f}dB",
-            "-c:a", "libvorbis", "-q:a", "4",
-            "-ac", "1", "-ar", "44100",
-            out_path
-        ]
-        run_cmd(cmd)
+# (source key or OGA keypress number, approximate attack time in s, length in s, end fade in ms, filter)
+# Times come from the onset table printed by the analysis (see CutSamples.md). Roles are assigned by
+# measurement (see CutSamples.md), not by listening.
+SOFT_LP = "lowpass=f=4500"
+SETS = {
+    "classic": {
+        "keys": [("classic", t, 0.20, 8, None) for t in (13.174, 14.450, 17.544, 20.190, 22.402, 24.476, 28.682, 37.812)],
+        "space": ("classic", 31.984, 0.30, 10, None),
+        "enter": ("return", 0.592, 0.45, 12, None),
+        "backspace": ("classic", 39.288, 0.20, 8, None),
+        "bell": ("bell", 0.0, 1.20, 30, None),
+    },
+    "antique": {
+        "keys": [("antique", t, 0.20, 8, None) for t in (3.556, 6.280, 6.854, 10.864, 12.252)],
+        "space": ("antique", 22.824, 0.30, 10, None),
+        "enter": ("return", 0.592, 0.45, 12, None),
+        "backspace": ("antique", 12.056, 0.19, 10, None),
+        "bell": ("bell", 0.0, 1.20, 30, None),
+    },
+    "soft": {
+        "keys": [("soft", t, 0.20, 8, SOFT_LP) for t in (4.064, 4.576, 5.182, 5.900, 7.302)],
+        "space": ("soft", 6.738, 0.19, 12, SOFT_LP),
+        "enter": ("return", 0.592, 0.45, 12, SOFT_LP),
+        "backspace": ("soft", 7.588, 0.20, 8, SOFT_LP),
+        "bell": ("bell2", 0.0, 0.88, 30, None),
+    },
+    "keyboard": {
+        "keys": [(n, 0.0, 0.20, 8, None) for n in (1, 4, 6, 13, 19)],
+        "space": (3, 0.0, 0.25, 10, None),
+        "enter": (17, 0.0, 0.25, 10, None),
+        "backspace": (23, 0.0, 0.20, 8, None),
+        "bell": ("bell", 0.0, 1.20, 30, None),
+    },
+}
+NAMES = {"classic": "Classic", "antique": "Antique", "soft": "Soft", "keyboard": "Keyboard"}
 
-    if os.path.exists(tmp_wav):
-        os.remove(tmp_wav)
-        
-    final_mean, final_max = measure_volumes(out_path)
-    return final_mean, final_max
+
+def run(cmd):
+    r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if r.returncode != 0:
+        sys.exit("command failed: %s\n%s" % (" ".join(cmd), r.stderr.decode("utf-8", "replace")))
+    return r.stdout
+
+
+def decode(path, af=None):
+    cmd = [FFMPEG, "-v", "error", "-i", path]
+    if af:
+        cmd += ["-af", af]
+    cmd += ["-ac", "1", "-ar", str(SR), "-f", "f32le", "-"]
+    return np.frombuffer(run(cmd), dtype=np.float32).astype(np.float64)
+
+
+def db(v):
+    return 20.0 * np.log10(max(float(v), 1e-9))
+
+
+def find_attack(x, t, whole_file):
+    if whole_file:
+        a, b = 0, len(x)
+    else:
+        a, b = max(0, int((t - 0.02) * SR)), min(len(x), int((t + 0.06) * SR))
+    peak = np.abs(x[a:b]).max()
+    idx = np.nonzero(np.abs(x[a:b]) >= peak * 10 ** (-ATTACK_DB / 20))[0][0]
+    return a + int(idx)
+
+
+def cut(x, t, length, fade_ms, whole_file):
+    start = max(0, find_attack(x, t, whole_file) - int(LEAD_MS / 1000 * SR))
+    y = x[start:start + int(length * SR)].copy()
+    n_in = int(FADE_IN_MS / 1000 * SR)
+    y[:n_in] *= np.linspace(0, 1, n_in)
+    n_out = int(fade_ms / 1000 * SR)
+    y[-n_out:] *= np.linspace(1, 0, n_out)
+    return y
+
+
+def loudness_db(y):
+    seg = y[: int(LOUD_MS / 1000 * SR)]
+    seg = np.concatenate([seg, np.zeros(max(0, int(LOUD_MS / 1000 * SR) - len(seg)))])
+    return db(np.sqrt((seg ** 2).mean()))
+
+
+def attack_ms(y):
+    head = np.abs(y[: int(0.06 * SR)])  # the first strike: peak within the first 60 ms
+    return float(np.nonzero(head >= head.max() * 10 ** (-ATTACK_DB / 20))[0][0]) / SR * 1000
+
+
+def write_wav(path, y):
+    with wave.open(path, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(SR)
+        w.writeframes((np.clip(y, -1, 1) * 32767).astype("<i2").tobytes())
+
 
 def main():
-    print("Beginning sample cutting and normalization...")
-    
-    TARGET_PEAK = -1.5
-    sets_data = {}
-    samples_info = []
-    
-    # -------------------------------------------------------------------------
-    # 1. Classic Set (Olivetti Lettera 22 - keithpeter)
-    # -------------------------------------------------------------------------
-    classic_src = os.path.join(ARCHIVE_DIR, "classic-keithpeter-123344", "123344__keithpeter__typewriter-olivetti-lettra-22.wav")
-    classic_url = "https://freesound.org/people/keithpeter/sounds/123344/"
-    classic_author = "keithpeter"
-    classic_archive_rel = "docs/archive/classic-keithpeter-123344/123344__keithpeter__typewriter-olivetti-lettra-22.wav"
-    
-    classic_cuts = {
-        "key_01.ogg": (13.15, 0.25),
-        "key_02.ogg": (13.92, 0.25),
-        "key_03.ogg": (14.18, 0.25),
-        "key_04.ogg": (15.10, 0.25),
-        "key_05.ogg": (15.95, 0.25),
-        "key_06.ogg": (16.27, 0.25),
-        "key_07.ogg": (17.06, 0.25),
-        "key_08.ogg": (17.50, 0.25),
-        "space.ogg":  (18.44, 0.25),
-        "enter.ogg":  (24.59, 0.65),
-        "backspace.ogg": (18.81, 0.20),
-    }
-    
-    sets_data["classic"] = []
-    for fname, (ss, t) in classic_cuts.items():
-        out_file = os.path.join(ASSETS_DIR, "classic", fname)
-        mean_v, max_v = cut_and_normalize(classic_src, out_file, ss=ss, t=t, target_peak_db=TARGET_PEAK)
-        rel_asset = f"sounds/classic/{fname}"
-        row = {
-            "file": rel_asset,
-            "source_url": classic_url,
-            "author": classic_author,
-            "license": "CC0",
-            "retrieved": "2026-11-08",
-            "archived_copy": classic_archive_rel,
-            "mean_volume": mean_v,
-            "max_volume": max_v
-        }
-        samples_info.append(row)
-        sets_data["classic"].append(max_v)
-        print(f"Cut {rel_asset} -> peak: {max_v:.2f} dB, mean: {mean_v:.2f} dB")
-        
-    bell_knufds_src = os.path.join(ARCHIVE_DIR, "bell-knufds-345955", "345955__knufds__typewriter-bell-carriage-reset.wav")
-    bell_knufds_url = "https://freesound.org/people/knufds/sounds/345955/"
-    bell_knufds_author = "knufds"
-    bell_knufds_archive_rel = "docs/archive/bell-knufds-345955/345955__knufds__typewriter-bell-carriage-reset.wav"
-    
-    classic_bell_out = os.path.join(ASSETS_DIR, "classic", "bell.ogg")
-    mean_v, max_v = cut_and_normalize(bell_knufds_src, classic_bell_out, ss=0.0, t=1.2, target_peak_db=TARGET_PEAK)
-    row = {
-        "file": "sounds/classic/bell.ogg",
-        "source_url": bell_knufds_url,
-        "author": bell_knufds_author,
-        "license": "CC0",
-        "retrieved": "2026-11-08",
-        "archived_copy": bell_knufds_archive_rel,
-        "mean_volume": mean_v,
-        "max_volume": max_v
-    }
-    samples_info.append(row)
-    sets_data["classic"].append(max_v)
-    print(f"Cut sounds/classic/bell.ogg -> peak: {max_v:.2f} dB, mean: {mean_v:.2f} dB")
-    
-    # -------------------------------------------------------------------------
-    # 2. Antique Set (monotraum)
-    # -------------------------------------------------------------------------
-    antique_src = os.path.join(ARCHIVE_DIR, "antique-monotraum-434027", "434027__monotraum__old-typewriter-working.wav")
-    antique_url = "https://freesound.org/people/monotraum/sounds/434027/"
-    antique_author = "monotraum"
-    antique_archive_rel = "docs/archive/antique-monotraum-434027/434027__monotraum__old-typewriter-working.wav"
-    
-    antique_cuts = {
-        "key_01.ogg": (1.50, 0.25),
-        "key_02.ogg": (2.04, 0.25),
-        "key_03.ogg": (2.88, 0.25),
-        "key_04.ogg": (3.32, 0.25),
-        "key_05.ogg": (4.03, 0.25),
-        "space.ogg":  (4.77, 0.25),
-        "enter.ogg":  (6.08, 0.85),
-        "backspace.ogg": (5.33, 0.25),
-    }
-    
-    sets_data["antique"] = []
-    for fname, (ss, t) in antique_cuts.items():
-        out_file = os.path.join(ASSETS_DIR, "antique", fname)
-        mean_v, max_v = cut_and_normalize(antique_src, out_file, ss=ss, t=t, target_peak_db=TARGET_PEAK)
-        rel_asset = f"sounds/antique/{fname}"
-        row = {
-            "file": rel_asset,
-            "source_url": antique_url,
-            "author": antique_author,
-            "license": "CC0",
-            "retrieved": "2026-11-08",
-            "archived_copy": antique_archive_rel,
-            "mean_volume": mean_v,
-            "max_volume": max_v
-        }
-        samples_info.append(row)
-        sets_data["antique"].append(max_v)
-        print(f"Cut {rel_asset} -> peak: {max_v:.2f} dB, mean: {mean_v:.2f} dB")
-        
-    antique_bell_out = os.path.join(ASSETS_DIR, "antique", "bell.ogg")
-    mean_v, max_v = cut_and_normalize(bell_knufds_src, antique_bell_out, ss=0.0, t=1.2, target_peak_db=TARGET_PEAK)
-    row = {
-        "file": "sounds/antique/bell.ogg",
-        "source_url": bell_knufds_url,
-        "author": bell_knufds_author,
-        "license": "CC0",
-        "retrieved": "2026-11-08",
-        "archived_copy": bell_knufds_archive_rel,
-        "mean_volume": mean_v,
-        "max_volume": max_v
-    }
-    samples_info.append(row)
-    sets_data["antique"].append(max_v)
-    print(f"Cut sounds/antique/bell.ogg -> peak: {max_v:.2f} dB, mean: {mean_v:.2f} dB")
-    
-    # -------------------------------------------------------------------------
-    # 3. Soft Set (blukotek)
-    # -------------------------------------------------------------------------
-    soft_src = os.path.join(ARCHIVE_DIR, "soft-blukotek-246057", "246057__blukotek__typewriter.wav")
-    soft_url = "https://freesound.org/people/blukotek/sounds/246057/"
-    soft_author = "blukotek"
-    soft_archive_rel = "docs/archive/soft-blukotek-246057/246057__blukotek__typewriter.wav"
-    
-    soft_cuts = {
-        "key_01.ogg": (4.05, 0.25),
-        "key_02.ogg": (4.56, 0.25),
-        "key_03.ogg": (5.17, 0.25),
-        "key_04.ogg": (5.88, 0.25),
-        "key_05.ogg": (8.27, 0.25),
-        "space.ogg":  (1.33, 0.22),
-        "enter.ogg":  (6.53, 0.70),
-        "backspace.ogg": (12.86, 0.25),
-    }
-    
-    sets_data["soft"] = []
-    for fname, (ss, t) in soft_cuts.items():
-        out_file = os.path.join(ASSETS_DIR, "soft", fname)
-        mean_v, max_v = cut_and_normalize(soft_src, out_file, ss=ss, t=t, lowpass=4500, target_peak_db=TARGET_PEAK)
-        rel_asset = f"sounds/soft/{fname}"
-        row = {
-            "file": rel_asset,
-            "source_url": soft_url,
-            "author": soft_author,
-            "license": "CC0",
-            "retrieved": "2026-11-08",
-            "archived_copy": soft_archive_rel,
-            "mean_volume": mean_v,
-            "max_volume": max_v
-        }
-        samples_info.append(row)
-        sets_data["soft"].append(max_v)
-        print(f"Cut {rel_asset} -> peak: {max_v:.2f} dB, mean: {mean_v:.2f} dB")
-        
-    bell_ramsamba_src = os.path.join(ARCHIVE_DIR, "bell-ramsamba-318687", "318687__ramsamba__typewriter-bell.wav")
-    bell_ramsamba_url = "https://freesound.org/people/ramsamba/sounds/318687/"
-    bell_ramsamba_author = "ramsamba"
-    bell_ramsamba_archive_rel = "docs/archive/bell-ramsamba-318687/318687__ramsamba__typewriter-bell.wav"
-    
-    soft_bell_out = os.path.join(ASSETS_DIR, "soft", "bell.ogg")
-    mean_v, max_v = cut_and_normalize(bell_ramsamba_src, soft_bell_out, ss=0.0, t=0.88, target_peak_db=TARGET_PEAK)
-    row = {
-        "file": "sounds/soft/bell.ogg",
-        "source_url": bell_ramsamba_url,
-        "author": bell_ramsamba_author,
-        "license": "CC0",
-        "retrieved": "2026-11-08",
-        "archived_copy": bell_ramsamba_archive_rel,
-        "mean_volume": mean_v,
-        "max_volume": max_v
-    }
-    samples_info.append(row)
-    sets_data["soft"].append(max_v)
-    print(f"Cut sounds/soft/bell.ogg -> peak: {max_v:.2f} dB, mean: {mean_v:.2f} dB")
-    
-    # -------------------------------------------------------------------------
-    # 4. Keyboard Set (OpenGameArt Keyboard Soundpack #1 - unicaegames)
-    # -------------------------------------------------------------------------
-    single_keys_dir = os.path.join(ARCHIVE_DIR, "keyboard-opengameart-soundpack-1", "unicae_games_keyboard_soundpack_1", "Single Keys")
-    kb_url = "https://opengameart.org/content/keyboard-soundpack-1-typing-and-single-keystrokes"
-    kb_author = "unicaegames"
-    
-    kb_cuts = {
-        "key_01.ogg": os.path.join(single_keys_dir, "keypress-001.wav"),
-        "key_02.ogg": os.path.join(single_keys_dir, "keypress-002.wav"),
-        "key_03.ogg": os.path.join(single_keys_dir, "keypress-003.wav"),
-        "key_04.ogg": os.path.join(single_keys_dir, "keypress-004.wav"),
-        "key_05.ogg": os.path.join(single_keys_dir, "keypress-005.wav"),
-        "space.ogg":  os.path.join(single_keys_dir, "keypress-020.wav"),
-        "enter.ogg":  os.path.join(single_keys_dir, "keypress-030.wav"),
-        "backspace.ogg": os.path.join(single_keys_dir, "keypress-015.wav"),
-    }
-    
-    sets_data["keyboard"] = []
-    for fname, src_f in kb_cuts.items():
-        out_file = os.path.join(ASSETS_DIR, "keyboard", fname)
-        mean_v, max_v = cut_and_normalize(src_f, out_file, target_peak_db=TARGET_PEAK)
-        rel_asset = f"sounds/keyboard/{fname}"
-        rel_archive = os.path.relpath(src_f, REPO_ROOT).replace("\\", "/")
-        row = {
-            "file": rel_asset,
-            "source_url": kb_url,
-            "author": kb_author,
-            "license": "CC0",
-            "retrieved": "2026-11-08",
-            "archived_copy": rel_archive,
-            "mean_volume": mean_v,
-            "max_volume": max_v
-        }
-        samples_info.append(row)
-        sets_data["keyboard"].append(max_v)
-        print(f"Cut {rel_asset} -> peak: {max_v:.2f} dB, mean: {mean_v:.2f} dB")
-        
-    keyboard_bell_out = os.path.join(ASSETS_DIR, "keyboard", "bell.ogg")
-    mean_v, max_v = cut_and_normalize(bell_knufds_src, keyboard_bell_out, ss=0.0, t=1.2, target_peak_db=TARGET_PEAK)
-    row = {
-        "file": "sounds/keyboard/bell.ogg",
-        "source_url": bell_knufds_url,
-        "author": bell_knufds_author,
-        "license": "CC0",
-        "retrieved": "2026-11-08",
-        "archived_copy": bell_knufds_archive_rel,
-        "mean_volume": mean_v,
-        "max_volume": max_v
-    }
-    samples_info.append(row)
-    sets_data["keyboard"].append(max_v)
-    print(f"Cut sounds/keyboard/bell.ogg -> peak: {max_v:.2f} dB, mean: {mean_v:.2f} dB")
-    
-    # -------------------------------------------------------------------------
-    # Verification of Loudness Invariants
-    # -------------------------------------------------------------------------
-    print("\n--- Loudness Normalization Verification ---")
-    for set_name, vols in sets_data.items():
-        s_min = min(vols)
-        s_max = max(vols)
-        s_spread = s_max - s_min
-        print(f"Set '{set_name}' ({len(vols)} samples): peak range [{s_min:.2f} dBFS, {s_max:.2f} dBFS], spread = {s_spread:.2f} dB")
-        assert s_spread <= 1.0, f"Set {set_name} peak spread {s_spread:.2f} dB exceeds 1.0 dB!"
-        
-    all_peaks = [s["max_volume"] for s in samples_info]
-    total_min = min(all_peaks)
-    total_max = max(all_peaks)
-    total_spread = total_max - total_min
-    print(f"\nAll sets combined ({len(all_peaks)} samples): peak range [{total_min:.2f} dBFS, {total_max:.2f} dBFS], spread = {total_spread:.2f} dB")
-    assert total_spread <= 1.0, f"Combined peak spread {total_spread:.2f} dB exceeds 1.0 dB!"
-    print("SUCCESS: Every set and all sets combined are normalized within 1.0 dB loudness spread!")
-    
-    # -------------------------------------------------------------------------
-    # Write docs/provenance.csv
-    # -------------------------------------------------------------------------
-    prov_file = os.path.join(DOCS_DIR, "provenance.csv")
-    with open(prov_file, "w", encoding="utf-8") as f:
-        f.write("file,source_url,author,license,retrieved,archived_copy\n")
-        for s in samples_info:
-            f.write(f"{s['file']},{s['source_url']},{s['author']},{s['license']},{s['retrieved']},{s['archived_copy']}\n")
-    print(f"Wrote {prov_file}")
-    
-    # -------------------------------------------------------------------------
-    # Write app/src/main/assets/sounds/manifest.json
-    # -------------------------------------------------------------------------
-    manifest = {
-        "sets": [
-            {
-                "id": "classic",
-                "name": "Classic",
-                "keys": [
-                    {"file": f"sounds/classic/key_0{i}.ogg", "gain": 1.0} for i in range(1, 9)
-                ],
-                "space": {"file": "sounds/classic/space.ogg", "gain": 0.7},
-                "enter": {"file": "sounds/classic/enter.ogg", "gain": 1.0},
-                "backspace": {"file": "sounds/classic/backspace.ogg", "gain": 1.0},
-                "bell": {"file": "sounds/classic/bell.ogg", "gain": 0.6}
-            },
-            {
-                "id": "antique",
-                "name": "Antique",
-                "keys": [
-                    {"file": f"sounds/antique/key_0{i}.ogg", "gain": 1.0} for i in range(1, 6)
-                ],
-                "space": {"file": "sounds/antique/space.ogg", "gain": 0.7},
-                "enter": {"file": "sounds/antique/enter.ogg", "gain": 1.0},
-                "backspace": {"file": "sounds/antique/backspace.ogg", "gain": 1.0},
-                "bell": {"file": "sounds/antique/bell.ogg", "gain": 0.6}
-            },
-            {
-                "id": "soft",
-                "name": "Soft",
-                "keys": [
-                    {"file": f"sounds/soft/key_0{i}.ogg", "gain": 1.0} for i in range(1, 6)
-                ],
-                "space": {"file": "sounds/soft/space.ogg", "gain": 0.7},
-                "enter": {"file": "sounds/soft/enter.ogg", "gain": 1.0},
-                "backspace": {"file": "sounds/soft/backspace.ogg", "gain": 1.0},
-                "bell": {"file": "sounds/soft/bell.ogg", "gain": 0.6}
-            },
-            {
-                "id": "keyboard",
-                "name": "Keyboard",
-                "keys": [
-                    {"file": f"sounds/keyboard/key_0{i}.ogg", "gain": 1.0} for i in range(1, 6)
-                ],
-                "space": {"file": "sounds/keyboard/space.ogg", "gain": 0.7},
-                "enter": {"file": "sounds/keyboard/enter.ogg", "gain": 1.0},
-                "backspace": {"file": "sounds/keyboard/backspace.ogg", "gain": 1.0},
-                "bell": {"file": "sounds/keyboard/bell.ogg", "gain": 0.6}
-            }
-        ]
-    }
-    
-    manifest_file = os.path.join(ASSETS_DIR, "manifest.json")
-    with open(manifest_file, "w", encoding="utf-8") as f:
+    cache = {}
+
+    def source(key, af):
+        k = (key, af)
+        if k not in cache:
+            path = os.path.join(ROOT, ARCHIVE, OGA % key if isinstance(key, int) else SRC[key][0])
+            cache[k] = decode(path, af)
+        return cache[k]
+
+    items = []  # (set, name, file, source key, samples)
+    for sid, spec in SETS.items():
+        order = [("key_%02d" % (i + 1), c) for i, c in enumerate(spec["keys"])]
+        order += [(n, spec[n]) for n in ("space", "enter", "backspace", "bell")]
+        for name, (key, t, length, fade, af) in order:
+            y = cut(source(key, af), t, length, fade, isinstance(key, int))
+            items.append((sid, name, key, y))
+
+    # One common loudness target: the loudest level every sample can reach with its peak at -1.5 dBFS.
+    reach = [loudness_db(y) + (PEAK_TARGET_DB - db(np.abs(y).max())) for _, _, _, y in items]
+    target = min(reach)
+    print("common loudness target: %.2f dBFS RMS over the first %d ms" % (target, LOUD_MS))
+
+    tmp = tempfile.mkdtemp()
+    rows, report = [], []
+    try:
+        for (sid, name, key, y), _ in zip(items, reach):
+            wav = os.path.join(tmp, "s.wav")
+            out = os.path.join(ASSETS, sid, name + ".ogg")
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            gain = target - loudness_db(y)
+            best = None
+            for _ in range(10):  # Vorbis changes the level a little: correct until the decoded file is on target
+                write_wav(wav, y * 10 ** (gain / 20))
+                run([FFMPEG, "-y", "-v", "error", "-i", wav, "-c:a", "libvorbis", "-q:a", "4", "-ac", "1", "-ar", str(SR), out])
+                back = decode(out)
+                err = target - loudness_db(back)
+                if os.environ.get('CUT_DEBUG'): print(sid, name, 'gain %.2f err %.2f peak %.2f' % (gain, err, db(np.abs(back).max())))
+                if db(np.abs(back).max()) < -0.5 and (best is None or abs(err) < best[0]):
+                    best = (abs(err), gain, open(out, "rb").read())
+                if abs(err) < 0.15:
+                    break
+                gain += 0.5 * err
+            if best is None:
+                sys.exit("%s/%s: cannot reach the loudness target without clipping" % (sid, name))
+            with open(out, "wb") as f:
+                f.write(best[2])
+            back = decode(out)
+            report.append((sid, name, loudness_db(back), db(np.abs(back).max()), attack_ms(back)))
+            if isinstance(key, int):
+                url, author = OGA_URL, "unicaegames"
+                arch = "%s/%s" % (ARCHIVE, OGA % key)
+            else:
+                url, author = SRC[key][1], SRC[key][2]
+                arch = "%s/%s" % (ARCHIVE, SRC[key][0])
+            rows.append(["sounds/%s/%s.ogg" % (sid, name), url, author, "CC0", "2026-11-08", arch])
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    print("%-10s %-10s %9s %9s %9s" % ("set", "sample", "loud dB", "peak dB", "attack ms"))
+    for r in report:
+        print("%-10s %-10s %9.2f %9.2f %9.2f" % r)
+    louds = [r[2] for r in report]
+    spread = max(louds) - min(louds)
+    print("loudness spread over all %d samples: %.2f dB" % (len(report), spread))
+    problems = []
+    if spread > 1.0:
+        problems.append("loudness spread %.2f dB > 1 dB" % spread)
+    for sid, name, lo, pk, at in report:
+        if at > 5.0:
+            problems.append("%s/%s attack at %.1f ms > 5 ms" % (sid, name, at))
+        if pk > -0.3:
+            problems.append("%s/%s peak %.2f dBFS" % (sid, name, pk))
+    if problems:
+        sys.exit("FAILED:\n" + "\n".join(problems))
+
+    with open(os.path.join(ROOT, "docs", "provenance.csv"), "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(["file", "source_url", "author", "license", "retrieved", "archived_copy"])
+        w.writerows(rows)
+
+    manifest = {"sets": []}
+    for sid, spec in SETS.items():
+        def s(name):
+            return {"file": "sounds/%s/%s.ogg" % (sid, name), "gain": 1.0}
+        manifest["sets"].append({
+            "id": sid, "name": NAMES[sid],
+            "keys": [s("key_%02d" % (i + 1)) for i in range(len(spec["keys"]))],
+            "space": s("space"), "enter": s("enter"), "backspace": s("backspace"), "bell": s("bell"),
+        })
+    with open(os.path.join(ASSETS, "manifest.json"), "w", encoding="utf-8", newline="") as f:
         json.dump(manifest, f, indent=2)
-    print(f"Wrote {manifest_file}")
+        f.write("\n")
+    print("OK")
+
 
 if __name__ == "__main__":
     main()
