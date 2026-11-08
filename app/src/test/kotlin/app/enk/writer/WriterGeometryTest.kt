@@ -153,4 +153,12 @@ class WriterGeometryTest {
             assertEquals(col + 0.5f, g.colFromX(rightEdge), 0.001f)
         }
     }
+
+    @Test
+    fun nonFiniteWidthGivesFiniteGeometry() {
+        for (w in listOf(Float.POSITIVE_INFINITY, Float.NaN, -5f, 0f)) {
+            val g = WriterGeometry.compute(widthDp = w, heightDp = 820f, fontScale = 1.0f)
+            assertEquals("width $w", true, g.textLeftDp.isFinite() && g.fontSp.isFinite() && g.columnWidthDp.isFinite())
+        }
+    }
 }

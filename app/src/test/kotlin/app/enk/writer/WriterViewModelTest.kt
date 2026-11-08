@@ -260,12 +260,36 @@ class WriterViewModelTest {
         vm.dispatch(WriterEvent.Insert("Surviving text"))
         store.clear()
 
-        kotlinx.coroutines.delay(200)
+        // The flush runs in the background: wait for it (up to 5 s) instead of a fixed sleep.
+        val deadline = System.currentTimeMillis() + 5000
+        while (repo.load(note.id)?.pages?.firstOrNull()?.text != "Surviving text" &&
+            System.currentTimeMillis() < deadline
+        ) {
+            kotlinx.coroutines.delay(20)
+        }
 
         val loaded = repo.load(note.id)
         assertNotNull(loaded)
         assertEquals(1, loaded?.pages?.size)
         assertEquals("Surviving text", loaded?.pages?.get(0)?.text)
+    }
+
+    @Test
+    fun storedStrikeThroughModeAppliesToEventsHeldDuringLoading() = runBlocking {
+        settingsStore.update { it.copy(correction = CorrectionMode.StrikeThrough) }
+        val note = repo.createNote(dividerId = null)
+        val vm = WriterViewModel(
+            noteId = note.id,
+            repo = repo,
+            settings = settingsStore,
+            ioScope = testScope
+        )
+        // Dispatched before the note has loaded: held, then applied with the stored mode.
+        vm.dispatch(WriterEvent.Insert("ab"))
+        vm.dispatch(WriterEvent.Backspace)
+        val state = vm.state.first { it.loaded }
+        assertEquals("ab", state.pages[0].text)
+        assertEquals(listOf(1..1), state.pages[0].struck)
     }
 
     @Test

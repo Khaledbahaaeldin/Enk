@@ -3,6 +3,9 @@ package app.enk.writer
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import app.enk.text.StruckPage
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import java.io.File
 import org.junit.Rule
 import org.junit.Test
 
@@ -16,6 +19,10 @@ class PaperGoldenTest {
         ),
         maxPercentDifference = 2.0
     )
+
+    // Paparazzi cannot load res/font fonts, so the goldens load the real Courier Prime file directly
+    // (built on access: it needs layoutlib, which exists only after the rule has started).
+    private val courier: FontFamily get() = FontFamily(Font(File("../design/src/main/res/font/courier_prime_regular.ttf")))
 
     private val referenceGeometry = WriterGeometry.compute(
         widthDp = 400f,
@@ -37,7 +44,8 @@ class PaperGoldenTest {
                 state = state,
                 geometry = referenceGeometry,
                 night = false,
-                reduceEffects = false
+                reduceEffects = false,
+                fontFamily = courier
             )
         }
     }
@@ -56,7 +64,8 @@ class PaperGoldenTest {
                 state = state,
                 geometry = referenceGeometry,
                 night = true,
-                reduceEffects = false
+                reduceEffects = false,
+                fontFamily = courier
             )
         }
     }
@@ -75,7 +84,8 @@ class PaperGoldenTest {
                 state = state,
                 geometry = referenceGeometry,
                 night = false,
-                reduceEffects = false
+                reduceEffects = false,
+                fontFamily = courier
             )
         }
     }
@@ -95,7 +105,8 @@ class PaperGoldenTest {
                 state = state,
                 geometry = referenceGeometry,
                 night = false,
-                reduceEffects = false
+                reduceEffects = false,
+                fontFamily = courier
             )
         }
     }
@@ -114,7 +125,8 @@ class PaperGoldenTest {
                 state = state,
                 geometry = referenceGeometry,
                 night = false,
-                reduceEffects = false
+                reduceEffects = false,
+                fontFamily = courier
             )
         }
     }
@@ -138,7 +150,8 @@ class PaperGoldenTest {
                 state = state,
                 geometry = scaledGeometry,
                 night = false,
-                reduceEffects = false
+                reduceEffects = false,
+                fontFamily = courier
             )
         }
     }
@@ -157,7 +170,50 @@ class PaperGoldenTest {
                 state = state,
                 geometry = referenceGeometry,
                 night = false,
-                reduceEffects = false
+                reduceEffects = false,
+                fontFamily = courier
+            )
+        }
+    }
+
+    @Test
+    fun struckCharactersInStrikeThroughMode() {
+        val state = WriterState(
+            noteId = "test-note-8",
+            pages = listOf(StruckPage("Hello world", listOf(2..4, 8..8))),
+            pageIndex = 0,
+            caret = 11,
+            loaded = true
+        )
+        paparazzi.snapshot {
+            PaperSheet(
+                state = state,
+                geometry = referenceGeometry,
+                night = false,
+                reduceEffects = false,
+                fontFamily = courier
+            )
+        }
+    }
+
+    @Test
+    fun stampedCharacterAt80ms() {
+        val state = WriterState(
+            noteId = "test-note-9",
+            pages = listOf(StruckPage("Stamp")),
+            pageIndex = 0,
+            caret = 5,
+            lastTypedIndex = 4,
+            loaded = true
+        )
+        paparazzi.snapshot {
+            PaperSheet(
+                state = state,
+                geometry = referenceGeometry,
+                night = false,
+                reduceEffects = false,
+                fontFamily = courier,
+                stampFrame = 80f / 160f
             )
         }
     }

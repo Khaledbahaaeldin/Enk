@@ -5,7 +5,10 @@ import app.enk.data.NoteRepository
 import app.enk.settings.CorrectionMode
 import app.enk.settings.SettingsStore
 import app.enk.text.StruckPage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
@@ -21,7 +24,9 @@ class WriterViewModel(
     ioScope: CoroutineScope? = null,
 ) : ViewModel() {
 
+    private val ownsScope = ioScope == null
     private val scope = ioScope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var settingsJob: Job? = null
     private var currentCorrection: CorrectionMode = CorrectionMode.CleanErase
 
     private val autosaver = Autosaver(
@@ -51,6 +56,8 @@ class WriterViewModel(
 
     init {
         scope.launch {
+            // Take the user's correction mode before applying any held event.
+            currentCorrection = settings.settings.first().correction
             val isTrashed = repo.observeTrashed().first().any { it.id == noteId }
             val note = if (isTrashed) null else repo.load(noteId)
             if (note == null) {
@@ -77,7 +84,7 @@ class WriterViewModel(
             }
         }
 
-        scope.launch {
+        settingsJob = scope.launch {
             settings.settings.collect { s ->
                 currentCorrection = s.correction
             }
@@ -108,9 +115,22 @@ class WriterViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        if (_state.value.missing) return
+        settingsJob?.cancel()
+        if (_state.value.missing) {
+            if (ownsScope) scope.cancel()
+            return
+        }
+        // Flush the last edits, then release the scope we own. A failed flush must not crash the process.
         scope.launch {
-            autosaver.flush()
+            try {
+                autosaver.flush()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Nothing more can be done here; the pages were retried by the autosaver already.
+            } finally {
+                if (ownsScope) scope.cancel()
+            }
         }
     }
 }

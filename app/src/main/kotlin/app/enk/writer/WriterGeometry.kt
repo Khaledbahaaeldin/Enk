@@ -25,7 +25,7 @@ data class WriterGeometry(
             val safeFontScale = if (fontScale.isNaN() || fontScale <= 0f) 1.0f else fontScale.coerceIn(0.85f, 1.3f)
             val cols = (28f / safeFontScale).roundToInt().coerceIn(18, 28)
 
-            val safeWidth = if (widthDp.isNaN() || widthDp <= 0f) 72f else widthDp
+            val safeWidth = if (widthDp.isNaN() || widthDp.isInfinite() || widthDp <= 0f) 72f else widthDp
             // Ensure available width yields at least 1 sp font even on tiny width or bad inputs
             val availableWidth = (safeWidth - 72f).coerceAtLeast(cols * 0.6f * 1f)
             val uncappedFs = availableWidth / (cols * 0.6f)
@@ -33,7 +33,7 @@ data class WriterGeometry(
             val fontSp = uncappedFs.coerceIn(1f, 22f)
             val columnWidthDp = 0.6f * fontSp
             val textWidthDp = cols * columnWidthDp
-            val textLeftDp = if (isCapped) (widthDp - textWidthDp) / 2f else 36f
+            val textLeftDp = if (isCapped) (safeWidth - textWidthDp) / 2f else 36f
 
             val safeHeight = if (heightDp.isNaN() || heightDp <= 0f) 0f else heightDp
             val railYDp = round(safeHeight * 0.62f)

@@ -22,13 +22,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
+import app.enk.design.CourierPrime
 import androidx.compose.ui.unit.dp
 import app.enk.design.EnkColors
 import app.enk.design.EnkMaterials
 import app.enk.design.EnkMotion
 import app.enk.design.EnkShadows
 import app.enk.design.LampColor
+import app.enk.design.Rgb
 import app.enk.design.ShadowLayer
 import app.enk.design.enkShadow
 
@@ -54,21 +59,24 @@ fun Carriage(
     strikeKey: Int,
     night: Boolean,
     reduceEffects: Boolean,
-    lampIntensity: Float = 0f,
-    modifier: Modifier = Modifier
+    lampIntensity: Float = 1f,
+    lamp: Rgb = LampColor.fromWarmth(25),
+    modifier: Modifier = Modifier,
+    /** Freezes the slug strike at this progress (0..1) for goldens and previews; null runs the animation. */
+    slugProgress: Float? = null,
+    slugFontFamily: FontFamily = CourierPrime,
+    /** Reports the measured size of the interactive area in dp (54 x 48); used by the layout test. */
+    onHitAreaMeasured: ((widthDp: Float, heightDp: Float) -> Unit)? = null
 ) {
+    val density = LocalDensity.current
     val bodyShape = RoundedCornerShape(9.dp)
     val slotShape = RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp, bottomEnd = 0.dp, bottomStart = 0.dp)
     val stripShape = RoundedCornerShape(2.dp)
 
-    val lampRgb = LampColor.fromWarmth(25)
-    val lampColor = Color(red = lampRgb.r, green = lampRgb.g, blue = lampRgb.b)
+    val lampColor = Color(red = lamp.r, green = lamp.g, blue = lamp.b)
 
-    // Snap mode shows mid-snap overshoot
-    val targetX = when (mode) {
-        CarriageMotion.Snap -> centerXDp + (if (reduceEffects) 0f else 3.5f)
-        else -> centerXDp
-    }
+    // Snap animates to the caret column; the overshoot comes from the easing curve itself.
+    val targetX = centerXDp
 
     val xAnim = remember { Animatable(targetX) }
 
@@ -112,6 +120,11 @@ fun Carriage(
                     height = CarriageGeometry.interactiveHeightDp.dp
                 )
                 .testTag("carriage")
+                .then(
+                    if (onHitAreaMeasured == null) Modifier else Modifier.onGloballyPositioned {
+                        onHitAreaMeasured(it.size.width / density.density, it.size.height / density.density)
+                    }
+                )
         ) {
             // 1. Slot window: 18 x 11 dp, centred horizontally (left = (54 - 18)/2 = 18 dp), top = 0 dp
             val slotShadowLayers = if (night && lampIntensity > 0f) {
@@ -135,6 +148,8 @@ fun Carriage(
                     slugChar = slugChar,
                     strikeKey = strikeKey,
                     night = night,
+                    slugProgress = slugProgress,
+                    fontFamily = slugFontFamily,
                     modifier = Modifier.offset(x = 2.dp, y = 2.dp)
                 )
             }

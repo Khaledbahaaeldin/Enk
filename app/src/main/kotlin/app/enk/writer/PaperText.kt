@@ -15,6 +15,8 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontFamily
+import app.enk.design.CourierPrime
 import app.enk.design.EnkMotion
 import app.enk.design.EnkType
 import app.enk.design.Jitter
@@ -66,32 +68,6 @@ fun cellsOfLine(lineText: String, lineStart: Int): List<TextCell> {
     return cells
 }
 
-/**
- * Linearly interpolates the feed offset between [start] and [target].
- */
-fun interpolateFeedOffset(start: Float, target: Float, progress: Float): Float =
-    start + (target - start) * progress
-
-data class FeedAnimationState(
-    val startOffsetDp: Float,
-    val targetOffsetDp: Float,
-    val durationMs: Int
-)
-
-/**
- * Restarts a feed animation from the current in-flight offset [currentOffsetDp]
- * towards [newTargetOffsetDp], preventing jumps when rapid typing triggers feeds.
- */
-fun interruptFeed(
-    currentOffsetDp: Float,
-    newTargetOffsetDp: Float,
-    reduceMotion: Boolean
-): FeedAnimationState = FeedAnimationState(
-    startOffsetDp = currentOffsetDp,
-    targetOffsetDp = newTargetOffsetDp,
-    durationMs = if (reduceMotion) 100 else 200
-)
-
 @Composable
 fun PaperText(
     page: StruckPage,
@@ -100,7 +76,11 @@ fun PaperText(
     geometry: WriterGeometry,
     textColor: Color,
     reduceMotion: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** The paper typeface. Tests that cannot load resource fonts pass a file-based family. */
+    fontFamily: FontFamily = CourierPrime,
+    /** Freezes the stamp of the newest character at this progress (0..1) for goldens; null runs the animation. */
+    stampFrame: Float? = null
 ) {
     val textMeasurer = rememberTextMeasurer()
     val lines = remember(page.text, geometry.cols) {
@@ -136,12 +116,29 @@ fun PaperText(
     }
 
     val currentOffsetDp = feedAnim.value
-    val charLayoutCache = remember(textColor, geometry.fontSp) {
+    val struckMask = remember(page.text, page.struck) {
+        BooleanArray(page.text.length).also { mask ->
+            for (r in page.struck) for (i in r) if (i in mask.indices) mask[i] = true
+        }
+    }
+    val charLayoutCache = remember(textColor, geometry.fontSp, fontFamily) {
         mutableMapOf<String, TextLayoutResult>()
+    }
+
+    fun layoutFor(text: String): TextLayoutResult = charLayoutCache.getOrPut(text) {
+        textMeasurer.measure(
+            text = text,
+            style = EnkType.paper.copy(
+                fontFamily = fontFamily,
+                fontSize = geometry.fontSp.sp,
+                color = textColor
+            )
+        )
     }
 
     Canvas(modifier = modifier) {
         val densityVal = density
+        val baselinePx = layoutFor("x").firstBaseline
         val viewportHeightDp = size.height / densityVal
         val visibleLines = visibleLineRange(
             textTopOffsetDp = currentOffsetDp,
@@ -164,7 +161,7 @@ fun PaperText(
                 val jitter = Jitter.forIndex(cell.index)
 
                 val isNewest = cell.index == lastTypedIndex
-                val p = if (isNewest) stampProgress.value else 1f
+                val p = if (isNewest) (stampFrame ?: stampProgress.value) else 1f
 
                 val stampScale = if (isNewest && !reduceMotion) 1.35f - 0.35f * p else 1f
                 val stampDyDp = if (isNewest && !reduceMotion) -2f * (1f - p) else 0f
@@ -188,25 +185,17 @@ fun PaperText(
                     }
                 }) {
                     if (!cell.text.first().isWhitespace()) {
-                        val layoutResult = charLayoutCache.getOrPut(cell.text) {
-                            textMeasurer.measure(
-                                text = cell.text,
-                                style = EnkType.paper.copy(
-                                    fontSize = geometry.fontSp.sp,
-                                    color = textColor
-                                )
-                            )
-                        }
                         drawText(
-                            textLayoutResult = layoutResult,
+                            textLayoutResult = layoutFor(cell.text),
                             topLeft = Offset(colXPx, lineYPx),
                             alpha = totalAlpha
                         )
                     }
 
                     // Struck line: 1.5 dp line drawn across struck character cell
-                    if (page.struck.any { cell.index in it }) {
-                        val strikeY = lineYPx + (geometry.fontSp * 0.72f) * densityVal
+                    if (struckMask.getOrElse(cell.index) { false }) {
+                        // Through the middle of the lowercase letters: a quarter em above the baseline.
+                        val strikeY = lineYPx + baselinePx - 0.27f * geometry.fontSp * densityVal
                         drawLine(
                             color = textColor.copy(alpha = 0.9f),
                             start = Offset(colXPx, strikeY),

@@ -14,12 +14,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontFamily
+import app.enk.design.CourierPrime
 import app.enk.design.EnkColors
 import app.enk.design.EnkMaterials
 import app.enk.design.EnkMotion
@@ -46,17 +49,22 @@ fun TypeSlug(
     slugChar: Char?,
     strikeKey: Int,
     night: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Freezes the strike at this progress (0..1) for goldens and previews; null runs the real animation. */
+    slugProgress: Float? = null,
+    fontFamily: FontFamily = CourierPrime
 ) {
     val slugShape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomEnd = 0.dp, bottomStart = 0.dp)
     val filteredChar = filterSlugChar(slugChar)
 
-    // strikeKey == 1 in Paparazzi snapshot renders at 50 ms peak (-5 dp)
-    val progressAnim = remember { Animatable(if (strikeKey == 1) 0.45f else 0f) }
+    val progressAnim = remember { Animatable(1f) }
     var inFlightStartOffset by remember { mutableFloatStateOf(9f) }
+    // A key already present when the slug first appears (for example after rotation) must not strike.
+    var seenKey by remember { mutableIntStateOf(strikeKey) }
 
     LaunchedEffect(strikeKey) {
-        if (strikeKey > 0) {
+        if (strikeKey != seenKey) {
+            seenKey = strikeKey
             val currentOffset = slugOffsetDp(progressAnim.value, inFlightStartOffset)
             inFlightStartOffset = currentOffset
             progressAnim.snapTo(0f)
@@ -70,7 +78,7 @@ fun TypeSlug(
         }
     }
 
-    val offsetDp = slugOffsetDp(progressAnim.value, inFlightStartOffset)
+    val offsetDp = slugOffsetDp(slugProgress ?: progressAnim.value, if (slugProgress != null) 9f else inFlightStartOffset)
 
     Box(
         modifier = modifier
@@ -85,7 +93,7 @@ fun TypeSlug(
         if (filteredChar != null) {
             Text(
                 text = filteredChar.toString(),
-                style = EnkType.slug
+                style = EnkType.slug.copy(fontFamily = fontFamily)
             )
         }
     }

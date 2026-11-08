@@ -86,16 +86,15 @@ class AutosaverTest {
     }
 
     @Test
-    fun errorRetentionAndRetry() = runTest {
-        var shouldFail = true
+    fun backgroundFailureIsRetriedUntilItSucceeds() = runTest {
+        var failuresLeft = 2
         val savedList = mutableListOf<List<StruckPage>>()
-
         val autosaver = Autosaver(
             scope = this,
             debounceMs = 100,
             save = { pages ->
-                if (shouldFail) {
-                    shouldFail = false
+                if (failuresLeft > 0) {
+                    failuresLeft--
                     throw RuntimeException("Disk error")
                 }
                 savedList.add(pages)
@@ -103,23 +102,66 @@ class AutosaverTest {
         )
 
         autosaver.onChange(listOf(StruckPage("retry-me")))
-        // Background debounce triggers after 100ms and fails
+        advanceTimeBy(101)          // first attempt fails
+        assertEquals(0, savedList.size)
+        advanceTimeBy(100)          // second attempt fails
+        assertEquals(0, savedList.size)
+        advanceTimeBy(100)          // third attempt succeeds
+        assertEquals(1, savedList.size)
+        assertEquals("retry-me", savedList[0][0].text)
+        advanceUntilIdle()
+        assertEquals("no further saves once it succeeded", 1, savedList.size)
+    }
+
+    @Test
+    fun flushAfterBackgroundFailureSavesPendingPagesInsteadOfThrowing() = runTest {
+        var shouldFail = true
+        val savedList = mutableListOf<List<StruckPage>>()
+        val autosaver = Autosaver(
+            scope = this,
+            debounceMs = 100,
+            save = { pages ->
+                if (shouldFail) throw RuntimeException("Disk error")
+                savedList.add(pages)
+            }
+        )
+
+        autosaver.onChange(listOf(StruckPage("keep-me")))
         advanceTimeBy(101)
         assertEquals(0, savedList.size)
 
+        shouldFail = false
+        autosaver.flush() // must save now, not rethrow the old failure
+        assertEquals(1, savedList.size)
+        assertEquals("keep-me", savedList[0][0].text)
+    }
+
+    @Test
+    fun failedFlushThrowsAndKeepsPagesPending() = runTest {
+        var shouldFail = true
+        val savedList = mutableListOf<List<StruckPage>>()
+        val autosaver = Autosaver(
+            scope = this,
+            debounceMs = 100,
+            save = { pages ->
+                if (shouldFail) throw RuntimeException("Disk error")
+                savedList.add(pages)
+            }
+        )
+
+        autosaver.onChange(listOf(StruckPage("still-pending")))
         var thrown: Throwable? = null
         try {
             autosaver.flush()
         } catch (e: Throwable) {
             thrown = e
         }
-        org.junit.Assert.assertNotNull("Background failure must be retained and rethrown on flush", thrown)
         assertEquals("Disk error", thrown?.message)
 
-        // Next flush retries the pending pages successfully
+        shouldFail = false
         autosaver.flush()
         assertEquals(1, savedList.size)
-        assertEquals("retry-me", savedList[0][0].text)
+        assertEquals("still-pending", savedList[0][0].text)
     }
 
     @Test

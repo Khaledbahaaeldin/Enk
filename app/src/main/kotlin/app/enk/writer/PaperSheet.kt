@@ -15,7 +15,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontFamily
+import app.enk.design.CourierPrime
 import app.enk.design.EnkColors
+import app.enk.design.Rgb
 import app.enk.design.EnkMaterials
 import app.enk.design.EnkShadows
 import app.enk.design.LampColor
@@ -92,12 +95,15 @@ fun PaperSheet(
     geometry: WriterGeometry,
     night: Boolean,
     reduceEffects: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lamp: Rgb = LampColor.fromWarmth(25),
+    fontFamily: FontFamily = CourierPrime,
+    typing: Boolean = false,
+    stampFrame: Float? = null
 ) {
     val page = state.pages.getOrElse(state.pageIndex) { StruckPage("") }
     val textColor = if (night) {
-        val rgb = LampColor.fromWarmth(25)
-        Color(red = rgb.r, green = rgb.g, blue = rgb.b)
+        Color(red = lamp.r, green = lamp.g, blue = lamp.b)
     } else {
         EnkColors.ink
     }
@@ -121,12 +127,14 @@ fun PaperSheet(
             geometry = geometry,
             textColor = textColor,
             reduceMotion = reduceEffects,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            fontFamily = fontFamily,
+            stampFrame = stampFrame
         )
         Caret(
             geometry = geometry,
             pos = caretPos,
-            typing = false,
+            typing = typing,
             reduceMotion = reduceEffects
         )
     }

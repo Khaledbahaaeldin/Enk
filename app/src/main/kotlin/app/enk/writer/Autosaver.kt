@@ -11,6 +11,16 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
+/**
+ * Debounced, serialised saver.
+ *
+ * - [onChange] remembers the newest pages and (re)starts a [debounceMs] timer; a burst of changes
+ *   produces one save.
+ * - Saves never overlap (one mutex) and a started save is never cancelled half way.
+ * - A failed background save is retried every [debounceMs] until it succeeds or newer pages replace it.
+ * - [flush] always attempts the pending save now. If it fails it throws and the pages stay pending,
+ *   so a later flush or the background retry still saves them.
+ */
 class Autosaver(
     private val scope: CoroutineScope,
     private val debounceMs: Long = 500,
@@ -20,53 +30,47 @@ class Autosaver(
     private var timerJob: Job? = null
     @Volatile private var pendingPages: List<StruckPage>? = null
     @Volatile private var isDirty: Boolean = false
-    @Volatile private var lastSaveException: Throwable? = null
 
     fun onChange(pages: List<StruckPage>) {
         pendingPages = pages
         isDirty = true
         timerJob?.cancel()
-        timerJob = scope.launch {
-            try {
-                delay(debounceMs)
-                withContext(NonCancellable) {
-                    performSave()
-                }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                lastSaveException = e
-            }
-        }
+        timerJob = scope.launch { saveWithRetry() }
     }
 
     suspend fun flush() {
         timerJob?.cancel()
         timerJob = null
-        val ex = lastSaveException
-        if (ex != null) {
-            lastSaveException = null
-            throw ex
+        try {
+            performSave()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            timerJob = scope.launch { saveWithRetry() }
+            throw e
         }
-        performSave()
+    }
+
+    private suspend fun saveWithRetry() {
+        while (true) {
+            delay(debounceMs)
+            try {
+                performSave()
+                return
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Keep the pages pending and try again after the next debounce interval.
+            }
+        }
     }
 
     private suspend fun performSave() {
         mutex.withLock {
             if (!isDirty) return
             val toSave = pendingPages ?: return
-            try {
-                withContext(NonCancellable) {
-                    save(toSave)
-                }
-                if (pendingPages === toSave) {
-                    isDirty = false
-                    lastSaveException = null
-                }
-            } catch (e: Throwable) {
-                if (e is CancellationException) throw e
-                lastSaveException = e
-                throw e
-            }
+            withContext(NonCancellable) { save(toSave) }
+            if (pendingPages === toSave) isDirty = false
         }
     }
 }

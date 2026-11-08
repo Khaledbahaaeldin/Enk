@@ -67,11 +67,11 @@
   - Verified: `:app:checkDebugAarMetadata` and `:app:checkReleaseAarMetadata` pass with 0 errors.
 
 ### 6. Kotlinx Coroutines Test
-- **Coordinate:** `org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0`
+- **Coordinate:** `org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0`
 - **Scope:** `testImplementation` only in `:app`.
 - **License:** Apache License, Version 2.0
 - **Version Verification:**
-  - Matches the exact coroutines version `1.9.0` already present on the classpath via Room, Lifecycle, and DataStore.
+  - `1.11.0` is the newest stable on Maven Central (`maven-metadata.xml` `<release>`, checked 2026-11-09). It also lifts `kotlinx-coroutines-core` on the test classpath only.
   - Verified: `:app:checkDebugAarMetadata` and `:app:checkReleaseAarMetadata` pass with 0 errors.
 - **Role in Enk:** Virtual time control (`runTest`, `advanceTimeBy`, `StandardTestDispatcher`) for `AutosaverTest` and `WriterViewModelTest`.
 
@@ -93,3 +93,9 @@
   - Haze `2.1.0`, `2.0.1`, `2.0.0` fail `checkDebugAarMetadata` and `checkReleaseAarMetadata` with 23 issues (require `compileSdk >= 37` and `AGP >= 9.1.0`).
   - Haze `1.7.0` to `1.7.3` fail with 3 to 22 issues (require `compileSdk >= 36` for transitive `androidx.activity:1.11.0`).
   - While Haze `1.6.10` passes, Backdrop 1.0.4's own blur natively covers the API 31-32 Blur path on the captured backdrop layer without needing an additional third-party library. Haze was therefore dropped from the catalog, build dependencies, and CREDITS.md to maintain a minimal, robust dependency footprint.
+
+### 7. Paparazzi in `:app`: targetSdk workaround
+- Paparazzi 1.3.5 bundles LayoutLib for Android API 34. Compose UI calls `View.setRequestedFrameRate` when the app's `targetSdkVersion` is 35 or higher, which does not exist there, so every snapshot would crash with `NoSuchMethodError`.
+- `app/build.gradle.kts` therefore rewrites `"targetSdkVersion": "35"` to `"34"` only in Paparazzi's generated `build/intermediates/paparazzi/**/resources.json`, after the `preparePaparazzi*` tasks. The APK, lint and AAR checks still see `targetSdk = 35`.
+- Remove this hook when a Paparazzi release bundles LayoutLib API 35 (toolchain upgrade batch).
+- Paparazzi also cannot load `res/font` fonts: the writer goldens load `courier_prime_*.ttf` from `design/src/main/res/font` as a file font. The composables take a `fontFamily` parameter for this; the app uses the resource font.
