@@ -2,6 +2,8 @@ package app.enk.writer
 
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
+import androidx.compose.runtime.CompositionLocalProvider
+import app.enk.design.LocalMonoFont
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import java.io.File
@@ -55,17 +57,18 @@ class CarriageGoldenTest {
     @Test
     fun carriageSlugStrikePeak50ms() {
         paparazzi.snapshot {
-            Carriage(
-                railYDp = referenceGeometry.railYDp,
-                centerXDp = referenceGeometry.carriageCenterXDp(12),
-                mode = CarriageMotion.Rest,
-                slugChar = 'k',
-                strikeKey = 0,
-                night = false,
-                reduceEffects = false,
-                slugProgress = 0.45f, // 49.5 ms of 110 ms: the peak, 5 dp above rest
-                slugFontFamily = courier
-            )
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                Carriage(
+                    railYDp = referenceGeometry.railYDp,
+                    centerXDp = referenceGeometry.carriageCenterXDp(12),
+                    mode = CarriageMotion.Rest,
+                    slugChar = 'k',
+                    strikeKey = 0,
+                    night = false,
+                    reduceEffects = false,
+                    slugProgress = 0.45f // 49.5 ms of 110 ms: the peak, 5 dp above rest
+                )
+            }
         }
     }
 

@@ -2,6 +2,8 @@ package app.enk.writer
 
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
+import androidx.compose.runtime.CompositionLocalProvider
+import app.enk.design.LocalMonoFont
 import app.enk.text.StruckPage
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -40,14 +42,14 @@ class PaperGoldenTest {
             loaded = true
         )
         paparazzi.snapshot {
-            PaperSheet(
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
                 night = false,
                 reduceEffects = false,
-                fontFamily = courier
             )
-        }
+            }}
     }
 
     @Test
@@ -60,14 +62,14 @@ class PaperGoldenTest {
             loaded = true
         )
         paparazzi.snapshot {
-            PaperSheet(
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
                 night = true,
                 reduceEffects = false,
-                fontFamily = courier
             )
-        }
+            }}
     }
 
     @Test
@@ -80,14 +82,14 @@ class PaperGoldenTest {
             loaded = true
         )
         paparazzi.snapshot {
-            PaperSheet(
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
                 night = false,
                 reduceEffects = false,
-                fontFamily = courier
             )
-        }
+            }}
     }
 
     @Test
@@ -101,14 +103,14 @@ class PaperGoldenTest {
             loaded = true
         )
         paparazzi.snapshot {
-            PaperSheet(
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
                 night = false,
                 reduceEffects = false,
-                fontFamily = courier
             )
-        }
+            }}
     }
 
     @Test
@@ -121,14 +123,14 @@ class PaperGoldenTest {
             loaded = true
         )
         paparazzi.snapshot {
-            PaperSheet(
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
                 night = false,
                 reduceEffects = false,
-                fontFamily = courier
             )
-        }
+            }}
     }
 
     @Test
@@ -146,14 +148,14 @@ class PaperGoldenTest {
             loaded = true
         )
         paparazzi.snapshot {
-            PaperSheet(
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
                 state = state,
                 geometry = scaledGeometry,
                 night = false,
                 reduceEffects = false,
-                fontFamily = courier
             )
-        }
+            }}
     }
 
     @Test
@@ -166,14 +168,14 @@ class PaperGoldenTest {
             loaded = true
         )
         paparazzi.snapshot {
-            PaperSheet(
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
                 night = false,
                 reduceEffects = false,
-                fontFamily = courier
             )
-        }
+            }}
     }
 
     @Test
@@ -186,14 +188,14 @@ class PaperGoldenTest {
             loaded = true
         )
         paparazzi.snapshot {
-            PaperSheet(
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
                 night = false,
                 reduceEffects = false,
-                fontFamily = courier
             )
-        }
+            }}
     }
 
     @Test
@@ -207,14 +209,14 @@ class PaperGoldenTest {
             loaded = true
         )
         paparazzi.snapshot {
-            PaperSheet(
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
                 night = false,
                 reduceEffects = false,
-                fontFamily = courier,
                 stampFrame = 80f / 160f
             )
-        }
+            }}
     }
 }

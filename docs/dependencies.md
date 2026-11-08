@@ -75,6 +75,16 @@
   - Verified: `:app:checkDebugAarMetadata` and `:app:checkReleaseAarMetadata` pass with 0 errors.
 - **Role in Enk:** Virtual time control (`runTest`, `advanceTimeBy`, `StandardTestDispatcher`) for `AutosaverTest` and `WriterViewModelTest`.
 
+### 7. AndroidX Compose UI Test
+- **Coordinates:**
+  - `androidx.compose.ui:ui-test-junit4` (`testImplementation` in `:app`, managed by Compose BOM `2026.06.01`)
+  - `androidx.compose.ui:ui-test-manifest` (`debugImplementation` in `:app`, managed by Compose BOM `2026.06.01`)
+- **License:** Apache License, Version 2.0
+- **Version Verification:**
+  - Managed by pinned Compose BOM `2026.06.01`.
+  - Verified: `:app:checkDebugAarMetadata` and `:app:checkReleaseAarMetadata` pass with 0 errors under AGP `8.13.2` and `compileSdk = 35`.
+- **Role in Enk:** Compose UI tree interaction, virtual clock control, node semantics testing, and Robolectric Compose tests for gesture and screen verification (`WriterScreenTest`).
+
 ---
 
 ## Typography and Brand Fonts

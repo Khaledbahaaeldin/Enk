@@ -97,7 +97,6 @@ fun PaperSheet(
     reduceEffects: Boolean,
     modifier: Modifier = Modifier,
     lamp: Rgb = LampColor.fromWarmth(25),
-    fontFamily: FontFamily = CourierPrime,
     typing: Boolean = false,
     stampFrame: Float? = null
 ) {
@@ -128,7 +127,6 @@ fun PaperSheet(
             textColor = textColor,
             reduceMotion = reduceEffects,
             modifier = Modifier.fillMaxSize(),
-            fontFamily = fontFamily,
             stampFrame = stampFrame
         )
         Caret(
@@ -139,3 +137,4 @@ fun PaperSheet(
         )
     }
 }
+
