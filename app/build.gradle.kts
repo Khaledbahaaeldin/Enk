@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.paparazzi)
 }
 
 android {
@@ -59,4 +60,16 @@ dependencies {
 
 tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
     inputs.dir(layout.buildDirectory.dir("intermediates/merged_manifests/debug"))
+}
+
+tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {
+    doLast {
+        val paparazziDir = layout.buildDirectory.dir("intermediates/paparazzi").orNull?.asFile
+        paparazziDir?.walk()?.filter { it.name == "resources.json" }?.forEach { file ->
+            val content = file.readText()
+            if (content.contains("\"targetSdkVersion\": \"35\"")) {
+                file.writeText(content.replace("\"targetSdkVersion\": \"35\"", "\"targetSdkVersion\": \"34\""))
+            }
+        }
+    }
 }
