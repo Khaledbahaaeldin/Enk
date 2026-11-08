@@ -29,16 +29,16 @@ Every dependency is pinned to an exact stable version with no alpha, beta, or re
 |---|---|---|
 | **Android Gradle Plugin (AGP)** | `8.13.2` | AGP 9.5.1 was attempted with Gradle 9.6.0. In AGP 9.0+, Google removed `com.android.build.gradle.BaseExtension`. Paparazzi 1.3.5 (the latest stable Paparazzi release) requires `BaseExtension` during task setup and fails task creation (`Extension of type 'BaseExtension' does not exist`). Only Paparazzi 2.0 (currently alpha `2.0.0-alpha05.1`) supports AGP 9+, but the user rule strictly forbids alpha/beta/rc dependencies ("No alpha/beta/rc anywhere"). Therefore, AGP `8.13.2` (with Gradle `8.13`) was selected as the newest stable 8.x release that maintains full compatibility with the stable Paparazzi plugin. |
 | **Gradle Wrapper** | `8.13` | Recommended stable Gradle version paired with AGP 8.13.2. |
-| **Kotlin** | `2.1.20` | Latest stable Kotlin compiler release. |
-| **Compose Compiler Plugin** | `2.1.20` | Bundled with Kotlin 2.1.20 (`alias(libs.plugins.kotlin.compose)`). |
-| **Compose BOM** | `2026.09.00` | Latest current Compose BOM, bringing Compose UI runtime and foundations. |
+| **Kotlin** | `2.4.21` | Latest stable Kotlin; full clean build and tests pass. |
+| **Compose Compiler Plugin** | `2.4.21` | Bundled with Kotlin 2.4.21 (`alias(libs.plugins.kotlin.compose)`). |
+| **Compose BOM** | `2026.06.01` | Newest BOM passing AAR metadata under AGP 8.13.2 / compileSdk 35. 2026.08.00 and 2026.09.00 fail `checkReleaseAarMetadata` (need compileSdk 37 and AGP 9.1+). |
 | **Material 3** | `1.4.0` | Latest stable Material 3 release on Google Maven. Uses strictly stable APIs (no `LoadingIndicator`, no `MaterialShapes`). |
 | **compileSdk / targetSdk** | `35` | Android 15 (Vanilla Ice Cream). Paparazzi 1.3.5's layoutlib-14.0.11 supports Android SDKs up to API 35. Running Paparazzi against `compileSdk >= 36` causes `NoSuchElementException: Array contains no element matching the predicate at Renderer.kt:213` when looking up API levels in `Build.VERSION_CODES`. Therefore, `compileSdk` and `targetSdk` are pinned to `35`, the latest generally available stable Android SDK. |
-| **AndroidX Core KTX** | `1.15.0` | Latest stable release. |
+| **AndroidX Core KTX** | `1.16.0` | Newest passing AAR metadata with compileSdk 35. 1.17.0+ requires a higher compileSdk and AGP 9.1+. |
 | **AndroidX Lifecycle** | `2.11.0` | Latest stable release (`lifecycle-runtime-ktx`, `lifecycle-viewmodel-compose`). |
 | **AndroidX Activity Compose** | `1.13.0` | Latest stable release. |
 | **Paparazzi** | `1.3.5` | Latest stable Paparazzi release. |
-| **Robolectric** | `4.14.1` | Latest stable Robolectric release. |
+| **Robolectric** | `4.17` | Latest stable Robolectric release. |
 | **JUnit** | `4.13.2` | Stable standard JUnit 4 runner. |
 | **AndroidX JUnit** | `1.2.1` | Latest stable test extension. |
 | **Espresso Core** | `3.6.1` | Latest stable release. |
@@ -54,7 +54,7 @@ Every dependency is pinned to an exact stable version with no alpha, beta, or re
 | **Task 3** | Materials, shadows, grain, fonts, and screenshot harness (`:design`) | `4c27072` | PASS | 1 | 22 / 48 |
 | **Task 3A** | Shell theme system (`:design`) | `55897a2` | PASS | 1 | 23 / 71 |
 | **Audit Round 2** | Claude audit fixes (deviceConfig golden, grain, theme cross-fade, manifest) | `6c128fe` | PASS | 2 | 72 / 72 |
-| **Audit Round 3** | Modern toolchain (AGP 8.13.2, Kotlin 2.1.20, M3 1.4.0, Compose BOM 2026.09.00) | *Pending commit* | PASS | 3 | 75 / 75 |
+| **Audit Round 3** | Modern toolchain (AGP 8.13.2, Kotlin 2.4.21, M3 1.4.0, Compose BOM 2026.06.01) | *Pending commit* | PASS | 3 | 75 / 75 |
 
 ---
 
