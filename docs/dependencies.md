@@ -25,7 +25,7 @@
 - **Version Verification:**
   - Google Maven release metadata lists `2.8.5` as current stable.
   - Tested under AGP `8.13.2` and `compileSdk = 35`: passes `checkDebugAarMetadata` and `checkReleaseAarMetadata` cleanly with 0 issues.
-- **Role in Enk:** SQLite database abstraction, entity definitions, DAOs, schema generation, transaction management, and reactive Flow queries.
+- **Role in Enk:** SQLite database abstraction, entity definitions, DAOs, schema generation, transaction management, and reactive Flow queries in `:data`. Added as `testImplementation` to `:app` (`androidx.room:room-runtime:2.8.5`) to support in-memory Room database instantiation during Robolectric testing (`WriterViewModelTest`).
 
 ### 3. KSP (Kotlin Symbol Processing)
 - **Coordinate:** `com.google.devtools.ksp:2.3.13`
@@ -65,6 +65,15 @@
     - `lifecycle = 2.10.0` (`minCompileSdk = 35`, AGP `8.6.0`).
   - Verified: `lifecycle 2.10.0` contains `ViewModel`, `ViewModelStore`, and `viewModelScope` required by Task 14.
   - Verified: `:app:checkDebugAarMetadata` and `:app:checkReleaseAarMetadata` pass with 0 errors.
+
+### 6. Kotlinx Coroutines Test
+- **Coordinate:** `org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0`
+- **Scope:** `testImplementation` only in `:app`.
+- **License:** Apache License, Version 2.0
+- **Version Verification:**
+  - Matches the exact coroutines version `1.9.0` already present on the classpath via Room, Lifecycle, and DataStore.
+  - Verified: `:app:checkDebugAarMetadata` and `:app:checkReleaseAarMetadata` pass with 0 errors.
+- **Role in Enk:** Virtual time control (`runTest`, `advanceTimeBy`, `StandardTestDispatcher`) for `AutosaverTest` and `WriterViewModelTest`.
 
 ---
 
