@@ -58,10 +58,3 @@ dependencies {
 tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
     inputs.dir(layout.buildDirectory.dir("intermediates/merged_manifests/debug"))
 }
-
-tasks.matching { it.name.contains("AarMetadata") }.configureEach {
-    enabled = false
-}
-
-
-

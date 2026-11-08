@@ -45,6 +45,27 @@
   - Tested under AGP `8.13.2` and `compileSdk = 35`: passes `checkDebugAarMetadata` and `checkReleaseAarMetadata` cleanly with 0 issues.
 - **Role in Enk:** Asynchronous, transactional persistent preferences storage for app settings.
 
+### 5. AndroidX Core, Activity Compose & Lifecycle (AAR Metadata Enforced)
+- **Coordinates:**
+  - `androidx.core:core-ktx:1.16.0`
+  - `androidx.activity:activity-compose:1.10.1`
+  - `androidx.lifecycle:lifecycle-runtime-ktx:2.10.0`
+  - `androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0`
+- **Repository:** Google Maven (`dl.google.com/dl/android/maven2`)
+- **License:** Apache License, Version 2.0
+- **Enforcement & Compatibility:**
+  - `checkDebugAarMetadata` and `checkReleaseAarMetadata` were previously disabled in `:app` via `enabled = false` in `app/build.gradle.kts`. This workaround was removed in Step 0 of Batch 5.
+  - Under `compileSdk = 35` and AGP `8.13.2`:
+    - `androidx.activity:activity-compose:1.13.0` (and `1.12.x`, `1.11.x`) failed AAR checks because transitive dependencies (`androidx.activity:activity:1.11.0+`, `androidx.navigationevent:navigationevent-android:1.0.0+`) require `compileSdk >= 36`.
+    - `androidx.lifecycle:2.11.0` failed AAR checks because it specifies `minCompileSdk = 37` and `minAndroidGradlePluginVersion = 9.1.0`.
+    - `androidx.core:core-ktx:1.18.0` / `1.17.0` failed because `minCompileSdk = 36`.
+  - Pinned newest stable versions compatible with `compileSdk = 35` and AGP `8.13.2`:
+    - `core-ktx = 1.16.0` (`minCompileSdk = 35`, AGP `8.6.0`).
+    - `activity-compose = 1.10.1` (`minCompileSdk = 35`, AGP `1.0.0`).
+    - `lifecycle = 2.10.0` (`minCompileSdk = 35`, AGP `8.6.0`).
+  - Verified: `lifecycle 2.10.0` contains `ViewModel`, `ViewModelStore`, and `viewModelScope` required by Task 14.
+  - Verified: `:app:checkDebugAarMetadata` and `:app:checkReleaseAarMetadata` pass with 0 errors.
+
 ---
 
 ## Typography and Brand Fonts

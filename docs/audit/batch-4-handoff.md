@@ -30,7 +30,7 @@ The first handoff listed names that do not exist (`exportZip`, `Success(imported
 
 ## 3. DataStore
 
-`androidx.datastore:datastore-preferences:1.3.0`, Apache-2.0. The auditor checked Google Maven metadata on 2026-11-08: `1.3.0` is the newest stable (after `1.3.0-rc01`). The merged manifest has one permission, the androidx `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` (app-internal); no network or other permission. `checkDebugAarMetadata` and `checkReleaseAarMetadata` are part of `build` and pass. Recorded in `docs/dependencies.md` and `CREDITS.md`. The first handoff did not keep evidence of failed versions; none is recorded.
+`androidx.datastore:datastore-preferences:1.3.0`, Apache-2.0. The auditor checked Google Maven metadata on 2026-11-08: `1.3.0` is the newest stable (after `1.3.0-rc01`). The merged manifest has one permission, the androidx `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` (app-internal); no network or other permission. `checkDebugAarMetadata` and `checkReleaseAarMetadata` were previously disabled in :app via enabled = false in app/build.gradle.kts and are enforced from commit `build(app): enforce AAR metadata checks`. Recorded in `docs/dependencies.md` and `CREDITS.md`. The first handoff did not keep evidence of failed versions; none is recorded.
 
 ## 4. Edge cases decided
 
