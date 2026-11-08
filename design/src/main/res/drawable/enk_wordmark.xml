@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="30dp"
+    android:viewportWidth="4110"
+    android:viewportHeight="1724">
+
+    <group
+        android:name="enk_text"
+        android:scaleY="-1"
+        android:translateY="1520">
+        <group android:name="glyph_e" android:translateX="0">
+            <path
+                android:name="path_e"
+                android:fillColor="#FFF3EEE3"
+                android:pathData="M586 -24Q426 -24 307.5 46.5Q189 117 123.5 242.0Q58 367 58 527Q58 689 124.5 813.5Q191 938 308.0 1009.0Q425 1080 576 1080Q693 1080 788.0 1040.5Q883 1001 952.0 927.5Q1021 854 1058.5 754.0Q1096 654 1096 533V454H163V642H954L821 597Q821 677 792.0 735.0Q763 793 709.5 824.5Q656 856 582 856Q509 856 456.0 824.5Q403 793 374.0 735.0Q345 677 345 597V469Q345 387 374.5 325.5Q404 264 460.0 230.5Q516 197 595 197Q653 197 697.5 213.5Q742 230 772.5 260.5Q803 291 816 332H1085Q1066 227 996.0 147.0Q926 67 820.0 21.5Q714 -24 586 -24Z" />
+        </group>
+        <group android:name="glyph_n" android:translateX="1058">
+            <path
+                android:name="path_n"
+                android:fillColor="#FFF3EEE3"
+                android:pathData="M399 587V0H104V1056H394V781H344Q394 921 487.0 999.5Q580 1078 724 1078Q837 1078 920.0 1029.5Q1003 981 1048.5 888.0Q1094 795 1094 661V0H800V607Q800 714 749.5 769.0Q699 824 606 824Q545 824 498.0 799.0Q451 774 425.0 721.5Q399 669 399 587Z" />
+        </group>
+        <group android:name="glyph_k" android:translateX="2165">
+            <path
+                android:name="path_k"
+                android:fillColor="#FFF3EEE3"
+                android:pathData="M371 304V652H402L772 1056H1118L639 525H571ZM104 0V1490H399V0ZM795 0 461 460 656 665 1140 0Z" />
+        </group>
+    </group>
+
+    <path
+        android:name="caret"
+        android:fillColor="#FF5A1F"
+        android:pathData="M3495,1530 h534 a81,81 0 0,1 81,81 v12 a81,81 0 0,1 -81,81 h-534 a81,81 0 0,1 -81,-81 v-12 a81,81 0 0,1 81,-81 z" />
+</vector>

@@ -16,6 +16,15 @@
 
 ---
 
+## Typography and Brand Fonts
+
+### Inter (Wordmark Outlines)
+- **Author:** Rasmus Andersson (https://github.com/rsms/inter)
+- **License:** SIL Open Font License, Version 1.1 (OFL-1.1)
+- **Role in Enk:** The wordmark "enk" is outlined directly from Inter Bold with tracking -4.5% and paired with the brand's orange caret bar. The full license text is preserved at `app/src/main/assets/licenses/OFL-Inter.txt`.
+
+---
+
 ## Considered, Not Used
 
 ### Haze (`dev.chrisbanes.haze:haze`)
