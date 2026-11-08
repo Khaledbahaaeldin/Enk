@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "178efa7b6be311b28d35830849a90e4e",
+    "identityHash": "8d1209927a17e44b15d48095747a1e48",
     "entities": [
       {
         "tableName": "DividerEntity",
@@ -119,7 +119,7 @@
       },
       {
         "tableName": "PageFts",
-        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`noteId` TEXT NOT NULL, `pageIndex` INTEGER NOT NULL, `text` TEXT NOT NULL)",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`noteId` TEXT NOT NULL, `pageIndex` INTEGER NOT NULL, `text` TEXT NOT NULL, tokenize=unicode61, notindexed=`noteId`, notindexed=`pageIndex`)",
         "fields": [
           {
             "fieldPath": "noteId",
@@ -146,12 +146,15 @@
         },
         "ftsVersion": "FTS4",
         "ftsOptions": {
-          "tokenizer": "simple",
+          "tokenizer": "unicode61",
           "tokenizerArgs": [],
           "contentTable": "",
           "languageIdColumnName": "",
           "matchInfo": "FTS4",
-          "notIndexedColumns": [],
+          "notIndexedColumns": [
+            "noteId",
+            "pageIndex"
+          ],
           "prefixSizes": [],
           "preferredOrder": "ASC"
         },
@@ -160,7 +163,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '178efa7b6be311b28d35830849a90e4e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8d1209927a17e44b15d48095747a1e48')"
     ]
   }
 }

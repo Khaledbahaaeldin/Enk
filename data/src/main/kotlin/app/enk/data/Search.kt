@@ -1,41 +1,44 @@
 package app.enk.data
 
-data class SearchMatch(
-    val noteId: String,
-    val pageIndex: Int,
-    val snippet: String,
-    val matchRanges: List<IntRange>
-)
+data class SearchHit(val noteId: String, val pageIndex: Int, val snippet: String)
 
-typealias SearchHit = SearchMatch
-typealias SearchRepository = SearchEngine
+/**
+ * Turns user input into a safe FTS4 query: every character that is not a letter, digit or
+ * whitespace becomes a separator, so no operator, quote or column filter survives. FTS4 operators
+ * are uppercase only and the words are lowercased, so ordinary words such as "not" stay searchable.
+ * The last word is a prefix match. Returns null when nothing searchable remains.
+ */
+fun sanitizeQuery(raw: String): String? {
+    val folded = StringBuilder(raw.length)
+    raw.codePoints().forEach { cp ->
+        folded.appendCodePoint(if (Character.isLetterOrDigit(cp)) Character.toLowerCase(cp) else ' '.code)
+    }
+    val words = folded.split(' ').filter { it.isNotEmpty() }
+    if (words.isEmpty()) return null
+    return words.dropLast(1).plus(words.last() + "*").joinToString(" ")
+}
 
-fun sanitizeQuery(raw: String): String? = SearchEngine.sanitizeQuery(raw).ifBlank { null }
+class SearchRepository(private val db: EnkDatabase) {
 
-class SearchEngine(private val db: EnkDatabase) {
-
-    suspend fun search(query: String, limit: Int = 50): List<SearchMatch> {
-        val sanitized = sanitizeQuery(query)
-        if (sanitized.isBlank()) return emptyList()
+    suspend fun search(query: String, limit: Int = 50): List<SearchHit> {
+        val sanitized = sanitizeQuery(query) ?: return emptyList()
 
         val results = db.pageFtsDao().search(sanitized, limit)
         if (results.isEmpty()) return emptyList()
 
-        val queryTerms = sanitized.split(" ")
-            .map { it.removeSuffix("*").lowercase() }
-            .filter { it.isNotBlank() }
+        val queryTerms = sanitized.split(" ").map { it.removeSuffix("*") }
 
         return results.map { row ->
-            createSearchMatch(row.noteId, row.pageIndex, row.text, queryTerms)
+            createHit(row.noteId, row.pageIndex, row.text, queryTerms)
         }
     }
 
-    private fun createSearchMatch(
+    private fun createHit(
         noteId: String,
         pageIndex: Int,
         text: String,
         queryTerms: List<String>
-    ): SearchMatch {
+    ): SearchHit {
         val lowerText = text.lowercase()
         var firstMatchStart = -1
         for (term in queryTerms) {
@@ -48,7 +51,7 @@ class SearchEngine(private val db: EnkDatabase) {
         val snippet: String
 
         if (firstMatchStart == -1) {
-            snippet = truncateSafely(text, 60)
+            snippet = text.truncateSafely(60)
         } else {
             val lineStart = text.lastIndexOf('\n', firstMatchStart).let { if (it == -1) 0 else it + 1 }
             val lineEnd = text.indexOf('\n', firstMatchStart).let { if (it == -1) text.length else it }
@@ -65,28 +68,7 @@ class SearchEngine(private val db: EnkDatabase) {
             }
         }
 
-        val snippetLower = snippet.lowercase()
-        val matchRanges = mutableListOf<IntRange>()
-        for (term in queryTerms) {
-            var searchFrom = 0
-            while (searchFrom < snippetLower.length) {
-                val found = snippetLower.indexOf(term, searchFrom)
-                if (found == -1) break
-                matchRanges.add(found until (found + term.length))
-                searchFrom = found + term.length
-            }
-        }
-
-        return SearchMatch(noteId, pageIndex, snippet, matchRanges.distinct().sortedBy { it.first })
-    }
-
-    private fun truncateSafely(s: String, maxChars: Int): String {
-        if (s.length <= maxChars) return s
-        var cut = maxChars
-        if (cut in 1 until s.length && Character.isHighSurrogate(s[cut - 1]) && Character.isLowSurrogate(s[cut])) {
-            cut--
-        }
-        return s.substring(0, cut)
+        return SearchHit(noteId, pageIndex, snippet)
     }
 
     private fun adjustSurrogateBoundary(s: String, idx: Int): Int {
@@ -96,28 +78,4 @@ class SearchEngine(private val db: EnkDatabase) {
         }
         return idx
     }
-
-    companion object {
-        fun sanitizeQuery(raw: String): String {
-            if (raw.isBlank()) return ""
-            val reserved = setOf("and", "or", "not", "near")
-            val cleaned = StringBuilder()
-            for (ch in raw) {
-                if (ch.isLetterOrDigit() || ch.isWhitespace()) {
-                    cleaned.append(ch)
-                } else {
-                    cleaned.append(' ')
-                }
-            }
-            val tokens = cleaned.toString()
-                .split(Regex("\\s+"))
-                .map { it.trim().lowercase() }
-                .filter { it.isNotBlank() && it !in reserved }
-
-            if (tokens.isEmpty()) return ""
-            return tokens.joinToString(" ") { "$it*" }
-        }
-    }
-
-    fun sanitizeQuery(raw: String): String = Companion.sanitizeQuery(raw)
 }

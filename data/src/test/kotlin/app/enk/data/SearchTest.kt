@@ -21,7 +21,7 @@ class SearchTest {
     private lateinit var db: EnkDatabase
     private lateinit var clock: TestClock
     private lateinit var repo: NoteRepository
-    private lateinit var searchEngine: SearchEngine
+    private lateinit var searchEngine: SearchRepository
 
     @Before
     fun setUp() {
@@ -31,7 +31,7 @@ class SearchTest {
             .build()
         clock = TestClock(time = 1_000_000L)
         repo = NoteRepository(db, clock)
-        searchEngine = SearchEngine(db)
+        searchEngine = SearchRepository(db)
     }
 
     @After
@@ -56,7 +56,6 @@ class SearchTest {
         assertEquals(note.id, matches[0].noteId)
         assertEquals(0, matches[0].pageIndex)
         assertTrue(matches[0].snippet.contains("hello"))
-        assertEquals(listOf(0..4), matches[0].matchRanges)
     }
 
     @Test
@@ -107,18 +106,14 @@ class SearchTest {
 
     @Test
     fun sanitizeQueryStripsOperators() {
-        assertEquals("a* b*", searchEngine.sanitizeQuery("\"a\" OR b*"))
-        assertEquals("", searchEngine.sanitizeQuery("NEAR("))
-        assertEquals("term*", searchEngine.sanitizeQuery("-term"))
-        assertEquals("", searchEngine.sanitizeQuery("*"))
-        assertEquals("", searchEngine.sanitizeQuery("!@#$%^&*()"))
-        assertEquals("unmatched* quote*", searchEngine.sanitizeQuery("unmatched \" quote"))
-        assertEquals("", searchEngine.sanitizeQuery("    "))
-
-        // Top-level sanitizeQuery helper
-        assertEquals("a* b*", sanitizeQuery("\"a\" OR b*"))
-        assertNull(sanitizeQuery("   "))
-        assertNull(sanitizeQuery("!@#$"))
+        assertEquals("a or b*", sanitizeQuery("\"a\" OR b*"))
+        assertEquals("near*", sanitizeQuery("NEAR("))
+        assertEquals("term*", sanitizeQuery("-term"))
+        assertNull(sanitizeQuery("*"))
+        assertNull(sanitizeQuery("!@#$%^&*()"))
+        assertEquals("unmatched quote*", sanitizeQuery("unmatched \" quote"))
+        assertNull(sanitizeQuery("    "))
+        assertNull(sanitizeQuery(""))
     }
 
     @Test
@@ -194,7 +189,7 @@ class SearchTest {
 
         repo.trash(note.id)
         clock.time += 31 * 86_400_000L
-        repo.purgeExpired(days = 30)
+        repo.purgeExpired()
 
         // Note is purged from repository
         assertTrue(searchEngine.search("discardableSecret").isEmpty())
@@ -204,22 +199,58 @@ class SearchTest {
 
     @Test
     fun sanitizeQueryComprehensiveInjection() {
-        assertEquals("test*", searchEngine.sanitizeQuery("\"\"\"test"))
-        assertEquals("", searchEngine.sanitizeQuery("!@#$%^&*()_+={}:;\"'<>?,./~"))
-        assertEquals("apple* banana*", searchEngine.sanitizeQuery("\t\n  apple \t\r\n banana  \n"))
-        assertEquals("", searchEngine.sanitizeQuery("AND OR NOT NEAR and or not near"))
-        assertEquals("hello* world*", searchEngine.sanitizeQuery("hello AND world"))
-
-        // Top-level sanitizeQuery helper
         assertEquals("test*", sanitizeQuery("\"\"\"test"))
         assertNull(sanitizeQuery("!@#$%^&*()_+={}:;\"'<>?,./~"))
-        assertEquals("apple* banana*", sanitizeQuery("\t\n  apple \t\r\n banana  \n"))
-        assertNull(sanitizeQuery("AND OR NOT NEAR and or not near"))
-        assertEquals("hello* world*", sanitizeQuery("hello AND world"))
+        assertEquals("apple banana*", sanitizeQuery("\t\n  apple \t\r\n banana  \n"))
+        assertEquals("hello and world*", sanitizeQuery("hello AND world"))
+        assertEquals("text a b*", sanitizeQuery("text:a b"))
     }
 
     @Test
-    fun searchMatchSnippetAndRangesAccuracy() = runBlocking {
+    fun reservedWordsAreOrdinaryWords() = runBlocking {
+        val note = repo.createNote(dividerId = null)
+        repo.savePages(note.id, listOf(StruckPage("to be or not to be")))
+        assertEquals(1, searchEngine.search("not").size)
+        assertEquals(1, searchEngine.search("or not").size)
+        assertEquals(1, searchEngine.search("be or").size)
+    }
+
+    @Test
+    fun keysAreNotIndexed() = runBlocking {
+        val note = repo.createNote(dividerId = null)
+        repo.savePages(note.id, listOf(StruckPage("hello world")))
+        // "0" is the page index; a UUID fragment is in the note id. Neither is page text.
+        assertTrue(searchEngine.search("0").isEmpty())
+        val fragment = note.id.substringBefore('-').take(2)
+        assertTrue(searchEngine.search(fragment).isEmpty())
+    }
+
+    @Test
+    fun onlyLastWordIsPrefix() = runBlocking {
+        val note = repo.createNote(dividerId = null)
+        repo.savePages(note.id, listOf(StruckPage("rainy windy day")))
+        assertTrue("first word is whole-word", searchEngine.search("rai wind").isEmpty())
+        assertEquals(1, searchEngine.search("rainy wind").size)
+    }
+
+    @Test
+    fun accentsAndCaseAreFolded() = runBlocking {
+        val note = repo.createNote(dividerId = null)
+        repo.savePages(note.id, listOf(StruckPage("Caf\u00e9 \u00c9mile")))
+        assertEquals(1, searchEngine.search("emile").size)
+        assertEquals(1, searchEngine.search("\u00e9mile").size)
+        assertEquals(1, searchEngine.search("CAFE").size)
+    }
+
+    @Test
+    fun sanitizeKeepsLettersOutsideTheBasicPlane() {
+        // Deseret capital letter U+10400 lowercases to U+10428; both are surrogate pairs in UTF-16.
+        assertEquals("\uD801\uDC28*", sanitizeQuery("\uD801\uDC00"))
+        assertNull(sanitizeQuery("\uD83D\uDE00")) // an emoji is not a letter
+    }
+
+    @Test
+    fun snippetIsTheMatchingLine() = runBlocking {
         val note = repo.createNote(dividerId = null)
         val text = "The small cat chases a tiny cat down the street"
         repo.savePages(note.id, listOf(StruckPage(text)))
@@ -231,13 +262,6 @@ class SearchTest {
 
         // On line <= 60 chars, snippet is exact line
         assertEquals(text, hit.snippet)
-
-        // Both occurrences of 'cat' captured in matchRanges
-        assertEquals(2, hit.matchRanges.size)
-        for (range in hit.matchRanges) {
-            val matchedSubstring = hit.snippet.substring(range.first, range.last + 1)
-            assertEquals("cat", matchedSubstring.lowercase())
-        }
     }
 
     @Test

@@ -1,5 +1,9 @@
 package app.enk.text
 
+/**
+ * Splits text into pages. A page never ends inside a surrogate pair, so with `pageSize == 1` a pair
+ * becomes one two-character page: the only case where a page exceeds `pageSize`.
+ */
 object Paginator {
     const val PAGE_SIZE = 3000
 

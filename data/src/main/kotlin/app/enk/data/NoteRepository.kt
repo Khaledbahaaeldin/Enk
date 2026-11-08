@@ -16,7 +16,7 @@ data class Note(
 
 data class NoteSummary(
     val id: String,
-    val firstLines: Pair<String, String>,
+    val firstLines: String, // first two non-empty lines of page 1, each cut at 60 characters, joined by newline
     val pageCount: Int,
     val modifiedAt: Long
 )
@@ -28,9 +28,9 @@ data class TrashedSummary(
     val daysRemaining: Int
 )
 
-open class NoteRepository(
-    protected val db: EnkDatabase,
-    protected val clock: Clock
+class NoteRepository(
+    private val db: EnkDatabase,
+    private val clock: Clock
 ) {
 
     suspend fun createNote(dividerId: Long?): Note {
@@ -103,7 +103,6 @@ open class NoteRepository(
                 }
             }
             db.noteDao().updateModifiedAt(noteId, now)
-            onPagesUpdated(noteId, pages)
         }
     }
 
@@ -136,7 +135,7 @@ open class NoteRepository(
     suspend fun reorderNotes(dividerId: Long?, orderedIds: List<String>) {
         db.withTransaction {
             orderedIds.forEachIndexed { index, id ->
-                db.noteDao().setPosition(id, index)
+                db.noteDao().setDividerAndPosition(id, dividerId, index)
             }
         }
     }
@@ -152,7 +151,6 @@ open class NoteRepository(
     suspend fun trash(noteId: String) {
         db.withTransaction {
             db.noteDao().trash(noteId, clock.now())
-            onNoteTrashed(noteId)
         }
     }
 
@@ -162,52 +160,42 @@ open class NoteRepository(
             db.noteDao().restore(noteId)
             db.noteDao().shiftPositions(note.dividerId)
             db.noteDao().setPosition(noteId, 0)
-            onNoteRestored(noteId)
         }
     }
 
-    suspend fun purgeExpired(days: Int = TRASH_DAYS): Int {
+    suspend fun purgeExpired(): Int {
         return db.withTransaction {
-            val cutoff = clock.now() - days * 86_400_000L
+            val cutoff = clock.now() - TRASH_DAYS * MILLIS_PER_DAY
             val expired = db.noteDao().findTrashedBefore(cutoff)
             for (n in expired) {
                 db.pageDao().deleteForNote(n.id)
                 db.pageFtsDao().deleteForNote(n.id)
-                onNotePurged(n.id)
             }
             db.noteDao().purgeTrashedBefore(cutoff)
         }
     }
 
-    fun observeNotes(dividerId: Long?): Flow<List<NoteSummary>> {
+    fun observeBox(dividerId: Long?): Flow<List<NoteSummary>> {
         return db.noteDao().observeByDivider(dividerId).map { notes ->
             notes.map { note ->
-                val pages = db.pageDao().forNote(note.id)
-                val firstPageText = pages.firstOrNull { it.pageIndex == 0 }?.text ?: ""
-                val firstLines = extractFirstLines(firstPageText)
-                val pageCount = maxOf(1, pages.size)
                 NoteSummary(
                     id = note.id,
-                    firstLines = firstLines,
-                    pageCount = pageCount,
+                    firstLines = extractFirstLines(db.pageDao().firstPageText(note.id) ?: ""),
+                    pageCount = maxOf(1, db.pageDao().count(note.id)),
                     modifiedAt = note.modifiedAt
                 )
             }
         }
     }
 
-    fun observeBox(dividerId: Long?): Flow<List<NoteSummary>> = observeNotes(dividerId)
-
     fun observeDividers(): Flow<List<DividerEntity>> = db.dividerDao().observeAll()
 
     fun observeTrashed(): Flow<List<TrashedSummary>> {
         return db.noteDao().observeTrashed().map { trashed ->
             trashed.map { note ->
-                val pages = db.pageDao().forNote(note.id)
-                val firstPageText = pages.firstOrNull { it.pageIndex == 0 }?.text ?: ""
-                val title = extractTitle(firstPageText)
+                val title = extractTitle(db.pageDao().firstPageText(note.id) ?: "")
                 val trashedAt = note.trashedAt ?: clock.now()
-                val daysRemaining = maxOf(0, TRASH_DAYS - ((clock.now() - trashedAt) / 86_400_000L).toInt())
+                val daysRemaining = maxOf(0, TRASH_DAYS - ((clock.now() - trashedAt) / MILLIS_PER_DAY).toInt())
                 TrashedSummary(
                     id = note.id,
                     title = title,
@@ -220,41 +208,23 @@ open class NoteRepository(
 
     suspend fun mostRecent(): Note? = db.noteDao().recent()?.let { load(it.id) }
 
-    // Search hooks for Task 8:
-    protected open suspend fun onPagesUpdated(noteId: String, pages: List<StruckPage>) {}
-    protected open suspend fun onNoteTrashed(noteId: String) {}
-    protected open suspend fun onNoteRestored(noteId: String) {}
-    protected open suspend fun onNotePurged(noteId: String) {}
-
     companion object {
         const val TRASH_DAYS = 30
+        private const val MAX_LINE = 60
+        private const val MILLIS_PER_DAY = 86_400_000L
 
-        private fun truncateLine(line: String, maxChars: Int = 60): String {
-            if (line.length <= maxChars) return line
-            var cut = maxChars
-            if (cut in 1 until line.length &&
-                Character.isHighSurrogate(line[cut - 1]) &&
-                Character.isLowSurrogate(line[cut])
-            ) {
-                cut--
-            }
-            return line.substring(0, cut)
-        }
-
-        private fun extractFirstLines(text: String): Pair<String, String> {
+        private fun extractFirstLines(text: String): String {
             val nonBlank = text.split('\n')
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
-            val first = nonBlank.getOrNull(0)?.let { truncateLine(it) } ?: ""
-            val second = nonBlank.getOrNull(1)?.let { truncateLine(it) } ?: ""
-            return Pair(first, second)
+            return nonBlank.take(2).joinToString("\n") { it.truncateSafely(MAX_LINE) }
         }
 
         private fun extractTitle(text: String): String {
             val firstNonEmpty = text.split('\n')
                 .map { it.trim() }
                 .firstOrNull { it.isNotEmpty() }
-            return firstNonEmpty?.let { truncateLine(it) } ?: "Untitled"
+            return firstNonEmpty?.let { it.truncateSafely(MAX_LINE) } ?: "Untitled"
         }
     }
 }

@@ -100,6 +100,12 @@ interface PageDao {
     @Query("SELECT * FROM PageEntity WHERE noteId = :noteId ORDER BY pageIndex ASC")
     suspend fun forNote(noteId: String): List<PageEntity>
 
+    @Query("SELECT text FROM PageEntity WHERE noteId = :noteId AND pageIndex = 0")
+    suspend fun firstPageText(noteId: String): String?
+
+    @Query("SELECT COUNT(*) FROM PageEntity WHERE noteId = :noteId")
+    suspend fun count(noteId: String): Int
+
     @Query("DELETE FROM PageEntity WHERE noteId = :noteId AND pageIndex >= :pageIndex")
     suspend fun deleteFrom(noteId: String, pageIndex: Int)
 
