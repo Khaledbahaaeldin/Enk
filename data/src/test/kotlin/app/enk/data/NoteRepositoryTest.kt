@@ -179,4 +179,164 @@ class NoteRepositoryTest {
         assertEquals(0, restoredActive[0].id.let { db.noteDao().get(it)?.position })
         assertEquals(1, restoredActive[1].id.let { db.noteDao().get(it)?.position })
     }
+
+    @Test
+    fun createNotePartitionIsolation() = runBlocking {
+        val div1 = db.dividerDao().insert(DividerEntity(name = "Work", position = 0))
+        val div2 = db.dividerDao().insert(DividerEntity(name = "Personal", position = 1))
+
+        // Create 2 notes in div1
+        val w1 = repo.createNote(div1)
+        val w2 = repo.createNote(div1) // w2 pos 0, w1 pos 1
+
+        // Create 2 notes in unfiled
+        val u1 = repo.createNote(null)
+        val u2 = repo.createNote(null) // u2 pos 0, u1 pos 1
+
+        // Create 1 note in div2
+        val p1 = repo.createNote(div2) // p1 pos 0
+
+        // Verify div1 positions
+        val div1Notes = db.noteDao().observeByDivider(div1).first()
+        assertEquals(listOf(w2.id, w1.id), div1Notes.map { it.id })
+        assertEquals(listOf(0, 1), div1Notes.map { it.position })
+
+        // Verify unfiled positions
+        val unfiledNotes = db.noteDao().observeByDivider(null).first()
+        assertEquals(listOf(u2.id, u1.id), unfiledNotes.map { it.id })
+        assertEquals(listOf(0, 1), unfiledNotes.map { it.position })
+
+        // Verify div2 positions
+        val div2Notes = db.noteDao().observeByDivider(div2).first()
+        assertEquals(listOf(p1.id), div2Notes.map { it.id })
+        assertEquals(listOf(0), div2Notes.map { it.position })
+    }
+
+    @Test
+    fun purgeExpiredMultipleNotesAndPagesDeleted() = runBlocking {
+        clock.time = 0L
+        val noteA = repo.createNote(null)
+        repo.savePages(noteA.id, listOf(StruckPage("Note A Page 0"), StruckPage("Note A Page 1")))
+
+        val noteB = repo.createNote(null)
+        repo.savePages(noteB.id, listOf(StruckPage("Note B Page 0")))
+
+        val noteC = repo.createNote(null)
+        repo.savePages(noteC.id, listOf(StruckPage("Note C Page 0")))
+
+        // Trash noteA and noteB at day 0
+        repo.trash(noteA.id)
+        repo.trash(noteB.id)
+
+        // Advance 2 days, then trash noteC
+        clock.time = 2 * 86_400_000L
+        repo.trash(noteC.id)
+
+        // Advance to 30.5 days from start (noteA, noteB are 30.5 days old; noteC is 28.5 days old)
+        clock.time = (30.5 * 86_400_000L).toLong()
+        val purgedCount = repo.purgeExpired(days = 30)
+        assertEquals(2, purgedCount)
+
+        assertNull("noteA must be purged", db.noteDao().get(noteA.id))
+        assertTrue("noteA pages must be deleted", db.pageDao().forNote(noteA.id).isEmpty())
+
+        assertNull("noteB must be purged", db.noteDao().get(noteB.id))
+        assertTrue("noteB pages must be deleted", db.pageDao().forNote(noteB.id).isEmpty())
+
+        assertNotNull("noteC must still exist (only 28.5 days old)", db.noteDao().get(noteC.id))
+        assertEquals(1, db.pageDao().forNote(noteC.id).size)
+    }
+
+    @Test
+    fun firstLinesVariations() = runBlocking {
+        val noteEmpty = repo.createNote(null)
+        repo.savePages(noteEmpty.id, listOf(StruckPage("")))
+        val summaryEmpty = repo.observeNotes(null).first().first { it.id == noteEmpty.id }
+        assertEquals(Pair("", ""), summaryEmpty.firstLines)
+
+        val noteOneLine = repo.createNote(null)
+        repo.savePages(noteOneLine.id, listOf(StruckPage("Single line only")))
+        val summaryOne = repo.observeNotes(null).first().first { it.id == noteOneLine.id }
+        assertEquals(Pair("Single line only", ""), summaryOne.firstLines)
+
+        val noteBlanks = repo.createNote(null)
+        repo.savePages(noteBlanks.id, listOf(StruckPage("\n\n   \nFirst Line\n\n   \nSecond Line\n\nThird Line")))
+        val summaryBlanks = repo.observeNotes(null).first().first { it.id == noteBlanks.id }
+        assertEquals(Pair("First Line", "Second Line"), summaryBlanks.firstLines)
+
+        val noteLong = repo.createNote(null)
+        val l1 = "A".repeat(80)
+        val l2 = "B".repeat(75)
+        repo.savePages(noteLong.id, listOf(StruckPage("$l1\n$l2")))
+        val summaryLong = repo.observeNotes(null).first().first { it.id == noteLong.id }
+        assertEquals(Pair("A".repeat(60), "B".repeat(60)), summaryLong.firstLines)
+    }
+
+    @Test
+    fun observeTrashedDaysRemainingAndTitle() = runBlocking {
+        clock.time = 1_000_000L
+        val note1 = repo.createNote(null)
+        repo.savePages(note1.id, listOf(StruckPage("Trashed Note Title\nSubtext")))
+        repo.trash(note1.id)
+
+        // 0 days elapsed -> 30 days remaining
+        val trashed0 = repo.observeTrashed().first()
+        assertEquals(1, trashed0.size)
+        assertEquals("Trashed Note Title", trashed0[0].title)
+        assertEquals(30, trashed0[0].daysRemaining)
+
+        // Advance 29.5 days -> 1 day remaining
+        clock.time = 1_000_000L + (29.5 * 86_400_000L).toLong()
+        val trashed29 = repo.observeTrashed().first()
+        assertEquals(1, trashed29[0].daysRemaining)
+
+        // Advance past 30 days -> 0 days remaining (clamped to 0)
+        clock.time = 1_000_000L + 35 * 86_400_000L
+        val trashed35 = repo.observeTrashed().first()
+        assertEquals(0, trashed35[0].daysRemaining)
+
+        // Blank text note displays "Untitled"
+        val noteBlank = repo.createNote(null)
+        repo.savePages(noteBlank.id, listOf(StruckPage("   \n   \n")))
+        repo.trash(noteBlank.id)
+        val trashedBlank = repo.observeTrashed().first().first { it.id == noteBlank.id }
+        assertEquals("Untitled", trashedBlank.title)
+    }
+
+    @Test
+    fun reorderEmptyAndSingleList() = runBlocking {
+        repo.reorderNotes(null, emptyList())
+        repo.reorderDividers(emptyList())
+
+        val note = repo.createNote(null)
+        repo.reorderNotes(null, listOf(note.id))
+        assertEquals(0, db.noteDao().get(note.id)?.position)
+
+        val div = db.dividerDao().insert(DividerEntity(name = "Single", position = 5))
+        repo.reorderDividers(listOf(div))
+        assertEquals(0, db.dividerDao().all().first { it.id == div }.position)
+    }
+
+    @Test
+    fun savePagesEmptyListCreatesEmptyPage() = runBlocking {
+        val note = repo.createNote(null)
+        repo.savePages(note.id, emptyList())
+
+        val loaded = repo.load(note.id)
+        assertNotNull(loaded)
+        assertEquals(1, loaded?.pages?.size)
+        assertEquals("", loaded?.pages?.get(0)?.text)
+        assertTrue(loaded?.pages?.get(0)?.struck?.isEmpty() == true)
+
+        val pageEntities = db.pageDao().forNote(note.id)
+        assertEquals(1, pageEntities.size)
+        assertEquals(0, pageEntities[0].pageIndex)
+        assertEquals("", pageEntities[0].text)
+    }
+
+    @Test
+    fun loadNonExistentReturnsNull() = runBlocking {
+        val result = repo.load("non-existent-uuid")
+        assertNull(result)
+    }
 }
