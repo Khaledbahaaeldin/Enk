@@ -1,6 +1,6 @@
 # Third-Party Dependencies and Provenance
 
-## Verified Libraries for Batch 2
+## Verified Libraries for Batch 2 & Batch 3
 
 ### 1. Backdrop
 - **Coordinate:** `io.github.kyant0:backdrop:1.0.4`
@@ -14,6 +14,27 @@
 - **Glass Implementation Role:**
   - **API 33+ (Refraction):** Backdrop lens/refraction on top of its blur effect.
   - **API 31-32 (Blur):** Backdrop's blur effect on the captured backdrop layer without refraction.
+
+### 2. AndroidX Room
+- **Coordinates:**
+  - `androidx.room:room-runtime:2.8.5`
+  - `androidx.room:room-ktx:2.8.5`
+  - `androidx.room:room-compiler:2.8.5`
+- **Repository:** Google Maven (`dl.google.com/dl/android/maven2`)
+- **License:** Apache License, Version 2.0
+- **Version Verification:**
+  - Google Maven release metadata lists `2.8.5` as current stable.
+  - Tested under AGP `8.13.2` and `compileSdk = 35`: passes `checkDebugAarMetadata` and `checkReleaseAarMetadata` cleanly with 0 issues.
+- **Role in Enk:** SQLite database abstraction, entity definitions, DAOs, schema generation, transaction management, and reactive Flow queries.
+
+### 3. KSP (Kotlin Symbol Processing)
+- **Coordinate:** `com.google.devtools.ksp:2.3.13`
+- **Repository:** Maven Central (`repo1.maven.org/maven2`)
+- **License:** Apache License, Version 2.0
+- **Version Verification:**
+  - Maven Central release metadata lists `2.3.13` as the matching KSP 2 plugin release compatible with Kotlin 2.4.x toolchains.
+  - Passes Gradle configuration and compilation cleanly.
+- **Role in Enk:** Code generation for Room compiler without KAPT overhead.
 
 ---
 

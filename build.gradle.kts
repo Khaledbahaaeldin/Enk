@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.paparazzi) apply false
+    alias(libs.plugins.ksp) apply false
 }
 
 // Android modules target Java 17 bytecode. The build itself runs on JDK 21, which the Backdrop
