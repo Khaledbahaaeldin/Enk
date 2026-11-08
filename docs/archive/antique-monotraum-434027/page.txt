@@ -1,0 +1,8 @@
+source_url: https://freesound.org/people/monotraum/sounds/434027/
+title: old typewriter.wav
+author: monotraum
+license: CC0
+license_url: http://creativecommons.org/publicdomain/zero/1.0/
+retrieved: 2026-11-08
+original_file: 434027__monotraum__old-typewriter.wav
+note: license read from the source page on the retrieval date by the project auditor; the cutter must re-confirm it against the live page.

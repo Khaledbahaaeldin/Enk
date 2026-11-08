@@ -1,0 +1,8 @@
+source_url: https://freesound.org/people/knufds/sounds/345955/
+title: Typewriter bell & carriage reset
+author: knufds
+license: CC0
+license_url: http://creativecommons.org/publicdomain/zero/1.0/
+retrieved: 2026-11-08
+original_file: 345955__knufds__typewriter-bell-carriage-reset.wav
+note: license read from the source page on the retrieval date by the project auditor; the cutter must re-confirm it against the live page.

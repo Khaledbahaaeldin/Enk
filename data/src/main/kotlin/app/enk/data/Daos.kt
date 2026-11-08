@@ -90,6 +90,12 @@ interface NoteDao {
 
     @Query("SELECT * FROM NoteEntity WHERE trashedAt IS NULL ORDER BY modifiedAt DESC LIMIT 1")
     suspend fun recent(): NoteEntity?
+
+    @Query("SELECT * FROM NoteEntity WHERE trashedAt IS NULL ORDER BY position ASC")
+    suspend fun allActive(): List<NoteEntity>
+
+    @Query("DELETE FROM NoteEntity WHERE id = :id")
+    suspend fun delete(id: String)
 }
 
 @Dao

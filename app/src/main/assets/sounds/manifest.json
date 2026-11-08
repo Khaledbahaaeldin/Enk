@@ -1,0 +1,184 @@
+{
+  "sets": [
+    {
+      "id": "classic",
+      "name": "Classic",
+      "keys": [
+        {
+          "file": "sounds/classic/key_01.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/classic/key_02.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/classic/key_03.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/classic/key_04.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/classic/key_05.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/classic/key_06.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/classic/key_07.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/classic/key_08.ogg",
+          "gain": 1.0
+        }
+      ],
+      "space": {
+        "file": "sounds/classic/space.ogg",
+        "gain": 1.0
+      },
+      "enter": {
+        "file": "sounds/classic/enter.ogg",
+        "gain": 1.0
+      },
+      "backspace": {
+        "file": "sounds/classic/backspace.ogg",
+        "gain": 1.0
+      },
+      "bell": {
+        "file": "sounds/classic/bell.ogg",
+        "gain": 1.0
+      }
+    },
+    {
+      "id": "antique",
+      "name": "Antique",
+      "keys": [
+        {
+          "file": "sounds/antique/key_01.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/antique/key_02.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/antique/key_03.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/antique/key_04.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/antique/key_05.ogg",
+          "gain": 1.0
+        }
+      ],
+      "space": {
+        "file": "sounds/antique/space.ogg",
+        "gain": 1.0
+      },
+      "enter": {
+        "file": "sounds/antique/enter.ogg",
+        "gain": 1.0
+      },
+      "backspace": {
+        "file": "sounds/antique/backspace.ogg",
+        "gain": 1.0
+      },
+      "bell": {
+        "file": "sounds/antique/bell.ogg",
+        "gain": 1.0
+      }
+    },
+    {
+      "id": "soft",
+      "name": "Soft",
+      "keys": [
+        {
+          "file": "sounds/soft/key_01.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/soft/key_02.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/soft/key_03.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/soft/key_04.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/soft/key_05.ogg",
+          "gain": 1.0
+        }
+      ],
+      "space": {
+        "file": "sounds/soft/space.ogg",
+        "gain": 1.0
+      },
+      "enter": {
+        "file": "sounds/soft/enter.ogg",
+        "gain": 1.0
+      },
+      "backspace": {
+        "file": "sounds/soft/backspace.ogg",
+        "gain": 1.0
+      },
+      "bell": {
+        "file": "sounds/soft/bell.ogg",
+        "gain": 1.0
+      }
+    },
+    {
+      "id": "keyboard",
+      "name": "Keyboard",
+      "keys": [
+        {
+          "file": "sounds/keyboard/key_01.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/keyboard/key_02.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/keyboard/key_03.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/keyboard/key_04.ogg",
+          "gain": 1.0
+        },
+        {
+          "file": "sounds/keyboard/key_05.ogg",
+          "gain": 1.0
+        }
+      ],
+      "space": {
+        "file": "sounds/keyboard/space.ogg",
+        "gain": 1.0
+      },
+      "enter": {
+        "file": "sounds/keyboard/enter.ogg",
+        "gain": 1.0
+      },
+      "backspace": {
+        "file": "sounds/keyboard/backspace.ogg",
+        "gain": 1.0
+      },
+      "bell": {
+        "file": "sounds/keyboard/bell.ogg",
+        "gain": 1.0
+      }
+    }
+  ]
+}

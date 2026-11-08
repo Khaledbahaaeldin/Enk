@@ -2,28 +2,17 @@
 
 ## Sounds
 
-Draft credits for the typewriter sounds in Enk. Source pages were read on 2026-11-07. All entries below state Creative Commons 0 (CC0) on their Freesound page. CC0 does not require attribution; Enk credits the uploaders anyway, in this file, in `docs/sound-credits.md`, and on the app's About screen.
+All audio samples included in Enk are dedicated to the public domain under Creative Commons 0 (CC0 1.0 Universal). Detailed provenance for every cut file is documented in `docs/provenance.csv` and `tools/CutSamples.md`.
 
-| Used for | Title | Uploader | Source | License |
+| Set / Event | Title / Asset | Author / Uploader | Source URL | License |
 |---|---|---|---|---|
-| Classic set | typewriter-olivetti-lettra-22.wav | keithpeter | https://freesound.org/people/keithpeter/sounds/123344/ | CC0 |
-| Antique set | old typewriter.wav | monotraum | https://freesound.org/people/monotraum/sounds/434027/ | CC0 |
-| Soft set | typewriter.wav | blukotek | https://freesound.org/people/blukotek/sounds/246057/ | CC0 |
-| Shared bell and return | Typewriter bell & carriage reset | knufds | https://freesound.org/people/knufds/sounds/345955/ | CC0 |
-
-### Fourth set (1.0), pending check on download
-
-| Used for | Title | Author | Source | License | Status |
-|---|---|---|---|---|---|
-| Keyboard set | Keyboard Soundpack #1 (typing and single keystrokes) | see OpenGameArt page | https://opengameart.org/content/keyboard-soundpack-1-typing-and-single-keystrokes | CC0 per a search listing; the page itself could not be opened when checked | Confirm CC0 license and author name on download |
-| DEFERRED, not in 1.0: Brother set | Brother Typewriter (Brother Charger 11, 1960s) | Subtersonic | https://subtersonic.weebly.com (announcement: http://subtersonic.weebly.com/1/post/2012/07/july-21st-2012.html); also bundled in https://github.com/Robert-K/typewriter-keyboard | No license stated anywhere checked | Do not commit until written permission is provided |
-
-### Candidates, not yet used
-
-| Title | Uploader | Source | License | Status |
-|---|---|---|---|---|
-| Typewriter Bell | ramsamba | https://freesound.org/people/ramsamba/sounds/318687/ | CC0 | Usable alternative bell (0.9 s, stereo) |
-| Typewriter Carriage Return | ramsamba | https://freesound.org/people/ramsamba/sounds/318686/ | CC0 | Usable alternative return (1.1 s, stereo) |
+| **Classic set** | typewriter-olivetti-lettra-22.wav | keithpeter | https://freesound.org/people/keithpeter/sounds/123344/ | CC0 |
+| **Antique set** | old typewriter.wav | monotraum | https://freesound.org/people/monotraum/sounds/434027/ | CC0 |
+| **Soft set** | typewriter.wav | blukotek | https://freesound.org/people/blukotek/sounds/246057/ | CC0 |
+| **Keyboard set** | Keyboard Soundpack #1 (typing and single keystrokes) | unicaegames | https://opengameart.org/content/keyboard-soundpack-1-typing-and-single-keystrokes | CC0 |
+| **Shared bell** | Typewriter bell & carriage reset | knufds | https://freesound.org/people/knufds/sounds/345955/ | CC0 |
+| **Alternate bell** | Typewriter Bell | ramsamba | https://freesound.org/people/ramsamba/sounds/318687/ | CC0 |
+| **Alternate return** | Typewriter Carriage Return | ramsamba | https://freesound.org/people/ramsamba/sounds/318686/ | CC0 |
 
 ## Typography
 
@@ -35,3 +24,4 @@ Draft credits for the typewriter sounds in Enk. Source pages were read on 2026-1
 - **AndroidX & Jetpack Compose** by Google LLC. Licensed under the Apache License, Version 2.0.
 - **Paparazzi** by Cash App. Licensed under the Apache License, Version 2.0.
 - **Backdrop** by Kyant (`io.github.kyant0:backdrop`). Licensed under the Apache License, Version 2.0.
+- **DataStore Preferences** by Google LLC (`androidx.datastore:datastore-preferences`). Licensed under the Apache License, Version 2.0.

@@ -1,0 +1,9 @@
+source_url: https://opengameart.org/content/keyboard-soundpack-1-typing-and-single-keystrokes
+title: Keyboard Soundpack #1 [Typing and Single Keystrokes]
+author: unicaegames (https://opengameart.org/users/unicaegames)
+license: CC0
+license_url: http://creativecommons.org/publicdomain/zero/1.0/
+retrieved: 2026-11-08
+original_file: unicae_games_keyboard_soundpack_1.zip
+note: license read from the source page on the retrieval date by the project auditor; the cutter must re-confirm it against the live page.
+archive_note: only Single Keys/ and readme.txt are archived in git (the other typing runs are not used by Enk). The full zip (not archived) has SHA-256 935eae2fa5c3742eacdd38c4ea0e9047f3887faa0701996498492c256db1b351.
