@@ -15,6 +15,9 @@ interface DividerDao {
     @Query("SELECT * FROM DividerEntity ORDER BY position ASC")
     suspend fun all(): List<DividerEntity>
 
+    @Query("SELECT * FROM DividerEntity ORDER BY position ASC")
+    fun observeAll(): Flow<List<DividerEntity>>
+
     @Query("UPDATE DividerEntity SET name = :name WHERE id = :id")
     suspend fun rename(id: Long, name: String)
 
@@ -57,6 +60,27 @@ interface NoteDao {
 
     @Query("UPDATE NoteEntity SET trashedAt = NULL WHERE id = :id")
     suspend fun restore(id: String)
+
+    @Query(
+        """
+        UPDATE NoteEntity SET position = position + 1 
+        WHERE ((:dividerId IS NULL AND dividerId IS NULL) OR dividerId = :dividerId)
+          AND trashedAt IS NULL
+    """
+    )
+    suspend fun shiftPositions(dividerId: Long?)
+
+    @Query("UPDATE NoteEntity SET position = :position WHERE id = :id")
+    suspend fun setPosition(id: String, position: Int)
+
+    @Query("UPDATE NoteEntity SET dividerId = :dividerId, position = :position WHERE id = :id")
+    suspend fun setDividerAndPosition(id: String, dividerId: Long?, position: Int)
+
+    @Query("UPDATE NoteEntity SET modifiedAt = :modifiedAt WHERE id = :id")
+    suspend fun updateModifiedAt(id: String, modifiedAt: Long)
+
+    @Query("SELECT * FROM NoteEntity WHERE trashedAt IS NOT NULL AND trashedAt < :cutoff")
+    suspend fun findTrashedBefore(cutoff: Long): List<NoteEntity>
 
     @Query("DELETE FROM NoteEntity WHERE trashedAt IS NOT NULL AND trashedAt < :cutoff")
     suspend fun purgeTrashedBefore(cutoff: Long): Int
