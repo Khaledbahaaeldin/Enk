@@ -34,7 +34,7 @@
 
 All dependencies adhere strictly to constraints:
 - **Android Gradle Plugin:** `8.13.2`
-- **Kotlin:** `2.1.20`
+- **Kotlin:** `2.4.21`
 - **Compile SDK / Target SDK:** `35`
 - **Gradle Wrapper:** `8.13`
 - **Jetpack Compose BOM:** `2026.06.01` (pinned to ensure release AAR checks pass)
@@ -42,6 +42,7 @@ All dependencies adhere strictly to constraints:
 - **Backdrop:** `1.0.4` (`io.github.kyant0:backdrop`, Apache-2.0)
 - **Inter Font:** Outlined glyphs in vector assets + bundled SIL OFL 1.1 license at `app/src/main/assets/licenses/OFL-Inter.txt`
 - **Paparazzi:** `1.3.5`
+- **JDK:** the build runs on JDK 21 (Backdrop 1.0.4 is compiled to Java 21 bytecode, so the JVM screenshot tests need it). Android modules still compile to Java 17 bytecode. CI uses JDK 21; no machine-specific paths are committed.
 
 ---
 
@@ -50,7 +51,7 @@ All dependencies adhere strictly to constraints:
 All 10 Paparazzi golden snapshots render with custom 400x820 dp device framing (`DeviceConfig.NEXUS_5` scaled to 400x820 dp) and verified with 0% diff.
 
 ### A. Glass Materials (`GlassGoldenTest`, 5 snapshots)
-1. **`graphiteDark`**: Renders two sample note cards over the deep graphite aura background. In the foreground, a floating regular glass nav pill (`blur 24 dp`) and a thick bottom sheet (`blur 44 dp`) sit over the cards. The cards behind the pill and sheet are visibly softened and blurred through the glass gradient fill. Dual drop shadows and 0.5 dp `glassEdge` top highlights are crisp and correctly positioned.
+1. **`graphiteDark`**: Renders two sample note cards over the deep graphite aura background. In the foreground, a floating regular glass nav pill (`blur 24 dp`) and a thick bottom sheet (`blur 44 dp`) sit over the cards. Note: Paparazzi's layoutlib cannot render Backdrop's blur or refraction, so this golden checks fills, edges and shadows only; real blur and refraction are unverified until run on an API 33+ device or emulator. Dual drop shadows and 0.5 dp `glassEdge` top highlights are crisp and correctly positioned.
 2. **`graphiteLight`**: Renders over warm cream aura background with `auraGrain` (0.16) visible. Note cards show proper paper texture and depth. Glass surfaces have bright, translucent top edge highlights and soft ambient shadows.
 3. **`slateDark`**: Cool-toned slate aura with deep blue-grey tint. Refraction/blur gradients blend seamlessly into the dark backdrop.
 4. **`slateLight`**: Light blue-grey palette. Note card borders, glass outlines (`glassLine` 0.5 dp), and blur are distinct with high contrast.

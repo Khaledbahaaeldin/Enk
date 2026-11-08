@@ -1,9 +1,12 @@
 package app.enk.design.shell
 
-import android.content.Context
-import android.provider.Settings
-import android.view.accessibility.AccessibilityManager
+import android.os.Build
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import app.enk.design.isHighContrastTextEnabled
+import app.enk.design.isReducedMotion
 
 enum class GlassLevel { Regular, Thick }
 
@@ -25,25 +28,16 @@ fun chooseGlassBackend(
     }
 }
 
-internal fun isReducedMotion(context: Context?): Boolean {
-    if (context == null) return false
-    return runCatching {
-        Settings.Global.getFloat(
-            context.contentResolver,
-            Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f
-        ) == 0f
-    }.getOrDefault(false)
-}
-
-internal fun isHighContrastTextEnabled(context: Context?): Boolean {
-    if (context == null) return false
-    val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
-    val fromAm = runCatching {
-        am?.javaClass?.getMethod("isHighTextContrastEnabled")?.invoke(am) as? Boolean
-    }.getOrNull()
-    if (fromAm != null) return fromAm
-    return runCatching {
-        Settings.Secure.getInt(context.contentResolver, "high_text_contrast_enabled", 0) == 1
-    }.getOrDefault(false)
+/** The backend every glass-like surface uses, read once per composition from the system settings. */
+@Composable
+fun rememberGlassBackend(): GlassBackendKind {
+    val context = LocalContext.current
+    val reduceEffects = LocalReduceEffects.current
+    return remember(context, reduceEffects) {
+        chooseGlassBackend(
+            sdkInt = Build.VERSION.SDK_INT,
+            reduceEffects = reduceEffects || isReducedMotion(context),
+            highContrastText = isHighContrastTextEnabled(context)
+        )
+    }
 }

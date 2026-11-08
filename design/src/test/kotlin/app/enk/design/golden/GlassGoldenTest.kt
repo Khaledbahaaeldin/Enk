@@ -29,12 +29,14 @@ import app.enk.design.EnkColors
 import app.enk.design.ShadowLayer
 import app.enk.design.enkShadow
 import app.enk.design.paperGrain
+import app.enk.design.shell.EdgeKind
 import app.enk.design.shell.GlassLevel
 import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.shell.ShellBackground
 import app.enk.design.shell.glass
 import app.enk.design.shell.glassSource
 import app.enk.design.shell.rememberGlassSource
+import app.enk.design.shell.scrollEdge
 import app.enk.design.theme.EnkShellTheme
 import app.enk.design.theme.LocalShellColors
 import app.enk.design.theme.LocalShellMaterial
@@ -86,6 +88,15 @@ class GlassGoldenTest {
         paparazzi.snapshot {
             EnkShellTheme(theme = ThemeId.Slate, mode = ThemeMode.Light) {
                 GlassSampleScene()
+            }
+        }
+    }
+
+    @Test
+    fun scrollEdgeBars() {
+        paparazzi.snapshot {
+            EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Light) {
+                ScrollEdgeScene()
             }
         }
     }
@@ -225,6 +236,45 @@ fun GlassSampleScene() {
                 )
             }
         }
+    }
+}
+
+/** Tint and bottom fade of the compact bar and strip veil; layoutlib does not render the backdrop blur. */
+@Composable
+fun ScrollEdgeScene() {
+    val glassSource = rememberGlassSource()
+    ShellBackground(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 30.dp)
+                .glassSource(glassSource),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            repeat(5) { i ->
+                SampleNoteCard(
+                    title = "Note ${i + 1}",
+                    body = "A line of text that scrolls beneath the compact bar and the strip veil.",
+                    date = "${i + 1} Nov",
+                    page = "p.1"
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(96.dp)
+                .scrollEdge(EdgeKind.CompactBar, 1f, glassSource)
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset(y = 300.dp)
+                .fillMaxWidth()
+                .height(64.dp)
+                .scrollEdge(EdgeKind.StripVeil, 1f, glassSource)
+        )
     }
 }
 

@@ -13,7 +13,6 @@ import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import app.enk.design.Grain
 import app.enk.design.theme.LocalShellColors
@@ -26,8 +25,7 @@ fun ShellBackground(
 ) {
     val colors = LocalShellColors.current
     val material = LocalShellMaterial.current
-    val context = LocalContext.current
-    val reduceEffects = LocalReduceEffects.current || isReducedMotion(context) || isHighContrastTextEnabled(context)
+    val reduceEffects = rememberGlassBackend() == GlassBackendKind.Solid
 
     val grainTile = remember { Grain.tile() }
     val grainBrush = remember(grainTile) {

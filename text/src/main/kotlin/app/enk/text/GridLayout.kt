@@ -30,7 +30,8 @@ object GridLayout {
                     } else {
                         var cut = maxCut
                         if (cut < p.length && Character.isHighSurrogate(p[cut - 1]) && Character.isLowSurrogate(p[cut])) {
-                            cut--
+                            // A one-column grid cannot hold half a pair: take the whole pair.
+                            cut = if (cut - 1 > i) cut - 1 else cut + 1
                         }
                         lines.add(LineSpan(idx + i, idx + cut))
                         i = cut

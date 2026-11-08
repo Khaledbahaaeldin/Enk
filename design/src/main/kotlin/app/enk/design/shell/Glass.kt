@@ -1,6 +1,5 @@
 package app.enk.design.shell
 
-import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -14,7 +13,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import app.enk.design.ShadowLayer
 import app.enk.design.enkShadow
@@ -51,12 +49,9 @@ fun Modifier.glass(
     shape: Shape,
     source: GlassSource
 ): Modifier {
-    val context = LocalContext.current
     val colors = LocalShellColors.current
     val material = LocalShellMaterial.current
-    val reduceEffects = LocalReduceEffects.current || isReducedMotion(context)
-    val highContrastText = isHighContrastTextEnabled(context)
-    val backend = chooseGlassBackend(Build.VERSION.SDK_INT, reduceEffects, highContrastText)
+    val backend = rememberGlassBackend()
 
     if (backend == GlassBackendKind.Solid) {
         return this.background(colors.g1, shape)
@@ -93,28 +88,23 @@ fun Modifier.glass(
                     )
                 }
             },
-            onDrawFront = {
+            onDrawSurface = {
                 val outline = shape.createOutline(size, layoutDirection, this)
-                val shapePath = Path().apply {
-                    when (outline) {
-                        is Outline.Rectangle -> addRect(outline.rect)
-                        is Outline.Rounded -> addRoundRect(outline.roundRect)
-                        is Outline.Generic -> addPath(outline.path)
-                    }
-                }
-
+                val shapePath = outline.toPath()
                 clipPath(shapePath) {
-                    // 1. Fill
                     if (level == GlassLevel.Regular) {
-                        val fillBrush = Brush.verticalGradient(
-                            listOf(material.glassA, material.glassB)
-                        )
-                        drawRect(brush = fillBrush)
+                        drawRect(brush = Brush.verticalGradient(listOf(material.glassA, material.glassB)))
                     } else {
                         drawRect(color = colors.thick)
                     }
+                }
+            },
+            onDrawFront = {
+                val outline = shape.createOutline(size, layoutDirection, this)
+                val shapePath = outline.toPath()
 
-                    // 2. Inset top highlight: 0.5 dp glassEdge
+                clipPath(shapePath) {
+                    // Inset top highlight: 0.5 dp glassEdge
                     val highlightPx = 0.5.dp.toPx()
                     val translatedHole = Path().apply {
                         addPath(shapePath)
@@ -125,7 +115,7 @@ fun Modifier.glass(
                     }
                     drawPath(topHighlightPath, color = material.glassEdge)
 
-                    // 3. Inset outline: 0.5 dp glassLine
+                    // Inset outline: 0.5 dp glassLine
                     val strokeWidthPx = 0.5.dp.toPx()
                     drawPath(
                         path = shapePath,
@@ -135,4 +125,12 @@ fun Modifier.glass(
                 }
             }
         )
+}
+
+private fun Outline.toPath(): Path = Path().apply {
+    when (val outline = this@toPath) {
+        is Outline.Rectangle -> addRect(outline.rect)
+        is Outline.Rounded -> addRoundRect(outline.roundRect)
+        is Outline.Generic -> addPath(outline.path)
+    }
 }

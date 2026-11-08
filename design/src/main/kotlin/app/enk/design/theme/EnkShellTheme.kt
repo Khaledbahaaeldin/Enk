@@ -2,7 +2,6 @@ package app.enk.design.theme
 
 import android.content.Context
 import android.os.Build
-import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.snap
@@ -21,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import app.enk.design.isReducedMotion
 
 const val THEME_TRANSITION_MS = 500
 
@@ -55,7 +55,7 @@ fun EnkShellTheme(
 
     val targetMaterial = ShellPalettes.material(isDark)
 
-    val reducedMotion = remember(context) { isReducedMotionEnabled(context) }
+    val reducedMotion = remember(context) { isReducedMotion(context) }
     val animSpec: AnimationSpec<Color> = if (reducedMotion) {
         snap()
     } else {
@@ -82,17 +82,6 @@ private fun resolveDynamicColorScheme(isDark: Boolean, context: Context): ColorS
     } else {
         if (isDark) darkColorScheme() else lightColorScheme()
     }
-}
-
-private fun isReducedMotionEnabled(context: Context?): Boolean {
-    if (context == null) return false
-    return runCatching {
-        Settings.Global.getFloat(
-            context.contentResolver,
-            Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f
-        ) == 0f
-    }.getOrDefault(false)
 }
 
 @Composable

@@ -10,6 +10,7 @@
 - **Target / Compile SDK Compatibility:**
   - Tested versions `2.0.1` and `1.0.5+`: Require `compileSdk >= 36` / `37` and AGP `9.1.0+` in AAR metadata, which fails AGP 8.13.2's `CheckAarMetadata` check under the pinned `compileSdk = 35`.
   - Tested version `1.0.4`: Passes `checkDebugAarMetadata` and `checkReleaseAarMetadata` cleanly with 0 issues under AGP `8.13.2` and `compileSdk = 35`.
+- **Java:** Backdrop 1.0.4 classes are compiled to Java 21 bytecode, so the build and CI run on JDK 21 (the JVM screenshot tests load them). Enk's Android modules still emit Java 17 bytecode.
 - **Glass Implementation Role:**
   - **API 33+ (Refraction):** Backdrop lens/refraction on top of its blur effect.
   - **API 31-32 (Blur):** Backdrop's blur effect on the captured backdrop layer without refraction.

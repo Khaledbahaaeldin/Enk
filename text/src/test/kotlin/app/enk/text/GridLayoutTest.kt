@@ -193,4 +193,10 @@ class GridLayoutTest {
         assertEquals(CaretPos(0, 0), GridLayout.caret(emptyList(), 5, 10))
         assertEquals(CaretPos(0, 0), GridLayout.caret(emptyList(), -1, 10))
     }
+
+    @Test
+    fun oneColumnGridKeepsSurrogatePairsWhole() {
+        val t = "\uD83D\uDE00a"
+        assertEquals(listOf(LineSpan(0, 2), LineSpan(2, 3)), GridLayout.wrap(t, 1))
+    }
 }
