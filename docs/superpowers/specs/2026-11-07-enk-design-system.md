@@ -404,15 +404,15 @@ Five themes plus Dynamic. Each has a dark and a light mode. The user picks a the
 | `hair` | `rgba(43,40,36,.12)` | `rgba(78,44,35,.12)` | `rgba(67,47,46,.12)` | `rgba(10,10,10,.10)` | `rgba(0,0,0,.10)` |
 | `t1` | `#2B2824` | `#4E2C23` | `#432F2E` | `#0A0A0A` | `#111111` |
 | `t2` | `#6B665C` | `#85584A` | `#7A6361` | `#4F5A63` | `#6B6B6B` |
-| `t3` | `#9D978B` | `#B08877` | `#A8948F` | `#8B949B` | `#A0A0A0` |
+| `t3` | `#8A8375` | `#A97D6A` | `#9F8984` | `#758088` | `#868686` |
 | `ui` | `#EE5416` | `#D4634C` | `#5E92B2` | `#536878` | `#111111` |
-| `uiInk` | `#FFFFFF` | `#FFFFFF` | `#FFFFFF` | `#FFFFFF` | `#FFFFFF` |
+| `uiInk` | `#1A0A03` | `#2A1410` | `#1B1413` | `#FFFFFF` | `#FFFFFF` |
 | `danger` | `#B3261E` | `#B3261E` | `#B3261E` | `#B3261E` | `#B3261E` |
 | `auraTop` | `rgba(255,150,90,.20)` | `rgba(226,114,91,.38)` | `rgba(193,219,232,.95)` | `rgba(83,104,120,.34)` | `rgba(255,255,255,.80)` |
 | `auraSide` | `rgba(255,255,255,.45)` | `rgba(255,218,185,.95)` | `rgba(193,219,232,.60)` | `rgba(83,104,120,.20)` | `rgba(0,0,0,.03)` |
 | `auraBottom` | `rgba(200,190,170,.45)` | `rgba(255,218,185,.90)` | `rgba(255,240,181,.95)` | `rgba(255,255,255,.70)` | `rgba(255,255,255,.60)` |
 
-Source palettes: Apricot is Espresso `#4E2C23`, Burnt Peach `#E2725B`, Soft Apricot `#FFDAB9`. Sky is Deep Mocha `#432F2E`, Pale Sky `#C1DBE8`, Vanilla Custard `#FFF0B5`. Slate is Onyx `#0A0A0A`, Blue Slate `#536878`, Alabaster Grey `#E5E4E2`. Graphite is the original Enk interface: warm graphite, cream paper, orange. Where a source color was too dark or too light to work as an accent or text, the derived value above is used (for example Blue Slate lightens to `#8FA6B8` in dark mode).
+Source palettes: Apricot is Espresso `#4E2C23`, Burnt Peach `#E2725B`, Soft Apricot `#FFDAB9`. Sky is Deep Mocha `#432F2E`, Pale Sky `#C1DBE8`, Vanilla Custard `#FFF0B5`. Slate is Onyx `#0A0A0A`, Blue Slate `#536878`, Alabaster Grey `#E5E4E2`. Graphite is the original Enk interface: warm graphite, cream paper, orange. Where a source color was too dark or too light to work as an accent or text, the derived value above is used (for example Blue Slate lightens to `#8FA6B8` in dark mode; in light mode, `t3` is darkened to meet the 3.0:1 contrast minimum on `bg`, and `uiInk` on mid-tone accents `#EE5416`, `#D4634C`, `#5E92B2` uses the theme's dark ink to meet 4.5:1).
 
 **Mode material tokens** (shared by all themes; they change with dark or light only)
 
