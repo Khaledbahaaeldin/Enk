@@ -25,7 +25,7 @@
 - **Version Verification:**
   - Google Maven release metadata lists `2.8.5` as current stable.
   - Tested under AGP `8.13.2` and `compileSdk = 35`: passes `checkDebugAarMetadata` and `checkReleaseAarMetadata` cleanly with 0 issues.
-- **Role in Enk:** SQLite database abstraction, entity definitions, DAOs, schema generation, transaction management, and reactive Flow queries in `:data`. Added as `testImplementation` to `:app` (`androidx.room:room-runtime:2.8.5`) to support in-memory Room database instantiation during Robolectric testing (`WriterViewModelTest`).
+- **Role in Enk:** SQLite database abstraction, entity definitions, DAOs, schema generation, transaction management, and reactive Flow queries in `:data`. Added as `implementation` and `testImplementation` to `:app` (`androidx.room:room-runtime:2.8.5`) to support database building in `AppContainer` and in-memory Room database instantiation during Robolectric testing (`WriterViewModelTest`, `WriterScreenTest`).
 
 ### 3. KSP (Kotlin Symbol Processing)
 - **Coordinate:** `com.google.devtools.ksp:2.3.13`

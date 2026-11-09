@@ -57,6 +57,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.room.runtime)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
@@ -73,6 +74,7 @@ tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
 tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEach {
     // Compose UI tests rely on ui-test-manifest which is debugImplementation only
     exclude("**/MarkerGestureTest*")
+    exclude("**/WriterScreenTest*")
 }
 
 tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {
