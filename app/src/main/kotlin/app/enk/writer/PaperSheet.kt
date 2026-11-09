@@ -15,13 +15,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.font.FontFamily
-import app.enk.design.CourierPrime
 import app.enk.design.EnkColors
-import app.enk.design.Rgb
 import app.enk.design.EnkMaterials
 import app.enk.design.EnkShadows
 import app.enk.design.LampColor
+import app.enk.design.Rgb
 import app.enk.design.enkShadow
 import app.enk.design.paperGrain
 import app.enk.text.GridLayout
@@ -29,14 +27,14 @@ import app.enk.text.StruckPage
 
 @Composable
 fun PaperSheet(
-    night: Boolean,
+    nightProgress: Float,
     reduceEffects: Boolean,
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit = {}
 ) {
-    val paperColor = if (night) EnkColors.paperNight else EnkColors.paper
-    val chassisBrush = if (night) EnkMaterials.chassisNight else EnkMaterials.chassisDay
-    val grainOpacity = if (night) 0.10f else 0.35f
+    val paperColor = paperColor(nightProgress)
+    val chassisBrush = if (nightProgress >= 0.5f) EnkMaterials.chassisNight else EnkMaterials.chassisDay
+    val grainOpacity = grainOpacity(nightProgress)
     val paperShape = RoundedCornerShape(
         topStart = 10.dp,
         topEnd = 10.dp,
@@ -91,9 +89,22 @@ fun PaperSheet(
 
 @Composable
 fun PaperSheet(
+    night: Boolean,
+    reduceEffects: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit = {}
+) = PaperSheet(
+    nightProgress = if (night) 1f else 0f,
+    reduceEffects = reduceEffects,
+    modifier = modifier,
+    content = content
+)
+
+@Composable
+fun PaperSheet(
     state: WriterState,
     geometry: WriterGeometry,
-    night: Boolean,
+    nightProgress: Float,
     reduceEffects: Boolean,
     modifier: Modifier = Modifier,
     lamp: Rgb = LampColor.fromWarmth(25),
@@ -101,11 +112,7 @@ fun PaperSheet(
     stampFrame: Float? = null
 ) {
     val page = state.pages.getOrElse(state.pageIndex) { StruckPage("") }
-    val textColor = if (night) {
-        Color(red = lamp.r, green = lamp.g, blue = lamp.b)
-    } else {
-        EnkColors.ink
-    }
+    val textColor = textColor(nightProgress, lamp)
 
     val lines = remember(page.text, geometry.cols) {
         GridLayout.wrap(page.text, geometry.cols)
@@ -115,7 +122,7 @@ fun PaperSheet(
     }
 
     PaperSheet(
-        night = night,
+        nightProgress = nightProgress,
         reduceEffects = reduceEffects,
         modifier = modifier
     ) {
@@ -138,3 +145,23 @@ fun PaperSheet(
     }
 }
 
+@Composable
+fun PaperSheet(
+    state: WriterState,
+    geometry: WriterGeometry,
+    night: Boolean,
+    reduceEffects: Boolean,
+    modifier: Modifier = Modifier,
+    lamp: Rgb = LampColor.fromWarmth(25),
+    typing: Boolean = false,
+    stampFrame: Float? = null
+) = PaperSheet(
+    state = state,
+    geometry = geometry,
+    nightProgress = if (night) 1f else 0f,
+    reduceEffects = reduceEffects,
+    modifier = modifier,
+    lamp = lamp,
+    typing = typing,
+    stampFrame = stampFrame
+)

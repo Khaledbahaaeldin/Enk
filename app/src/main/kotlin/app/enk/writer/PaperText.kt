@@ -15,11 +15,12 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontFamily
-import app.enk.design.LocalMonoFont
 import app.enk.design.EnkMotion
 import app.enk.design.EnkType
 import app.enk.design.Jitter
+import app.enk.design.LampColor
+import app.enk.design.LocalMonoFont
+import app.enk.design.Rgb
 import app.enk.text.GridLayout
 import app.enk.text.StruckPage
 
@@ -208,3 +209,47 @@ fun PaperText(
     }
 }
 
+@Composable
+fun PaperText(
+    page: StruckPage,
+    caret: Int,
+    lastTypedIndex: Int?,
+    geometry: WriterGeometry,
+    nightProgress: Float,
+    reduceMotion: Boolean,
+    modifier: Modifier = Modifier,
+    lamp: Rgb = LampColor.fromWarmth(25),
+    stampFrame: Float? = null
+) = PaperText(
+    page = page,
+    caret = caret,
+    lastTypedIndex = lastTypedIndex,
+    geometry = geometry,
+    textColor = textColor(nightProgress, lamp),
+    reduceMotion = reduceMotion,
+    modifier = modifier,
+    stampFrame = stampFrame
+)
+
+@Composable
+fun PaperText(
+    page: StruckPage,
+    caret: Int,
+    lastTypedIndex: Int?,
+    geometry: WriterGeometry,
+    night: Boolean,
+    reduceMotion: Boolean,
+    modifier: Modifier = Modifier,
+    lamp: Rgb = LampColor.fromWarmth(25),
+    stampFrame: Float? = null
+) = PaperText(
+    page = page,
+    caret = caret,
+    lastTypedIndex = lastTypedIndex,
+    geometry = geometry,
+    nightProgress = if (night) 1f else 0f,
+    reduceMotion = reduceMotion,
+    modifier = modifier,
+    lamp = lamp,
+    stampFrame = stampFrame
+)
