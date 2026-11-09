@@ -25,7 +25,7 @@
 - **Version Verification:**
   - Google Maven release metadata lists `2.8.5` as current stable.
   - Tested under AGP `8.13.2` and `compileSdk = 35`: passes `checkDebugAarMetadata` and `checkReleaseAarMetadata` cleanly with 0 issues.
-- **Role in Enk:** SQLite database abstraction, entity definitions, DAOs, schema generation, transaction management, and reactive Flow queries in `:data`. Added as `testImplementation` to `:app` (`androidx.room:room-runtime:2.8.5`) to support in-memory Room database instantiation during Robolectric testing (`WriterViewModelTest`).
+- **Role in Enk:** SQLite database abstraction, entity definitions, DAOs, schema generation, transaction management, and reactive Flow queries in `:data`. Added as `implementation` and `testImplementation` to `:app` (`androidx.room:room-runtime:2.8.5`) to support database building in `AppContainer` and in-memory Room database instantiation during Robolectric testing (`WriterViewModelTest`, `WriterScreenTest`).
 
 ### 3. KSP (Kotlin Symbol Processing)
 - **Coordinate:** `com.google.devtools.ksp:2.3.13`
@@ -75,6 +75,16 @@
   - Verified: `:app:checkDebugAarMetadata` and `:app:checkReleaseAarMetadata` pass with 0 errors.
 - **Role in Enk:** Virtual time control (`runTest`, `advanceTimeBy`, `StandardTestDispatcher`) for `AutosaverTest` and `WriterViewModelTest`.
 
+### 7. AndroidX Compose UI Test
+- **Coordinates:**
+  - `androidx.compose.ui:ui-test-junit4` (`testImplementation` in `:app`, managed by Compose BOM `2026.06.01`)
+  - `androidx.compose.ui:ui-test-manifest` (`debugImplementation` in `:app`, managed by Compose BOM `2026.06.01`)
+- **License:** Apache License, Version 2.0
+- **Version Verification:**
+  - Managed by pinned Compose BOM `2026.06.01`.
+  - Verified: `:app:checkDebugAarMetadata` and `:app:checkReleaseAarMetadata` pass with 0 errors under AGP `8.13.2` and `compileSdk = 35`.
+- **Role in Enk:** Compose UI tree interaction, virtual clock control, node semantics testing, and Robolectric Compose tests for gesture and screen verification (`WriterScreenTest`).
+
 ---
 
 ## Typography and Brand Fonts
@@ -94,7 +104,7 @@
   - Haze `1.7.0` to `1.7.3` fail with 3 to 22 issues (require `compileSdk >= 36` for transitive `androidx.activity:1.11.0`).
   - While Haze `1.6.10` passes, Backdrop 1.0.4's own blur natively covers the API 31-32 Blur path on the captured backdrop layer without needing an additional third-party library. Haze was therefore dropped from the catalog, build dependencies, and CREDITS.md to maintain a minimal, robust dependency footprint.
 
-### 7. Paparazzi in `:app`: targetSdk workaround
+### 8. Paparazzi in `:app`: targetSdk workaround
 - Paparazzi 1.3.5 bundles LayoutLib for Android API 34. Compose UI calls `View.setRequestedFrameRate` when the app's `targetSdkVersion` is 35 or higher, which does not exist there, so every snapshot would crash with `NoSuchMethodError`.
 - `app/build.gradle.kts` therefore rewrites `"targetSdkVersion": "35"` to `"34"` only in Paparazzi's generated `build/intermediates/paparazzi/**/resources.json`, after the `preparePaparazzi*` tasks. The APK, lint and AAR checks still see `targetSdk = 35`.
 - Remove this hook when a Paparazzi release bundles LayoutLib API 35 (toolchain upgrade batch).

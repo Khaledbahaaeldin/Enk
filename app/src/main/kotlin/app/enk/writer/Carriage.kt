@@ -64,7 +64,6 @@ fun Carriage(
     modifier: Modifier = Modifier,
     /** Freezes the slug strike at this progress (0..1) for goldens and previews; null runs the animation. */
     slugProgress: Float? = null,
-    slugFontFamily: FontFamily = CourierPrime,
     /** Reports the measured size of the interactive area in dp (54 x 48); used by the layout test. */
     onHitAreaMeasured: ((widthDp: Float, heightDp: Float) -> Unit)? = null
 ) {
@@ -149,7 +148,6 @@ fun Carriage(
                     strikeKey = strikeKey,
                     night = night,
                     slugProgress = slugProgress,
-                    fontFamily = slugFontFamily,
                     modifier = Modifier.offset(x = 2.dp, y = 2.dp)
                 )
             }

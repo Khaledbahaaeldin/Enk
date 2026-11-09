@@ -8,6 +8,7 @@ object EnkColors {
     val chassisNightTop = Color(0xFF171615)
     val chassisNightBottom = Color(0xFF0D0C0C)
     val paper = Color(0xFFF2ECDF)
+    val paperDay = paper
     val paperNight = Color(0xFF161513)
     val ink = Color(0xFF2B2824)
     val accent = Color(0xFFFF5A1F)

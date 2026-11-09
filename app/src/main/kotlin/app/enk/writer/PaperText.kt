@@ -15,11 +15,12 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontFamily
-import app.enk.design.CourierPrime
 import app.enk.design.EnkMotion
 import app.enk.design.EnkType
 import app.enk.design.Jitter
+import app.enk.design.LampColor
+import app.enk.design.LocalMonoFont
+import app.enk.design.Rgb
 import app.enk.text.GridLayout
 import app.enk.text.StruckPage
 
@@ -77,8 +78,6 @@ fun PaperText(
     textColor: Color,
     reduceMotion: Boolean,
     modifier: Modifier = Modifier,
-    /** The paper typeface. Tests that cannot load resource fonts pass a file-based family. */
-    fontFamily: FontFamily = CourierPrime,
     /** Freezes the stamp of the newest character at this progress (0..1) for goldens; null runs the animation. */
     stampFrame: Float? = null
 ) {
@@ -121,7 +120,8 @@ fun PaperText(
             for (r in page.struck) for (i in r) if (i in mask.indices) mask[i] = true
         }
     }
-    val charLayoutCache = remember(textColor, geometry.fontSp, fontFamily) {
+    val monoFont = LocalMonoFont.current
+    val charLayoutCache = remember(textColor, geometry.fontSp, monoFont) {
         mutableMapOf<String, TextLayoutResult>()
     }
 
@@ -129,7 +129,7 @@ fun PaperText(
         textMeasurer.measure(
             text = text,
             style = EnkType.paper.copy(
-                fontFamily = fontFamily,
+                fontFamily = monoFont,
                 fontSize = geometry.fontSp.sp,
                 color = textColor
             )

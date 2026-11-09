@@ -21,12 +21,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.font.FontFamily
-import app.enk.design.CourierPrime
 import app.enk.design.EnkColors
 import app.enk.design.EnkMaterials
 import app.enk.design.EnkMotion
 import app.enk.design.EnkType
+import app.enk.design.LocalMonoFont
 
 fun slugOffsetDp(t: Float, startOffset: Float = 9f): Float {
     val clampedT = t.coerceIn(0f, 1f)
@@ -51,8 +50,7 @@ fun TypeSlug(
     night: Boolean,
     modifier: Modifier = Modifier,
     /** Freezes the strike at this progress (0..1) for goldens and previews; null runs the real animation. */
-    slugProgress: Float? = null,
-    fontFamily: FontFamily = CourierPrime
+    slugProgress: Float? = null
 ) {
     val slugShape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomEnd = 0.dp, bottomStart = 0.dp)
     val filteredChar = filterSlugChar(slugChar)
@@ -79,6 +77,7 @@ fun TypeSlug(
     }
 
     val offsetDp = slugOffsetDp(slugProgress ?: progressAnim.value, if (slugProgress != null) 9f else inFlightStartOffset)
+    val monoFont = LocalMonoFont.current
 
     Box(
         modifier = modifier
@@ -93,7 +92,7 @@ fun TypeSlug(
         if (filteredChar != null) {
             Text(
                 text = filteredChar.toString(),
-                style = EnkType.slug.copy(fontFamily = fontFamily)
+                style = EnkType.slug.copy(fontFamily = monoFont)
             )
         }
     }
