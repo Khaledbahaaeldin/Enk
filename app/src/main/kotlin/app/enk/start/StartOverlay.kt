@@ -1,21 +1,13 @@
 package app.enk.start
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -34,7 +26,6 @@ import androidx.compose.ui.platform.testTag
 import app.enk.design.EnkColors
 import app.enk.design.EnkMaterials
 import app.enk.design.logo.LogoSpec
-import kotlinx.coroutines.launch
 
 private val BODY = Rect(-15f, -10f, 15f, 11f)
 private val TOP_COLLAR = Rect(-15f, -10f, 15f, -7f)
@@ -44,156 +35,138 @@ private val SLUG_SLEEVE = Rect(-5.2f, -16.4f, 5.2f, -9.4f)
 private val STRIP = Rect(-4.3f, -4.7f, 4.3f, -2.8f)
 private val SLEEVE_INK = Color(0xFF141312)
 
+private val SPLASH_DARK = Color(0xFF161514)
+private val SPLASH_LIGHT = Color(0xFFECE8DF)
+private val TYPED_LINE_INK = Color(0xFF2B2824)
+
+/**
+ * The layer under the writer: the splash background and, as it opens, the writer's chassis. The
+ * writer's own chassis is held back while the animation runs, so the rising paper lands on this.
+ */
 @Composable
-fun StartOverlay(
+internal fun StartBackdrop(frame: State<StartFrame>, targets: StartTargets, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.fillMaxSize().testTag("start_backdrop")) {
+        inDp { widthDp, heightDp -> drawBackdrop(frame.value, targets, Size(widthDp, heightDp), alpha = 1f) }
+    }
+}
+
+/**
+ * The layer above the writer: the logo's typed lines, rail, caret and carriage, clipped by the
+ * aperture, handing over to the writer's own parts. Any touch skips the animation.
+ */
+@Composable
+internal fun StartOverlay(
+    frame: State<StartFrame>,
     targets: StartTargets,
-    modifier: Modifier = Modifier,
-    reduceMotion: Boolean = false,
-    timeMs: Float? = null,
-    onFinished: () -> Unit = {}
+    onSkip: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    val anim = remember { Animatable(0f) }
-    var isSkipping by remember { mutableStateOf(false) }
-    val density = LocalDensity.current.density
-
-    fun skip() {
-        if (isSkipping || timeMs != null) return
-        isSkipping = true
-        coroutineScope.launch {
-            val remaining = 1f - anim.value
-            if (remaining > 0f) {
-                anim.animateTo(
-                    targetValue = 1f,
-                    animationSpec = tween(
-                        durationMillis = 120,
-                        easing = LinearEasing
-                    )
-                )
-            }
-            onFinished()
-        }
-    }
-
-    BackHandler(enabled = timeMs == null) {
-        skip()
-    }
-
-    LaunchedEffect(reduceMotion, timeMs) {
-        if (timeMs == null) {
-            val duration = if (reduceMotion) {
-                StartGate.reducedMotionDurationMs()
-            } else {
-                StartTimeline.DURATION_MS
-            }
-            anim.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = duration, easing = LinearEasing)
-            )
-            onFinished()
-        }
-    }
-
     Canvas(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .testTag("start_overlay")
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                skip()
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown().consume()
+                    onSkip()
+                }
             }
-            .then(modifier)
     ) {
-        val currentTMs = timeMs ?: (anim.value * StartTimeline.DURATION_MS)
-        val frame = StartTimeline.at(currentTMs, targets)
-
-        val alpha = if (reduceMotion && timeMs == null) {
-            (1f - anim.value).coerceIn(0f, 1f)
-        } else {
-            1f
+        inDp { widthDp, heightDp ->
+            val f = frame.value
+            drawSymbol(f, targets, Offset(widthDp / 2f, heightDp / 2f), partsAlpha = f.overlayAlpha, clipToAperture = true)
         }
+    }
+}
 
-        if (alpha <= 0.001f) return@Canvas
-
-        val widthDp = size.width / density
-        val heightDp = size.height / density
-        val centerDp = Offset(widthDp / 2f, heightDp / 2f)
-
-        withTransform({
-            scale(density, density, Offset.Zero)
-        }) {
-            // 1. Splash background & chassis
-            if (targets.lightSplash) {
-                drawRect(color = Color(0xFFECE8DF), alpha = alpha, size = Size(widthDp, heightDp))
-                if (frame.chassisCircleRadius > 0f) {
-                    drawCircle(
-                        brush = EnkMaterials.chassisDay,
-                        radius = frame.chassisCircleRadius,
-                        center = centerDp,
-                        alpha = alpha
-                    )
-                }
-            } else {
-                drawRect(color = Color(0xFF161514), alpha = alpha, size = Size(widthDp, heightDp))
-                if (frame.chassisMix > 0f) {
-                    drawRect(
-                        brush = EnkMaterials.chassisDay,
-                        alpha = frame.chassisMix * alpha,
-                        size = Size(widthDp, heightDp)
-                    )
+/**
+ * Reduced motion: the splash is shown still and cross-fades away over the finished writer, with
+ * no movement at all.
+ */
+@Composable
+internal fun StartSplashFade(
+    targets: StartTargets,
+    alpha: () -> Float,
+    onSkip: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val still = StartTimeline.at(0f, targets)
+    Canvas(
+        modifier = modifier
+            .fillMaxSize()
+            .testTag("start_overlay")
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown().consume()
+                    onSkip()
                 }
             }
+    ) {
+        inDp { widthDp, heightDp ->
+            val a = alpha().coerceIn(0f, 1f)
+            if (a <= 0.001f) return@inDp
+            drawBackdrop(still, targets, Size(widthDp, heightDp), alpha = a)
+            drawSymbol(still, targets, Offset(widthDp / 2f, heightDp / 2f), partsAlpha = a, clipToAperture = true)
+        }
+    }
+}
 
-            // 2. Aperture clip
-            val aperturePath = Path().apply {
-                addOval(Rect(center = centerDp, radius = frame.apertureRadius))
-            }
+/** Draws in dp: the canvas is in pixels, the timeline in dp. */
+private inline fun DrawScope.inDp(block: DrawScope.(widthDp: Float, heightDp: Float) -> Unit) {
+    val density = this.density
+    withTransform({ scale(density, density, Offset.Zero) }) {
+        block(size.width / density, size.height / density)
+    }
+}
 
-            val overlayPartsAlpha = if (reduceMotion && timeMs == null) {
-                alpha
-            } else if (timeMs != null) {
-                1f
-            } else {
-                frame.overlayAlpha * alpha
-            }
+private fun DrawScope.drawBackdrop(frame: StartFrame, targets: StartTargets, window: Size, alpha: Float) {
+    val centre = Offset(window.width / 2f, window.height / 2f)
+    if (targets.lightSplash) {
+        drawRect(color = SPLASH_LIGHT, alpha = alpha, size = window)
+        if (frame.chassisCircleRadius > 0f) {
+            drawCircle(brush = EnkMaterials.chassisDay, radius = frame.chassisCircleRadius, center = centre, alpha = alpha)
+        }
+    } else {
+        drawRect(color = SPLASH_DARK, alpha = alpha, size = window)
+        if (frame.chassisMix > 0f) {
+            drawRect(brush = EnkMaterials.chassisDay, alpha = frame.chassisMix * alpha, size = window)
+        }
+    }
+}
 
-            if (overlayPartsAlpha > 0.001f) {
-                clipPath(aperturePath) {
-                    // Typed lines
-                    if (frame.linesAlpha > 0.001f) {
-                        val lineColor = if (targets.lightSplash) {
-                            Color(0xFF2B2824).copy(alpha = frame.linesAlpha * overlayPartsAlpha)
-                        } else {
-                            LogoSpec.CREAM.copy(alpha = frame.linesAlpha * overlayPartsAlpha)
-                        }
-                        val u = 288f / 108f
-                        val sx = centerDp.x - 144f
-                        val sy = centerDp.y - 144f
-                        translate(sx, sy) {
-                            LogoSpec.typedLines.forEach { line ->
-                                drawRoundRect(
-                                    color = lineColor,
-                                    topLeft = Offset(line.left * u, line.top * u),
-                                    size = Size(line.width * u, line.height * u),
-                                    cornerRadius = CornerRadius(1.3f * u)
-                                )
-                            }
-                        }
-                    }
-
-                    // Rail
-                    drawRail(frame.rail, overlayPartsAlpha)
-
-                    // Caret
-                    drawCaret(frame.caret, overlayPartsAlpha)
-
-                    // Carriage
-                    drawCarriage(frame.carriage.centre, frame.carriage.scale, overlayPartsAlpha)
+private fun DrawScope.drawSymbol(
+    frame: StartFrame,
+    targets: StartTargets,
+    centre: Offset,
+    partsAlpha: Float,
+    clipToAperture: Boolean
+) {
+    if (partsAlpha <= 0.001f) return
+    val draw: DrawScope.() -> Unit = {
+        if (frame.linesAlpha > 0.001f) {
+            val lineColor = (if (targets.lightSplash) TYPED_LINE_INK else LogoSpec.CREAM)
+                .copy(alpha = frame.linesAlpha * partsAlpha)
+            val u = 288f / 108f
+            translate(centre.x - 144f, centre.y - 144f) {
+                LogoSpec.typedLines.forEach { line ->
+                    drawRoundRect(
+                        color = lineColor,
+                        topLeft = Offset(line.left * u, line.top * u),
+                        size = Size(line.width * u, line.height * u),
+                        cornerRadius = CornerRadius(1.3f * u)
+                    )
                 }
             }
         }
+        drawRail(frame.rail, partsAlpha)
+        drawCaret(frame.caret, partsAlpha)
+        drawCarriage(frame.carriage.centre, frame.carriage.scale, partsAlpha)
+    }
+    if (clipToAperture) {
+        val aperture = Path().apply { addOval(Rect(center = centre, radius = frame.apertureRadius)) }
+        clipPath(aperture) { draw() }
+    } else {
+        draw()
     }
 }
 

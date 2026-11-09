@@ -20,8 +20,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.enk.AppContainer
 import app.enk.MainViewModel
 import app.enk.design.theme.LocalShellColors
-import app.enk.settings.Settings
 import app.enk.writer.WriterScreen
+import app.enk.writer.WriterIntro
 import app.enk.writer.WriterViewModel
 import kotlinx.coroutines.launch
 
@@ -31,7 +31,9 @@ fun EnkNavHost(
     modifier: Modifier = Modifier,
     mainViewModel: MainViewModel = viewModel(
         factory = MainViewModel.factory(LocalContext.current)
-    )
+    ),
+    /** Passed to the writer while the start animation runs; null otherwise. */
+    intro: WriterIntro? = null
 ) {
     val currentRoute by mainViewModel.currentRoute.collectAsState()
     val noteIdState by mainViewModel.currentNoteId.collectAsState()
@@ -42,6 +44,8 @@ fun EnkNavHost(
 
     when (val route = currentRoute) {
         Route.Writer, is Route.Note -> {
+            // The writer's chassis is dark graphite in day and night.
+            SystemBarIcons(onDarkSurface = true)
             val noteId = if (route is Route.Note) route.id else noteIdState
             if (noteId != null) {
                 val context = LocalContext.current
@@ -63,7 +67,7 @@ fun EnkNavHost(
                     }
                 }
 
-                val settings by container.settingsStore.settings.collectAsState(initial = Settings())
+                val settings by container.settingsStore.settings.collectAsState(initial = mainViewModel.initialSettings)
                 val scope = rememberCoroutineScope()
 
                 WriterScreen(
@@ -72,6 +76,7 @@ fun EnkNavHost(
                     player = container.soundPlayer,
                     soundSets = container.soundManifest,
                     haptics = container.haptics,
+                    intro = intro,
                     onOpenBox = { mainViewModel.navigate(Route.Box) },
                     onSettingsChange = { change ->
                         scope.launch { container.settingsStore.update { it.change() } }
@@ -89,6 +94,7 @@ fun EnkNavHost(
                 Route.Setup -> "Setup" to "Enk 1.0"
             }
 
+            SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
             ShellScaffold(
                 title = title,
                 meta = meta,

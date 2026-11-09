@@ -30,6 +30,18 @@ data class StartFrame(
     val ownPartsAlpha: Float
 )
 
+private fun Float.orZero(): Float = if (isFinite()) this else 0f
+
+private fun StartTargets.finite() = StartTargets(
+    railY = railY.orZero(),
+    screenWidth = screenWidth.orZero().coerceAtLeast(0f),
+    screenHeight = screenHeight.orZero().coerceAtLeast(0f),
+    carriageX = carriageX.orZero(),
+    caretRect = Rect(caretRect.left.orZero(), caretRect.top.orZero(), caretRect.right.orZero(), caretRect.bottom.orZero()),
+    paperHeight = paperHeight.orZero().coerceAtLeast(0f),
+    lightSplash = lightSplash
+)
+
 data class CarriageFrame(val centre: Offset, val scale: Float)
 
 object StartTimeline {
@@ -50,8 +62,10 @@ object StartTimeline {
     private fun lerp(start: Float, stop: Float, fraction: Float): Float =
         start + (stop - start) * fraction
 
-    fun at(tMs: Float, targets: StartTargets): StartFrame {
-        val clampedT = tMs.coerceAtLeast(0f)
+    /** Total: NaN or infinite times and targets give a finite frame (NaN time is 0, bad targets are 0). */
+    fun at(tMs: Float, rawTargets: StartTargets): StartFrame {
+        val clampedT = if (tMs.isNaN()) 0f else tMs.coerceIn(0f, DURATION_MS.toFloat())
+        val targets = rawTargets.finite()
 
         // Aperture
         val startAperture = 96f
@@ -134,3 +148,7 @@ object StartTimeline {
         )
     }
 }
+
+/** The aperture radius at which the circle (centred on the screen) covers the whole window. */
+internal fun StartTargets.coverRadius(): Float =
+    kotlin.math.hypot(screenWidth / 2f, screenHeight / 2f)

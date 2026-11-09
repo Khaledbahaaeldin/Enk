@@ -1,5 +1,6 @@
 package app.enk.start
 
+import org.junit.Assert.assertFalse
 import androidx.compose.ui.geometry.Rect
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -280,5 +281,91 @@ class StartTimelineTest {
     fun darkSplashHasNoChassisCircle() {
         assertEquals(0f, StartTimeline.at(200f, T).chassisCircleRadius, 0.01f)
         assertTrue(StartTimeline.at(300f, T).chassisMix > 0f)
+    }
+
+    @Test
+    fun noFrameValueIsEverNaNOrInfinite() {
+        for (light in listOf(false, true)) {
+            val targets = T.copy(lightSplash = light)
+            var t = 0f
+            while (t <= 900f) {
+                val f = StartTimeline.at(t, targets)
+                val numbers = listOf(
+                    f.apertureRadius, f.rail.left, f.rail.top, f.rail.right, f.rail.bottom, f.linesAlpha, f.chassisMix,
+                    f.chassisCircleRadius, f.paperOffsetY, f.carriage.centre.x, f.carriage.centre.y, f.carriage.scale,
+                    f.caret.left, f.caret.top, f.caret.right, f.caret.bottom, f.textAlpha, f.topBarAlpha, f.overlayAlpha, f.ownPartsAlpha
+                )
+                assertTrue("t=$t light=$light has a non-finite value", numbers.all { it.isFinite() })
+                t += 4f
+            }
+        }
+    }
+
+    @Test
+    fun theEndFrameEqualsTheTargetsExactly() {
+        val f = StartTimeline.at(900f, T)
+        assertEquals(T.railY, f.rail.center.y, 0.001f)
+        assertEquals(0f, f.rail.left, 0.001f)
+        assertEquals(T.screenWidth, f.rail.width, 0.001f)
+        assertEquals(T.carriageX, f.carriage.centre.x, 0.001f)
+        assertEquals(T.railY + 1f, f.carriage.centre.y, 0.001f)
+        assertEquals(T.caretRect.left, f.caret.left, 0.001f)
+        assertEquals(T.caretRect.top, f.caret.top, 0.001f)
+        assertEquals(T.caretRect.right, f.caret.right, 0.001f)
+        assertEquals(T.caretRect.bottom, f.caret.bottom, 0.001f)
+        assertEquals(0f, f.paperOffsetY, 0f)
+        assertEquals(1f, f.textAlpha, 0f)
+        assertEquals(1f, f.topBarAlpha, 0f)
+        assertEquals(1f, f.ownPartsAlpha, 0f)
+        assertEquals(0f, f.overlayAlpha, 0f)
+    }
+
+    @Test
+    fun timesOutsideTheAnimationClampAndNaNIsTheStart() {
+        assertEquals(StartTimeline.at(900f, T), StartTimeline.at(5000f, T))
+        assertEquals(StartTimeline.at(900f, T), StartTimeline.at(Float.POSITIVE_INFINITY, T))
+        assertEquals(StartTimeline.at(0f, T), StartTimeline.at(-250f, T))
+        assertEquals(StartTimeline.at(0f, T), StartTimeline.at(Float.NEGATIVE_INFINITY, T))
+        assertEquals(StartTimeline.at(0f, T), StartTimeline.at(Float.NaN, T))
+    }
+
+    @Test
+    fun brokenTargetsGiveFiniteFramesInsteadOfCrashing() {
+        val broken = StartTargets(
+            railY = Float.NaN, screenWidth = 0f, screenHeight = Float.POSITIVE_INFINITY, carriageX = Float.NaN,
+            caretRect = Rect(Float.NaN, 0f, Float.NaN, 0f), paperHeight = -50f, lightSplash = true
+        )
+        for (t in listOf(0f, 300f, 900f)) {
+            val f = StartTimeline.at(t, broken)
+            val numbers = listOf(f.apertureRadius, f.rail.left, f.rail.top, f.carriage.centre.x, f.caret.left, f.paperOffsetY)
+            assertTrue(numbers.all { it.isFinite() })
+        }
+    }
+
+    @Test
+    fun theSameInputAlwaysGivesTheSameFrame() {
+        assertEquals(StartTimeline.at(412f, T), StartTimeline.at(412f, T))
+    }
+
+    @Test
+    fun thePaperIsOnItsWayBeforeTheRailHandsOver() {
+        assertTrue(StartTimeline.at(300f, T).paperOffsetY < T.paperHeight)
+        assertEquals(0f, StartTimeline.at(600f, T).paperOffsetY, 0.001f)
+        assertEquals(0f, StartTimeline.at(650f, T).ownPartsAlpha, 0.001f)
+    }
+
+    @Test
+    fun theLightSplashIsCoveredByTheChassisCircleWellBeforeTheRailLands() {
+        val light = T.copy(lightSplash = true)
+        val cover = light.coverRadius()
+        assertTrue("the circle must not cover the screen at the start", StartTimeline.at(0f, light).apertureRadius < cover)
+        var coveredAt = -1f
+        var t = 0f
+        while (t <= 900f) {
+            if (StartTimeline.at(t, light).apertureRadius >= cover) { coveredAt = t; break }
+            t += 4f
+        }
+        assertTrue("the circle covers the window at $coveredAt ms", coveredAt in 1f..350f)
+        assertEquals(cover.toDouble(), kotlin.math.hypot(200.0, 410.0), 0.001)
     }
 }

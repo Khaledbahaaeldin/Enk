@@ -1,5 +1,6 @@
 package app.enk
 
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
 import android.os.SystemClock
@@ -7,133 +8,97 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.splashscreen.SplashScreenViewProvider
 import app.enk.design.theme.EnkShellTheme
-import app.enk.settings.Settings
 import app.enk.shell.EnkNavHost
+import app.enk.start.SplashHold
 import app.enk.start.SplashHost
 import app.enk.start.StartGate
-import app.enk.start.StartTargets
-import app.enk.text.GridLayout
-import app.enk.writer.WriterGeometry
-import kotlinx.coroutines.delay
+import app.enk.writer.rememberReduceMotion
 
 class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels {
         MainViewModel.factory(applicationContext)
     }
 
-    private var coldStart = false
-    private val startTimeMs = SystemClock.uptimeMillis()
-    private var loadDurationMs: Long? = null
+    /** Null until the system splash has handed over; then whether the start animation plays. */
+    private var playStartAnimation by mutableStateOf<Boolean?>(null)
+    private var systemSplash: SplashScreenViewProvider? = null
+    private val releaseSplashRunnable = Runnable { releaseSystemSplash() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        coldStart = savedInstanceState == null
-        val launchedFromWidgetOrIntent = intent?.action != null && intent.action != "android.intent.action.MAIN"
+        // A cold start is the first activity of this process; rotation and re-opening are not.
+        val coldStart = !processHasLaunched
+        processHasLaunched = true
         val restoredState = savedInstanceState != null
+        val launchedByIntent = intent?.action != null && intent.action != Intent.ACTION_MAIN
+        // The system splash follows the launch configuration, not the app's Mode setting.
+        val lightSplash = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) !=
+            Configuration.UI_MODE_NIGHT_YES
 
-        // Install exit animation listener on splash screen
-        splashScreen.setOnExitAnimationListener { splashScreenView ->
-            splashScreenView.remove()
-        }
-
+        val hold = SplashHold(startMs = SystemClock.uptimeMillis())
         splashScreen.setKeepOnScreenCondition {
-            val elapsed = SystemClock.uptimeMillis() - startTimeMs
-            val loaded = mainViewModel.isLoaded.value
-            if (loaded && loadDurationMs == null) {
-                loadDurationMs = elapsed
-            } else if (elapsed >= 1500L && loadDurationMs == null) {
-                loadDurationMs = elapsed
+            hold.shouldHold(mainViewModel.isLoaded.value, SystemClock.uptimeMillis())
+        }
+        // Without a system splash (rotation, a running process) there is nothing to hand over from.
+        if (restoredState || !coldStart) playStartAnimation = false
+        splashScreen.setOnExitAnimationListener { splash ->
+            if (playStartAnimation == null) {
+                playStartAnimation = StartGate.shouldPlay(
+                    coldStart = coldStart,
+                    launchedFromWidgetOrIntent = launchedByIntent,
+                    restoredState = restoredState,
+                    loadMs = hold.loadMs ?: SplashHold.CAP_MS
+                )
             }
-            !loaded && elapsed < 1500L
+            systemSplash = splash
+            // The first composed frame normally releases it; this is the safety net.
+            window.decorView.postDelayed(releaseSplashRunnable, SPLASH_RELEASE_FALLBACK_MS)
         }
 
         setContent {
-            val isLoaded by mainViewModel.isLoaded.collectAsState()
-            val restoredNote by mainViewModel.restoredNote.collectAsState()
+            val play = playStartAnimation ?: return@setContent
             val container = mainViewModel.container
-            val settings by container.settingsStore.settings.collectAsState(initial = Settings())
-
-            var timedOut by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) {
-                delay(1500L)
-                timedOut = true
-            }
-
-            if (!isLoaded && !timedOut) {
-                return@setContent
-            }
-
-            val elapsed = SystemClock.uptimeMillis() - startTimeMs
-            if (loadDurationMs == null) {
-                loadDurationMs = elapsed
-            }
-            val loadMs = loadDurationMs ?: elapsed
-
-            val shouldPlay = remember {
-                StartGate.shouldPlay(
-                    coldStart = coldStart,
-                    launchedFromWidgetOrIntent = launchedFromWidgetOrIntent,
-                    restoredState = restoredState,
-                    loadMs = loadMs
-                )
-            }
-
-            val configuration = LocalConfiguration.current
-            val screenWidthDp = configuration.screenWidthDp.toFloat()
-            val screenHeightDp = configuration.screenHeightDp.toFloat()
-            val isNight = (configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-            val lightSplash = !isNight
-
-            val targets = remember(screenWidthDp, screenHeightDp, lightSplash, restoredNote) {
-                val geometry = WriterGeometry.compute(screenWidthDp, screenHeightDp, 1.0f)
-                val firstPageText = restoredNote?.pages?.firstOrNull()?.text ?: ""
-                val lines = GridLayout.wrap(firstPageText, geometry.cols)
-                val caretPos = GridLayout.caret(lines, firstPageText.length, geometry.cols)
-
-                val caretLeft = geometry.textLeftDp + caretPos.col * geometry.columnWidthDp
-                val caretTop = geometry.railYDp - 23f - geometry.lineHeightDp + 1.42f * geometry.fontSp
-                val caretRect = Rect(
-                    left = caretLeft,
-                    top = caretTop,
-                    right = caretLeft + geometry.columnWidthDp,
-                    bottom = caretTop + 2f
-                )
-                StartTargets(
-                    railY = geometry.railYDp,
-                    screenWidth = screenWidthDp,
-                    screenHeight = screenHeightDp,
-                    carriageX = geometry.carriageCenterXDp(caretPos.col),
-                    caretRect = caretRect,
-                    paperHeight = (screenHeightDp - WriterGeometry.PAPER_TOP_DP - WriterGeometry.PAPER_SIDE_DP).coerceAtLeast(100f),
-                    lightSplash = lightSplash
-                )
-            }
+            val settings by container.settingsStore.settings.collectAsState(initial = mainViewModel.initialSettings)
+            val restoredNote by mainViewModel.restoredNote.collectAsState()
 
             EnkShellTheme(theme = settings.theme, mode = settings.themeMode) {
                 SplashHost(
-                    targets = targets,
-                    shouldPlay = shouldPlay,
-                    reduceMotion = settings.reduceEffects
-                ) {
-                    EnkNavHost(
-                        container = container,
-                        mainViewModel = mainViewModel
-                    )
+                    firstPageText = restoredNote?.pages?.firstOrNull()?.text.orEmpty(),
+                    lightSplash = lightSplash,
+                    shouldPlay = play,
+                    reduceMotion = rememberReduceMotion(settings.reduceEffects),
+                    onFirstFrame = ::releaseSystemSplash
+                ) { intro ->
+                    EnkNavHost(container = container, mainViewModel = mainViewModel, intro = intro)
                 }
             }
         }
+    }
+
+    private fun releaseSystemSplash() {
+        systemSplash?.remove()
+        systemSplash = null
+    }
+
+    override fun onDestroy() {
+        window.decorView.removeCallbacks(releaseSplashRunnable)
+        super.onDestroy()
+    }
+
+    private companion object {
+        const val SPLASH_RELEASE_FALLBACK_MS = 300L
+
+        /** Survives activity recreation, dies with the process: what "cold start" means. */
+        var processHasLaunched = false
     }
 }

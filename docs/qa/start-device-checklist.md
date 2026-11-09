@@ -8,7 +8,7 @@ Manual verification checklist for the Enk Start Animation ("Rail becomes the wri
 
 ### Automated vs. Device Testing Deviation
 - **Deviation Note**: The plan originally specified `app/src/androidTest/kotlin/app/enk/start/StartHandoffTest.kt` running as an instrumented emulator test. In this repository, `StartHandoffTest` is implemented and verified under Robolectric in `:app:testDebugUnitTest` (`app/src/test/kotlin/app/enk/start/StartHandoffTest.kt`).
-- **Rationale**: Headless and CI environments run without reliable hardware GPU emulation for connected Android tests. The Robolectric Compose test runner executes virtual-clock UI node verification (`touchSkipsWithin150ms`, `coldStartEndsOnTheWriter`, `widgetLaunchSkipsAnimation`, `reducedMotionFadesOver250ms`) with deterministic time controls.
+- **Rationale**: Headless and CI environments run without reliable hardware GPU emulation for connected Android tests. The Robolectric Compose test runner executes virtual-clock UI node verification (`touchSkipsWithin150ms`, `coldStartEndsOnTheWriter`, `widgetLaunchSkipsTheAnimationEntirely`, `reducedMotionIsAStillFadeOverTheFinishedWriter`) with deterministic time controls.
 - **Requirement**: Because unit tests cannot capture the physical Android 12+ OS window transition, manual verification on an emulator or physical device using this checklist is required to validate the visual handoff.
 
 ---
@@ -24,6 +24,16 @@ Manual verification checklist for the Enk Start Animation ("Rail becomes the wri
 - **Date**:
 
 ---
+
+## 0. What the automated tests already prove (do not re-check by eye)
+
+- The animation's last frame is exactly where the real writer draws its rail, carriage and caret (within 0.5 dp), with no insets, between a 49 dp status bar and a 24 dp navigation bar, and at font scale 1.3 (`StartHandoffTest.theLastFrameLandsOnTheWritersOwnParts*`).
+- The writer is held back (paper low, text, top bar and own parts transparent) and released in order, and is not recomposed per frame.
+
+What only a device can show, and this checklist is for: the system splash handing over to the overlay without a gap, real frame pacing, and the keyboard.
+
+- [ ] **0.1 Keyboard.** Cold start with the soft keyboard already open in another app: the animation must not jump when the keyboard changes the window size.
+- [ ] **0.2 Gap.** Cold start at 10x animator scale: between the system splash going and the first overlay frame no white or black frame may show (the post-splash window background is the splash colour).
 
 ## 1. Splash Screen to StartOverlay Handoff (`noJumpAtHandoff`)
 

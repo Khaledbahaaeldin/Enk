@@ -1,6 +1,5 @@
 package app.enk.writer
 
-import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -40,7 +39,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -100,11 +98,12 @@ fun WriterScreen(
     onOpenBox: () -> Unit,
     modifier: Modifier = Modifier,
     soundSets: List<SoundSet> = emptyList(),
-    onSettingsChange: (Settings.() -> Settings) -> Unit = {}
+    onSettingsChange: (Settings.() -> Settings) -> Unit = {},
+    /** Non-null only while the start animation runs; see [WriterIntro]. */
+    intro: WriterIntro? = null
 ) {
     val state by viewModel.state.collectAsState()
     val page = state.currentPage
-    val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
     // Lifecycle ON_STOP flush
@@ -121,21 +120,7 @@ fun WriterScreen(
         }
     }
 
-    // MotionPolicy evaluation (Finding 8)
-    val animatorDurationScale = remember(context) {
-        try {
-            AndroidSettings.Global.getFloat(
-                context.contentResolver,
-                AndroidSettings.Global.ANIMATOR_DURATION_SCALE,
-                1.0f
-            )
-        } catch (_: Exception) {
-            1.0f
-        }
-    }
-    val reduceMotion = remember(settings.reduceEffects, animatorDurationScale) {
-        MotionPolicy.shouldReduceMotion(settings.reduceEffects, animatorDurationScale)
-    }
+    val reduceMotion = rememberReduceMotion(settings.reduceEffects)
 
     // Sound set resolution
     val defaultSoundSet = remember {
@@ -220,8 +205,10 @@ fun WriterScreen(
     val imeBridge = remember { ImeBridge() }
     val focusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+    // Focusing the field raises the keyboard, which resizes the writer; during the start animation
+    // that would move the rail under the overlay, so the field waits until the animation is over.
+    LaunchedEffect(intro == null) {
+        if (intro == null) focusRequester.requestFocus()
     }
 
     // Keep TextFieldValue in sync with state
@@ -237,7 +224,8 @@ fun WriterScreen(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(chassisBrush)
+            // While the start animation runs, its backdrop paints the chassis.
+            .then(if (intro == null) Modifier.background(chassisBrush) else Modifier)
             .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
         val density = LocalDensity.current
@@ -298,7 +286,7 @@ fun WriterScreen(
                 nightProgress = nightProgress,
                 reduceEffects = reduceMotion,
                 drawChassis = false,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().introPaper(intro)
             ) {
                 Box(
                     modifier = Modifier
@@ -338,6 +326,7 @@ fun WriterScreen(
                         reduceMotion = reduceMotion,
                         modifier = Modifier
                             .fillMaxSize()
+                            .introAlpha(intro?.textAlpha)
                             .lampTextMask(
                                 carriageXDp = currentCarriageX,
                                 railYDp = railY,
@@ -350,7 +339,8 @@ fun WriterScreen(
                         geometry = geometry,
                         pos = caretPos,
                         typing = isTyping,
-                        reduceMotion = reduceMotion
+                        reduceMotion = reduceMotion,
+                        modifier = Modifier.introAlpha(intro?.ownPartsAlpha)
                     )
                 }
             }
@@ -365,7 +355,7 @@ fun WriterScreen(
             )
 
             // Rail
-            Rail(railYDp = railY)
+            Rail(railYDp = railY, modifier = Modifier.introAlpha(intro?.ownPartsAlpha))
 
             // Carriage
             Carriage(
@@ -377,7 +367,8 @@ fun WriterScreen(
                 night = state.lampOn,
                 reduceEffects = reduceMotion,
                 lampIntensity = settings.intensity / 100f,
-                lamp = lampRgb
+                lamp = lampRgb,
+                modifier = Modifier.introAlpha(intro?.ownPartsAlpha)
             )
 
             // Top bar (DS 6.1, Finding 11)
@@ -385,6 +376,7 @@ fun WriterScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp)
+                    .introAlpha(intro?.topBarAlpha)
                     .padding(horizontal = 26.dp)
             ) {
                 // Left: dot + gap + wordmark
@@ -412,7 +404,7 @@ fun WriterScreen(
                     ) {
                         EnkWordmark(
                             modifier = Modifier.height(18.dp),
-                            onDark = state.lampOn
+                            onDark = true
                         )
                     }
                 }
@@ -450,6 +442,7 @@ fun WriterScreen(
                     style = EnkType.hint.copy(fontFamily = LocalMonoFont.current),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .introAlpha(intro?.textAlpha)
                         .padding(bottom = 22.dp)
                 )
             }

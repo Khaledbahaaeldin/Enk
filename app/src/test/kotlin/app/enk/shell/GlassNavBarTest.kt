@@ -233,4 +233,34 @@ class GlassNavBarTest {
             assertTrue("Tab $name height ($heightDp) must be >= 48 dp", heightDp >= 48.dp)
         }
     }
+
+    @Test
+    fun aCallbackReplacedMidDragIsTheOneThatIsCalled() {
+        val first = mutableListOf<Dest>()
+        val second = mutableListOf<Dest>()
+        val useSecond = androidx.compose.runtime.mutableStateOf(false)
+        composeTestRule.setContent {
+            EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
+                GlassNavBar(selected = Dest.Find, onSelect = if (useSecond.value) ({ d: Dest -> second += d }) else ({ d: Dest -> first += d }))
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        val find = composeTestRule.onNode(hasText("Find") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab))
+            .fetchSemanticsNode().boundsInRoot.center
+        val write = composeTestRule.onNode(hasText("Write") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab))
+            .fetchSemanticsNode().boundsInRoot.center
+
+        composeTestRule.onNodeWithTag("glass_nav_bar").performTouchInput {
+            down(find)
+            moveTo(write)
+        }
+        composeTestRule.runOnIdle { useSecond.value = true }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("glass_nav_bar").performTouchInput { up() }
+        composeTestRule.waitForIdle()
+
+        assertTrue("the old callback must not be called after it was replaced: $first", first.isEmpty())
+        assertEquals(listOf(Dest.Write), second)
+    }
 }

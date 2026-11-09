@@ -45,6 +45,7 @@ import app.enk.writer.WriterEvent
 import app.enk.writer.WriterViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -65,6 +66,10 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w400dp-h820dp")
 class ShellScaffoldTest {
+    /** Only a guard against a hang: the waits below end as soon as the work is done. */
+    private companion object {
+        const val HANG_GUARD_MS = 60_000L
+    }
 
     @get:Rule
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
@@ -162,7 +167,7 @@ class ShellScaffoldTest {
     }
 
     @Test
-    fun rtlLayout() {
+    fun navBarMirrorsUnderRtlLayoutDirection() {
         composeTestRule.setContent {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
@@ -250,17 +255,21 @@ class ShellScaffoldTest {
     @Test
     fun rotationKeepsRoute() {
         val context: Context = RuntimeEnvironment.getApplication()
+        val container = app.enk.testContainer(context, context.cacheDir)
         val viewModelStore = ViewModelStore()
+        val factory = MainViewModel.factory(context, container, Dispatchers.Unconfined)
 
-        val factory = MainViewModel.factory(context)
-        val vm1 = ViewModelProvider(viewModelStore, factory)[MainViewModel::class.java]
+        val before = ViewModelProvider(viewModelStore, factory)[MainViewModel::class.java]
+        runBlocking { before.isLoaded.first { it } }
+        before.navigate(Route.Find)
 
-        vm1.navigate(Route.Box)
-        assertEquals(Route.Box, vm1.currentRoute.value)
-
-        // Configuration change: recreate ViewModel using the exact same activity ViewModelStore
-        val vm2 = ViewModelProvider(viewModelStore, factory)[MainViewModel::class.java]
-        assertEquals(Route.Box, vm2.currentRoute.value)
+        // A configuration change keeps the activity's ViewModelStore and asks it again.
+        val after = ViewModelProvider(viewModelStore, factory)[MainViewModel::class.java]
+        assertEquals("the very same view model", before, after)
+        assertEquals(Route.Find, after.currentRoute.value)
+        // Back still works on the restored route.
+        assertTrue(after.handleBack())
+        assertEquals(Route.Writer, after.currentRoute.value)
 
         viewModelStore.clear()
     }
@@ -268,25 +277,7 @@ class ShellScaffoldTest {
     @Test
     fun switchingToBoxAndBackPreservesWriterTextAndCaret() {
         val activity = composeTestRule.activity
-        val inMemoryDb = Room.inMemoryDatabaseBuilder(activity, EnkDatabase::class.java)
-            .allowMainThreadQueries()
-            .build()
-        val tempSettingsFile = File(activity.cacheDir, "shell_test_settings_${System.nanoTime()}.preferences_pb")
-        val testContainer = object : AppContainer {
-            override val db: EnkDatabase = inMemoryDb
-            override val repo: NoteRepository = NoteRepository(inMemoryDb, SystemClock)
-            override val settingsStore: SettingsStore = SettingsStore(
-                PreferenceDataStoreFactory.create(produceFile = { tempSettingsFile })
-            )
-            override val soundManifest: List<app.enk.audio.SoundSet> = emptyList()
-            override val soundPlayer: app.enk.audio.SoundPlayer = object : app.enk.audio.SoundPlayer {
-                override fun play(event: app.enk.audio.SoundEvent, set: app.enk.audio.SoundSet, volume: Float) {}
-                override fun release() {}
-            }
-            override val haptics: app.enk.writer.Haptics = object : app.enk.writer.Haptics {
-                override fun pulse(ms: Int) {}
-            }
-        }
+        val testContainer = app.enk.testContainer(activity, activity.cacheDir)
 
         val mainVm = ViewModelProvider(activity, MainViewModel.factory(activity, testContainer)).get(MainViewModel::class.java)
 
@@ -299,7 +290,7 @@ class ShellScaffoldTest {
         composeTestRule.waitForIdle()
 
         // Wait until mainVm initialized note
-        composeTestRule.waitUntil(5000) { mainVm.currentNoteId.value != null }
+        composeTestRule.waitUntil(HANG_GUARD_MS) { mainVm.currentNoteId.value != null }
         val noteId = mainVm.currentNoteId.value!!
 
         val writerVm = ViewModelProvider(activity, object : ViewModelProvider.Factory {
@@ -308,14 +299,14 @@ class ShellScaffoldTest {
                 WriterViewModel(noteId, testContainer.repo, testContainer.settingsStore) as T
         }).get("writer-$noteId", WriterViewModel::class.java)
 
-        composeTestRule.waitUntil(5000) { writerVm.state.value.loaded }
+        composeTestRule.waitUntil(HANG_GUARD_MS) { writerVm.state.value.loaded }
 
         // Insert text into writer and advance caret
         composeTestRule.runOnIdle {
             writerVm.dispatch(WriterEvent.Insert("Preserved typed text"))
         }
         composeTestRule.waitForIdle()
-        composeTestRule.waitUntil(5000) {
+        composeTestRule.waitUntil(HANG_GUARD_MS) {
             writerVm.state.value.pages.isNotEmpty() &&
             writerVm.state.value.pages[0].text == "Preserved typed text"
         }
@@ -341,5 +332,9 @@ class ShellScaffoldTest {
         // Verify text and caret are preserved
         assertEquals("Preserved typed text", writerVm.state.value.pages[0].text)
         assertEquals(caretBefore, writerVm.state.value.caret)
+
+        // Nothing may be left in flight when the activity stops: flush now and check what was stored.
+        runBlocking { writerVm.flush() }
+        assertEquals("Preserved typed text", runBlocking { testContainer.repo.load(noteId) }?.pages?.first()?.text)
     }
 }

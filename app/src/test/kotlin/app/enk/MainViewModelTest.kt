@@ -11,6 +11,7 @@ import app.enk.data.SystemClock
 import app.enk.settings.SettingsStore
 import app.enk.text.StruckPage
 import app.enk.writer.Haptics
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -19,6 +20,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelProvider
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -76,7 +79,7 @@ class MainViewModelTest {
     @Test
     fun isLoadedBecomesTrueAndCreatesNoteWhenEmpty() = runBlocking {
         val context: Context = RuntimeEnvironment.getApplication()
-        val viewModel = MainViewModel(context, container)
+        val viewModel = MainViewModel(context, container, Dispatchers.Unconfined)
 
         // Wait for isLoaded to emit true
         val loaded = viewModel.isLoaded.filter { it }.first()
@@ -91,7 +94,7 @@ class MainViewModelTest {
         repo.savePages(note.id, listOf(StruckPage("Hello restored note")))
 
         val context: Context = RuntimeEnvironment.getApplication()
-        val viewModel = MainViewModel(context, container)
+        val viewModel = MainViewModel(context, container, Dispatchers.Unconfined)
 
         val loaded = viewModel.isLoaded.filter { it }.first()
         assertTrue(loaded)
@@ -108,5 +111,38 @@ class MainViewModelTest {
         val caretPos = app.enk.text.GridLayout.caret(lines, firstPageText.length, geometry.cols)
         assertEquals("Caret col must reflect text length on single line", firstPageText.length, caretPos.col)
         assertTrue("Carriage X must be shifted right from column 0", geometry.carriageCenterXDp(caretPos.col) > geometry.carriageCenterXDp(0))
+    }
+
+    @Test
+    fun initialSettingsAreReadBeforeLoadedIsReported() = runBlocking {
+        settingsStore.update { it.copy(reduceEffects = true, bellVolume = 0.25f) }
+        val context: Context = RuntimeEnvironment.getApplication()
+        val viewModel = MainViewModel(context, container, Dispatchers.Unconfined)
+
+        viewModel.isLoaded.filter { it }.first()
+        assertTrue("the first composition must already see the stored settings", viewModel.initialSettings.reduceEffects)
+        assertEquals(0.25f, viewModel.initialSettings.bellVolume, 0.0001f)
+    }
+
+    @Test
+    fun clearingTheStoreReleasesTheDatabaseAndThePlayer() {
+        val context: Context = RuntimeEnvironment.getApplication()
+        var playerReleased = false
+        val tracked = object : AppContainer by container {
+            override val soundPlayer: SoundPlayer = object : SoundPlayer {
+                override fun prepare(soundSet: SoundSet) {}
+                override fun play(event: app.enk.audio.SoundEvent, soundSet: SoundSet, volume: Float) {}
+                override fun release() { playerReleased = true }
+            }
+        }
+        val store = ViewModelStore()
+        val viewModel = ViewModelProvider(store, MainViewModel.factory(context, tracked, Dispatchers.Unconfined))[MainViewModel::class.java]
+        runBlocking { viewModel.isLoaded.filter { it }.first() }
+        assertTrue("the loading opened the database", db.isOpen)
+
+        store.clear()
+
+        assertFalse("onCleared must close the database", db.isOpen)
+        assertTrue("onCleared must release the sound player", playerReleased)
     }
 }

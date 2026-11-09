@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import app.enk.design.EnkMaterials
 import app.enk.design.EnkShadows
@@ -54,6 +55,7 @@ fun Rail(railYDp: Float, modifier: Modifier = Modifier) {
                     .fillMaxWidth()
                     .height(12.dp)
                     .offset(y = 6.dp)
+                    .testTag("rail_rod")
                     .enkShadow(EnkShadows.rail, RectangleShape)
                     .background(EnkMaterials.railSteel)
             )

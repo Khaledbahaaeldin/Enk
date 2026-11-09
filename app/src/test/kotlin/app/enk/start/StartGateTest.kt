@@ -33,4 +33,11 @@ class StartGateTest {
     fun reducedMotionIsAFade() {
         assertEquals(250, StartGate.reducedMotionDurationMs())
     }
+
+    @Test
+    fun theLoadTimeBoundaryIsInclusiveAt1500() {
+        assertTrue(StartGate.shouldPlay(true, false, false, 1500))
+        assertFalse(StartGate.shouldPlay(true, false, false, 1501))
+        assertTrue(StartGate.shouldPlay(true, false, false, 0))
+    }
 }
