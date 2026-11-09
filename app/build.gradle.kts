@@ -28,6 +28,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -64,6 +70,11 @@ tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
     inputs.dir(layout.buildDirectory.dir("intermediates/merged_manifests/debug"))
 }
 
+tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEach {
+    // Compose UI tests rely on ui-test-manifest which is debugImplementation only
+    exclude("**/MarkerGestureTest*")
+}
+
 tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {
     doLast {
         val paparazziDir = layout.buildDirectory.dir("intermediates/paparazzi").orNull?.asFile
@@ -75,3 +86,5 @@ tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {
         }
     }
 }
+
+
