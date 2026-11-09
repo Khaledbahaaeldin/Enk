@@ -75,6 +75,7 @@ tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEa
     // Compose UI tests rely on ui-test-manifest which is debugImplementation only
     exclude("**/MarkerGestureTest*")
     exclude("**/WriterScreenTest*")
+    exclude("**/NightThemeTest*")
 }
 
 tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {
