@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.room.runtime)
 
@@ -76,6 +77,10 @@ tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEa
     exclude("**/MarkerGestureTest*")
     exclude("**/WriterScreenTest*")
     exclude("**/NightThemeTest*")
+    exclude("**/GlassNavBarTest*")
+    exclude("**/ShellScaffoldTest*")
+    exclude("**/StartHandoffTest*")
+    exclude("**/SystemBarIconsTest*")
 }
 
 tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {

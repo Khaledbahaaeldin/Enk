@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app theme after the system splash. Its window background is the splash colour, so a
+         frame between the splash going and the first composed frame never flashes white. -->
+    <style name="Theme.Enk" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/enk_splash_background</item>
+    </style>
+</resources>
