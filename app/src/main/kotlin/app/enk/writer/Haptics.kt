@@ -1,5 +1,6 @@
 package app.enk.writer
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 import android.os.VibrationEffect
@@ -11,6 +12,7 @@ interface Haptics {
 }
 
 class AndroidHaptics(private val context: Context) : Haptics {
+    @SuppressLint("MissingPermission")
     override fun pulse(ms: Int) {
         if (ms <= 0) return
         try {
