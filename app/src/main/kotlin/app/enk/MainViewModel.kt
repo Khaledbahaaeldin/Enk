@@ -4,18 +4,26 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import app.enk.data.Note
 import app.enk.shell.Route
 import app.enk.shell.routeBack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainViewModel(
     context: Context,
     val container: AppContainer = DefaultAppContainer(context.applicationContext)
 ) : ViewModel() {
+
+    private val _isLoaded = MutableStateFlow(false)
+    val isLoaded: StateFlow<Boolean> = _isLoaded.asStateFlow()
+
+    private val _restoredNote = MutableStateFlow<Note?>(null)
+    val restoredNote: StateFlow<Note?> = _restoredNote.asStateFlow()
 
     private val _currentNoteId = MutableStateFlow<String?>(null)
     val currentNoteId: StateFlow<String?> = _currentNoteId.asStateFlow()
@@ -40,8 +48,14 @@ class MainViewModel(
     init {
         viewModelScope.launch(Dispatchers.IO) {
             container.soundManifest // read the asset manifest off the main thread
-            val note = container.repo.mostRecent() ?: container.repo.createNote(dividerId = null)
+            try {
+                container.settingsStore.settings.first()
+            } catch (_: Exception) {}
+            val recent = container.repo.mostRecent()
+            val note = recent ?: container.repo.createNote(dividerId = null)
             _currentNoteId.value = note.id
+            _restoredNote.value = recent
+            _isLoaded.value = true
         }
     }
 

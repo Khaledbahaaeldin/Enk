@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Enk.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#ECE8DF</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_symbol_light</item>
+        <item name="windowSplashScreenAnimationDuration">300</item>
+        <item name="postSplashScreenTheme">@android:style/Theme.Material.NoActionBar</item>
+    </style>
+</resources>
