@@ -6,6 +6,8 @@ class ImeBridge {
     private var wasComposing: Boolean = false
     private var lastComposedText: String = ""
     private var lastSelectionStart: Int? = null
+    private var composingStart: Int = 0
+    private var composingEnd: Int = 0
 
     fun onTextChanged(old: String, new: TextFieldValue, composingNow: Boolean): List<WriterEvent> {
         val events = mutableListOf<WriterEvent>()
@@ -23,6 +25,13 @@ class ImeBridge {
                 new.text.substring(prefix, new.text.length - suffix)
             }
             val normalized = compText.replace("\r\n", "\n").replace("\r", "\n")
+            if (new.composition != null) {
+                composingStart = minOf(new.composition!!.start, new.composition!!.end).coerceIn(0, new.text.length)
+                composingEnd = maxOf(new.composition!!.start, new.composition!!.end).coerceIn(0, new.text.length)
+            } else {
+                composingStart = commonPrefix(old, new.text)
+                composingEnd = composingStart + compText.length
+            }
             wasComposing = true
             lastComposedText = normalized
             lastSelectionStart = new.selection.start
@@ -31,17 +40,31 @@ class ImeBridge {
 
         if (wasComposing) {
             wasComposing = false
-            val committedText = if (lastComposedText.isNotEmpty()) {
-                val t = lastComposedText
-                lastComposedText = ""
-                t
+            val composed = lastComposedText
+            lastComposedText = ""
+            lastSelectionStart = new.selection.start
+            // `old` still holds the composing text, so whatever sits between the untouched head and
+            // tail of it is what the IME actually committed (a word plus a space, a suggestion...).
+            val tail = old.length - composingEnd
+            val tailStart = new.text.length - tail
+            val committedText = if (composingEnd <= old.length && composingStart <= tailStart && tailStart <= new.text.length &&
+                old.regionMatches(0, new.text, 0, composingStart) &&
+                old.regionMatches(composingEnd, new.text, tailStart, tail)
+            ) {
+                new.text.substring(composingStart, tailStart)
+            } else if (composed.isNotEmpty()) {
+                composed
             } else {
                 val prefix = commonPrefix(old, new.text)
                 val suffix = commonSuffix(old, new.text, prefix)
-                new.text.substring(prefix, new.text.length - suffix).replace("\r\n", "\n").replace("\r", "\n")
+                new.text.substring(prefix, new.text.length - suffix)
             }
-            lastSelectionStart = new.selection.start
-            return listOf(WriterEvent.Insert(text = committedText, composing = false))
+            return listOf(
+                WriterEvent.Insert(
+                    text = committedText.replace("\r\n", "\n").replace("\r", "\n"),
+                    composing = false
+                )
+            )
         }
 
         if (new.text == old) {

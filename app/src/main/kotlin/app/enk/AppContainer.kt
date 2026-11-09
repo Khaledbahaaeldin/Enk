@@ -24,7 +24,6 @@ interface AppContainer {
     val soundManifest: List<SoundSet>
     val soundPlayer: SoundPlayer
     val haptics: Haptics
-    fun close()
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -63,14 +62,5 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val haptics: Haptics by lazy {
         AndroidHaptics(context.applicationContext)
-    }
-
-    override fun close() {
-        try {
-            db.close()
-        } catch (_: Throwable) {}
-        try {
-            soundPlayer.release()
-        } catch (_: Throwable) {}
     }
 }

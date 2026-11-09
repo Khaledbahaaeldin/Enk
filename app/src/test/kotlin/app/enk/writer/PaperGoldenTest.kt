@@ -46,7 +46,7 @@ class PaperGoldenTest {
                 PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
-                night = false,
+                nightProgress = 0f,
                 reduceEffects = false,
             )
             }}
@@ -66,7 +66,7 @@ class PaperGoldenTest {
                 PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
-                night = true,
+                nightProgress = 1f,
                 reduceEffects = false,
             )
             }}
@@ -86,7 +86,7 @@ class PaperGoldenTest {
                 PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
-                night = false,
+                nightProgress = 0f,
                 reduceEffects = false,
             )
             }}
@@ -107,7 +107,7 @@ class PaperGoldenTest {
                 PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
-                night = false,
+                nightProgress = 0f,
                 reduceEffects = false,
             )
             }}
@@ -127,7 +127,7 @@ class PaperGoldenTest {
                 PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
-                night = false,
+                nightProgress = 0f,
                 reduceEffects = false,
             )
             }}
@@ -152,7 +152,7 @@ class PaperGoldenTest {
                 PaperSheet(
                 state = state,
                 geometry = scaledGeometry,
-                night = false,
+                nightProgress = 0f,
                 reduceEffects = false,
             )
             }}
@@ -172,7 +172,7 @@ class PaperGoldenTest {
                 PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
-                night = false,
+                nightProgress = 0f,
                 reduceEffects = false,
             )
             }}
@@ -192,7 +192,7 @@ class PaperGoldenTest {
                 PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
-                night = false,
+                nightProgress = 0f,
                 reduceEffects = false,
             )
             }}
@@ -213,7 +213,7 @@ class PaperGoldenTest {
                 PaperSheet(
                 state = state,
                 geometry = referenceGeometry,
-                night = false,
+                nightProgress = 0f,
                 reduceEffects = false,
                 stampFrame = 80f / 160f
             )

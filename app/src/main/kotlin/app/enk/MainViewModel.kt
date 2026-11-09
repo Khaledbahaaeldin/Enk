@@ -18,6 +18,7 @@ class MainViewModel(context: Context) : ViewModel() {
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
+            container.soundManifest // read the asset manifest off the main thread
             val note = container.repo.mostRecent() ?: container.repo.createNote(dividerId = null)
             _currentNoteId.value = note.id
         }

@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import app.enk.design.ControlPanel
+import app.enk.design.ControlPanelMetrics
 import app.enk.design.EnkColors
 import app.enk.design.Fader
 import app.enk.design.LampColor
@@ -152,7 +153,7 @@ class PanelGoldenTest {
     }
 
     @Test
-    fun panelReduceEffects() {
+    fun panelReduceEffectsMidEnterIsAFadeWithNoSlide() {
         val settings = LampSettings(warmth = 25, intensity = 80, beam = 55)
         paparazzi.snapshot {
             Box(
@@ -166,10 +167,34 @@ class PanelGoldenTest {
                     settings = settings,
                     onChange = {},
                     onDetent = {},
+                    enterProgressMs = 50,
                     reduceEffects = true
                 )
             }
         }
+    }
+
+    @Test
+    fun faderRowsInsideThePanelKeepA48DpTouchHeight() {
+        // Panel = 3 rows + 4 dp frame twice + 8/10 dp well padding + 30 dp bottom margin. If a row
+        // were clamped below the fader's 48 dp, the panel would be shorter than this.
+        var panelHeightDp = 0f
+        paparazzi.snapshot {
+            val density = LocalDensity.current
+            Box(modifier = Modifier.size(400.dp, 820.dp).background(EnkColors.paperNight)) {
+                ControlPanel(
+                    visible = true,
+                    lampColor = LampColor.fromWarmth(25),
+                    settings = LampSettings(warmth = 25, intensity = 80, beam = 55),
+                    onChange = {},
+                    onDetent = {},
+                    modifier = Modifier.onGloballyPositioned { coords ->
+                        panelHeightDp = with(density) { coords.size.height.toDp().value }
+                    }
+                )
+            }
+        }
+        assertEquals(ControlPanelMetrics.FOOTPRINT_DP, panelHeightDp, 0.5f)
     }
 
     @Test

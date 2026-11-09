@@ -15,6 +15,11 @@ import kotlin.math.roundToInt
 object MarkerTuning {
     const val LONG_PRESS_MS: Long = EnkMotion.longPressMs
     const val SLOP_DP: Float = EnkMotion.longPressSlopDp
+
+    /** Carriage hit box: 54 x 48 dp centred 1 dp below the rail line. */
+    const val HIT_HALF_WIDTH_DP: Float = 27f
+    const val HIT_HALF_HEIGHT_DP: Float = 24f
+    const val HIT_CENTER_BELOW_RAIL_DP: Float = 1f
 }
 
 fun scrubIndex(xDp: Float, geometry: WriterGeometry, pageLength: Int): Int {
@@ -60,12 +65,12 @@ class MarkerGestureMachine(
 
         val carriageX = currentCarriageXDp()
         val railY = geometry.railYDp
-        val carriageCenterY = railY + 1f
+        val carriageCenterY = railY + MarkerTuning.HIT_CENTER_BELOW_RAIL_DP
 
-        val minX = carriageX - 27f
-        val maxX = carriageX + 27f
-        val minY = carriageCenterY - 24f
-        val maxY = carriageCenterY + 24f
+        val minX = carriageX - MarkerTuning.HIT_HALF_WIDTH_DP
+        val maxX = carriageX + MarkerTuning.HIT_HALF_WIDTH_DP
+        val minY = carriageCenterY - MarkerTuning.HIT_HALF_HEIGHT_DP
+        val maxY = carriageCenterY + MarkerTuning.HIT_HALF_HEIGHT_DP
 
         if (xDp !in minX..maxX || yDp !in minY..maxY) {
             return false

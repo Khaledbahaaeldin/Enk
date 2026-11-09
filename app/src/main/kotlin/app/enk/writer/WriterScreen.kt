@@ -6,6 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,7 +30,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -52,19 +56,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import app.enk.R
 import app.enk.audio.BellPolicy
 import app.enk.audio.Sample
 import app.enk.audio.SoundEvent
-import app.enk.audio.SoundManifest
 import app.enk.audio.SoundPlayer
-import app.enk.audio.SoundPoolPlayer
 import app.enk.audio.SoundSet
 import app.enk.design.ControlPanel
 import app.enk.design.EnkColors
 import app.enk.design.EnkType
 import app.enk.design.LampColor
 import app.enk.design.LampLight
-import app.enk.design.LampSettings
 import app.enk.design.LocalMonoFont
 import app.enk.design.lampTextMask
 import app.enk.design.logo.EnkWordmark
@@ -73,7 +75,7 @@ import app.enk.text.GridLayout
 import app.enk.text.LineSpan
 import app.enk.text.StruckPage
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 val WriterState.currentPage: StruckPage
@@ -89,43 +91,6 @@ private fun lerpColor(start: Color, stop: Color, fraction: Float): Color {
     )
 }
 
-fun Modifier.lampTextMask(
-    visible: Boolean,
-    railYDp: Float,
-    paperTopDp: Float = 64f,
-    lampColor: Color? = null,
-    textMuted: Color? = null,
-    carriageXDp: Float = 0f,
-    settings: LampSettings = LampSettings(25, 80, 55)
-): Modifier = this.lampTextMask(
-    carriageXDp = carriageXDp,
-    railYDp = railYDp,
-    paperTopDp = paperTopDp,
-    settings = settings,
-    active = visible
-)
-
-@Composable
-fun LampLight(
-    visible: Boolean,
-    railYDp: Float,
-    paperTopDp: Float,
-    paperHeightDp: Float,
-    lampColor: Color,
-    reduceEffects: Boolean,
-    carriageXDp: Float = 0f,
-    modifier: Modifier = Modifier
-) {
-    LampLight(
-        carriageXDp = carriageXDp,
-        railYDp = railYDp,
-        settings = LampSettings(25, 80, 55),
-        visible = visible,
-        reduceEffects = reduceEffects,
-        modifier = modifier
-    )
-}
-
 @Composable
 fun WriterScreen(
     viewModel: WriterViewModel,
@@ -134,11 +99,11 @@ fun WriterScreen(
     haptics: Haptics,
     onOpenBox: () -> Unit,
     modifier: Modifier = Modifier,
-    onSettingsChange: ((Settings) -> Unit)? = null
+    soundSets: List<SoundSet> = emptyList(),
+    onSettingsChange: (Settings.() -> Settings) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     val page = state.currentPage
-    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -147,7 +112,7 @@ fun WriterScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP) {
-                coroutineScope.launch { viewModel.flush() }
+                viewModel.flushAsync()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -184,21 +149,15 @@ fun WriterScreen(
             bell = Sample("sounds/classic/bell.ogg")
         )
     }
-    val soundSet = remember(settings.soundSet, context) {
-        try {
-            val json = context.assets.open("sounds/manifest.json").bufferedReader().use { it.readText() }
-            val sets = SoundManifest.parse(json)
-            sets.firstOrNull { it.id.equals(settings.soundSet.name, ignoreCase = true) } ?: defaultSoundSet
-        } catch (_: Throwable) {
-            defaultSoundSet
-        }
+    val soundSet = remember(settings.soundSet, soundSets) {
+        soundSets.firstOrNull { it.id.equals(settings.soundSet.name, ignoreCase = true) } ?: defaultSoundSet
     }
 
     // Prepare sound set off main thread on changes (Finding 10)
     LaunchedEffect(settings.soundSet, soundSet) {
         withContext(Dispatchers.IO) {
             try {
-                (player as? SoundPoolPlayer)?.prepare(soundSet)
+                player.prepare(soundSet)
             } catch (_: Exception) {}
         }
     }
@@ -227,11 +186,26 @@ fun WriterScreen(
     var carriageMotion by remember { mutableStateOf(CarriageMotion.Rest) }
     var dragCarriageXDp by remember { mutableStateOf<Float?>(null) }
 
-    val isTyping = TypingPolicy.isTyping(
-        nowMs = System.currentTimeMillis(),
-        lastKeyMs = lastKeyMs,
-        dragging = carriageMotion == CarriageMotion.Dragging
-    )
+    // The caret is solid while typing and goes back to blinking once the idle window has passed.
+    var typingActive by remember { mutableStateOf(false) }
+    LaunchedEffect(lastKeyMs) {
+        if (lastKeyMs != 0L) {
+            typingActive = true
+            delay(TypingPolicy.IDLE_MS)
+            typingActive = false
+        }
+    }
+    val isTyping = typingActive || carriageMotion == CarriageMotion.Dragging
+
+    val latestSettings by rememberUpdatedState(settings)
+    fun playSound(event: SoundEvent, volume: Float = 1f) {
+        if (latestSettings.muted) return
+        try { player.play(event, soundSet, volume) } catch (_: Exception) {}
+    }
+    fun pulse(ms: Int) {
+        if (!latestSettings.haptics) return
+        try { haptics.pulse(ms) } catch (_: Exception) {}
+    }
 
     // Hint policy (Finding 5)
     var hintPolicy by remember(settings.hintDismissed) {
@@ -255,19 +229,16 @@ fun WriterScreen(
         mutableStateOf(TextFieldValue(text = page.text, selection = TextRange(state.caret)))
     }
 
-    LaunchedEffect(page.text, state.caret) {
-        if (textFieldValue.text != page.text || textFieldValue.selection.start != state.caret) {
-            textFieldValue = TextFieldValue(
-                text = page.text,
-                selection = TextRange(state.caret.coerceIn(0, page.text.length))
-            )
-        }
+    LaunchedEffect(state) {
+        // Read the live state, not this composition's snapshot, so keystrokes in flight survive.
+        textFieldValue = syncField(textFieldValue, viewModel.state.value)
     }
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(chassisBrush)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
         val density = LocalDensity.current
         val screenWidthDp = maxWidth.value
@@ -283,6 +254,12 @@ fun WriterScreen(
         val restingCarriageX = geometry.carriageCenterXDp(caretPos.col)
         val currentCarriageX = dragCarriageXDp ?: restingCarriageX
         val bellPolicy = remember(geometry.cols) { BellPolicy(geometry.cols) }
+        fun ringBellAt(text: String, index: Int) {
+            val pos = GridLayout.caret(GridLayout.wrap(text, geometry.cols), index, geometry.cols)
+            if (bellPolicy.onCaret(pos.line, pos.col)) {
+                playSound(SoundEvent.Bell, latestSettings.bellVolume)
+            }
+        }
 
         Box(
             modifier = Modifier
@@ -292,14 +269,7 @@ fun WriterScreen(
                     pageLength = { state.currentPage.text.length },
                     onEvent = { event ->
                         viewModel.dispatch(event)
-                        if (event is WriterEvent.MoveCaret) {
-                            val newCaretPos = GridLayout.caret(lines, event.index, geometry.cols)
-                            if (bellPolicy.onCaret(newCaretPos.line, newCaretPos.col)) {
-                                try {
-                                    player.play(SoundEvent.Bell, soundSet, settings.bellVolume)
-                                } catch (_: Exception) {}
-                            }
-                        }
+                        if (event is WriterEvent.MoveCaret) ringBellAt(page.text, event.index)
                     },
                     onDragState = { motion, xDp ->
                         carriageMotion = motion
@@ -307,21 +277,17 @@ fun WriterScreen(
                         if (motion == CarriageMotion.Dragging) {
                             hintPolicy = hintPolicy.onScrub()
                             if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                                onSettingsChange?.invoke(settings.copy(hintDismissed = true))
+                                onSettingsChange { copy(hintDismissed = true) }
                             }
                         }
                     },
                     onLongPress = {
                         viewModel.dispatch(WriterEvent.ToggleLamp)
-                        try {
-                            player.play(SoundEvent.LampClick, soundSet)
-                        } catch (_: Exception) {}
-                        try {
-                            haptics.pulse(14)
-                        } catch (_: Exception) {}
+                        playSound(SoundEvent.LampClick)
+                        pulse(14)
                         hintPolicy = hintPolicy.onLongPress()
                         if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                            onSettingsChange?.invoke(settings.copy(hintDismissed = true))
+                            onSettingsChange { copy(hintDismissed = true) }
                         }
                     },
                     currentCarriageXDp = { dragCarriageXDp ?: geometry.carriageCenterXDp(caretPos.col) }
@@ -331,6 +297,7 @@ fun WriterScreen(
             PaperSheet(
                 nightProgress = nightProgress,
                 reduceEffects = reduceMotion,
+                drawChassis = false,
                 modifier = Modifier.fillMaxSize()
             ) {
                 Box(
@@ -340,8 +307,8 @@ fun WriterScreen(
                             detectTapGestures { offset ->
                                 focusRequester.requestFocus()
                                 keyboardController?.show()
-                                val tapXDp = offset.x.toDp().value + 12f
-                                val tapYDp = offset.y.toDp().value + 64f
+                                val tapXDp = offset.x.toDp().value + WriterGeometry.PAPER_SIDE_DP
+                                val tapYDp = offset.y.toDp().value + geometry.paperTopDp
                                 val paperLines = GridLayout.wrap(page.text, geometry.cols)
                                 val gridLines = paperLines.map { span ->
                                     val t = if (span.start <= page.text.length) {
@@ -355,15 +322,10 @@ fun WriterScreen(
                                     geometry = geometry,
                                     lines = gridLines,
                                     feedOffsetDp = geometry.textTopOffsetDp(caretPos.line),
-                                    paperTopDp = 64f
+                                    paperTopDp = geometry.paperTopDp
                                 )
                                 viewModel.dispatch(WriterEvent.MoveCaret(targetIndex))
-                                val newCaretPos = GridLayout.caret(paperLines, targetIndex, geometry.cols)
-                                if (bellPolicy.onCaret(newCaretPos.line, newCaretPos.col)) {
-                                    try {
-                                        player.play(SoundEvent.Bell, soundSet, settings.bellVolume)
-                                    } catch (_: Exception) {}
-                                }
+                                ringBellAt(page.text, targetIndex)
                             }
                         }
                 ) {
@@ -379,7 +341,7 @@ fun WriterScreen(
                             .lampTextMask(
                                 carriageXDp = currentCarriageX,
                                 railYDp = railY,
-                                paperTopDp = 64f,
+                                paperTopDp = geometry.paperTopDp,
                                 settings = lampSettings,
                                 active = state.lampOn
                             )
@@ -468,23 +430,14 @@ fun WriterScreen(
                 visible = state.lampOn,
                 lampColor = lampColor,
                 settings = lampSettings,
-                onChange = { newSettings ->
-                    onSettingsChange?.invoke(
-                        settings.copy(
-                            warmth = newSettings.warmth,
-                            intensity = newSettings.intensity,
-                            beam = newSettings.beam
-                        )
-                    )
+                onChange = { lamp ->
+                    onSettingsChange {
+                        copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
+                    }
                 },
                 onDetent = { pos ->
-                    try {
-                        (player as? SoundPoolPlayer)?.playTick(pos, 1f)
-                            ?: player.play(SoundEvent.FaderTick, soundSet, 1f)
-                    } catch (_: Exception) {}
-                    try {
-                        haptics.pulse(4)
-                    } catch (_: Exception) {}
+                    if (!latestSettings.muted) player.playTick(pos, 1f)
+                    pulse(4)
                 },
                 reduceEffects = reduceMotion,
                 modifier = Modifier.testTag("control_panel")
@@ -493,7 +446,7 @@ fun WriterScreen(
             // Hint text (DS 6.9, Finding 5)
             if (!hintPolicy.isDismissed && !settings.hintDismissed && !state.lampOn) {
                 Text(
-                    text = "drag marker to scrub · hold marker for lamp",
+                    text = stringResource(R.string.writer_hint),
                     style = EnkType.hint.copy(fontFamily = LocalMonoFont.current),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -506,88 +459,66 @@ fun WriterScreen(
                 value = textFieldValue,
                 onValueChange = { newValue ->
                     val oldText = textFieldValue.text
-                    val wasComposing = state.composingRange != null
-                    textFieldValue = newValue
-                    val isComposing = newValue.composition != null
+                    val wasComposing = viewModel.state.value.composingRange != null
                     val events = imeBridge.onTextChanged(
                         old = oldText,
                         new = newValue,
-                        composingNow = isComposing
+                        composingNow = newValue.composition != null
                     )
                     for (event in events) {
                         when (event) {
                             is WriterEvent.Insert -> {
-                                val isComposingEvent = event.composing
-                                val isSingleCodePoint = !isComposingEvent && event.text.isNotEmpty() && event.text.codePointCount(0, event.text.length) == 1
-                                val isPaste = !isComposingEvent && !wasComposing && event.text.isNotEmpty() && event.text.codePointCount(0, event.text.length) > 1
-                                val isCommittedWord = !isComposingEvent && wasComposing
+                                val codePoints = event.text.codePointCount(0, event.text.length)
+                                val isSingleCodePoint = !event.composing && codePoints == 1
+                                val isPaste = !event.composing && !wasComposing && codePoints > 1
+                                val isCommittedWord = !event.composing && wasComposing
 
                                 viewModel.dispatch(event)
                                 lastKeyMs = System.currentTimeMillis()
-                                slugChar = event.text.lastOrNull()
-                                strikeKey++
+                                if (!event.composing) {
+                                    // One stamp per committed insert, never per composing update.
+                                    slugChar = event.text.lastCodePointOrNull()?.takeIf { it <= 0xFFFF }?.toChar()
+                                    strikeKey++
+                                }
 
-                                if (isComposingEvent || isPaste) {
-                                    // Silent, no haptic
+                                if (event.composing || isPaste) {
+                                    // Silent while composing or pasting.
                                 } else if (isCommittedWord) {
-                                    if (!settings.muted) {
-                                        try { player.play(SoundEvent.Key, soundSet) } catch (_: Exception) {}
-                                    }
-                                    if (settings.haptics) {
-                                        try { haptics.pulse(8) } catch (_: Exception) {}
-                                    }
+                                    playSound(SoundEvent.Key)
+                                    pulse(8)
                                 } else if (isSingleCodePoint) {
                                     val (sound, pulseMs) = when (event.text) {
                                         " " -> Pair(SoundEvent.Space, 14)
                                         "\n" -> Pair(SoundEvent.Enter, 14)
                                         else -> Pair(SoundEvent.Key, 8)
                                     }
-                                    if (!settings.muted) {
-                                        try { player.play(sound, soundSet) } catch (_: Exception) {}
-                                    }
-                                    if (settings.haptics) {
-                                        try { haptics.pulse(pulseMs) } catch (_: Exception) {}
-                                    }
+                                    playSound(sound)
+                                    pulse(pulseMs)
                                 }
 
-                                val curState = viewModel.state.value
-                                val curPage = curState.currentPage
-                                val curLines = GridLayout.wrap(curPage.text, geometry.cols)
-                                val curCaretPos = GridLayout.caret(curLines, curState.caret, geometry.cols)
-                                if (bellPolicy.onCaret(curCaretPos.line, curCaretPos.col)) {
-                                    try {
-                                        player.play(SoundEvent.Bell, soundSet, settings.bellVolume)
-                                    } catch (_: Exception) {}
-                                }
+                                val live = viewModel.state.value
+                                ringBellAt(live.currentPage.text, live.caret)
                             }
                             is WriterEvent.Backspace -> {
-                                val canBackspace = !(state.pageIndex == 0 && state.caret == 0)
+                                val before = viewModel.state.value
+                                val canBackspace = !(before.pageIndex == 0 && before.caret == 0)
                                 viewModel.dispatch(event)
                                 lastKeyMs = System.currentTimeMillis()
                                 if (canBackspace) {
-                                    if (!settings.muted) {
-                                        try { player.play(SoundEvent.Backspace, soundSet) } catch (_: Exception) {}
-                                    }
-                                    if (settings.haptics) {
-                                        try { haptics.pulse(8) } catch (_: Exception) {}
-                                    }
+                                    playSound(SoundEvent.Backspace)
+                                    pulse(8)
                                 }
                             }
                             is WriterEvent.MoveCaret -> {
                                 viewModel.dispatch(event)
-                                val curLines = GridLayout.wrap(state.currentPage.text, geometry.cols)
-                                val curCaretPos = GridLayout.caret(curLines, event.index, geometry.cols)
-                                if (bellPolicy.onCaret(curCaretPos.line, curCaretPos.col)) {
-                                    try {
-                                        player.play(SoundEvent.Bell, soundSet, settings.bellVolume)
-                                    } catch (_: Exception) {}
-                                }
+                                ringBellAt(viewModel.state.value.currentPage.text, event.index)
                             }
-                            else -> {
-                                viewModel.dispatch(event)
-                            }
+                            else -> viewModel.dispatch(event)
                         }
                     }
+                    // Reconcile right away against the live state so a later keystroke never sees
+                    // a stale field.
+                    textFieldValue = syncField(newValue, viewModel.state.value)
                 },
                 modifier = Modifier
                     .size(1.dp)
@@ -602,3 +533,6 @@ fun WriterScreen(
         }
     }
 }
+
+private fun String.lastCodePointOrNull(): Int? =
+    if (isEmpty()) null else codePointBefore(length)

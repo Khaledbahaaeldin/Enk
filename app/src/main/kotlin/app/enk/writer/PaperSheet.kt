@@ -30,6 +30,7 @@ fun PaperSheet(
     nightProgress: Float,
     reduceEffects: Boolean,
     modifier: Modifier = Modifier,
+    drawChassis: Boolean = true,
     content: @Composable BoxScope.() -> Unit = {}
 ) {
     val paperColor = paperColor(nightProgress)
@@ -45,12 +46,17 @@ fun PaperSheet(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(chassisBrush)
+            .then(if (drawChassis) Modifier.background(chassisBrush) else Modifier)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 12.dp, top = 64.dp, end = 12.dp, bottom = 12.dp)
+                .padding(
+                    start = WriterGeometry.PAPER_SIDE_DP.dp,
+                    top = WriterGeometry.PAPER_TOP_DP.dp,
+                    end = WriterGeometry.PAPER_SIDE_DP.dp,
+                    bottom = WriterGeometry.PAPER_SIDE_DP.dp
+                )
                 .enkShadow(EnkShadows.paper, paperShape)
                 .clip(paperShape)
                 .background(paperColor)
@@ -86,19 +92,6 @@ fun PaperSheet(
         }
     }
 }
-
-@Composable
-fun PaperSheet(
-    night: Boolean,
-    reduceEffects: Boolean,
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit = {}
-) = PaperSheet(
-    nightProgress = if (night) 1f else 0f,
-    reduceEffects = reduceEffects,
-    modifier = modifier,
-    content = content
-)
 
 @Composable
 fun PaperSheet(
@@ -144,24 +137,3 @@ fun PaperSheet(
         )
     }
 }
-
-@Composable
-fun PaperSheet(
-    state: WriterState,
-    geometry: WriterGeometry,
-    night: Boolean,
-    reduceEffects: Boolean,
-    modifier: Modifier = Modifier,
-    lamp: Rgb = LampColor.fromWarmth(25),
-    typing: Boolean = false,
-    stampFrame: Float? = null
-) = PaperSheet(
-    state = state,
-    geometry = geometry,
-    nightProgress = if (night) 1f else 0f,
-    reduceEffects = reduceEffects,
-    modifier = modifier,
-    lamp = lamp,
-    typing = typing,
-    stampFrame = stampFrame
-)

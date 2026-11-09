@@ -4,7 +4,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -26,6 +25,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+
+object ControlPanelMetrics {
+    /** Space the panel takes from the bottom edge: 3 rows of 48, 4 dp frame twice, 8 + 10 well padding, 30 margin. */
+    const val FOOTPRINT_DP = 3 * 48f + 8f + 18f + 30f
+}
 
 internal data class RowMotionValues(val translateY: Dp, val alpha: Float)
 internal data class PanelMotionValues(
@@ -146,11 +150,11 @@ fun BoxScope.ControlPanel(
             .background(EnkMaterials.panelFace, RoundedCornerShape(16.dp))
             .padding(4.dp)
             .enkShadow(EnkShadows.panelWell, RoundedCornerShape(12.dp))
-            .padding(top = 14.dp, start = 18.dp, end = 18.dp, bottom = 16.dp)
+            .padding(top = 8.dp, start = 18.dp, end = 18.dp, bottom = 10.dp)
     ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        // Rows are 48 dp so every fader keeps a full 48 dp touch target; the old 36 dp rows plus a
+        // 12 dp gap and 6 dp more padding top and bottom put the tracks at the same y positions.
+        Column {
             // Row 0: Warmth (0..100, default 25)
             ControlPanelRow(
                 label = "WARMTH",
@@ -196,6 +200,11 @@ fun BoxScope.ControlPanel(
     }
 }
 
+private val ROW_HEIGHT = 48.dp
+
+// "INTENSITY" is 9 glyphs of 9 sp mono with 0.16 em tracking (about 62 dp), so 60 dp touched the track.
+private val LABEL_WIDTH = 72.dp
+
 @Composable
 private fun ControlPanelRow(
     label: String,
@@ -212,16 +221,16 @@ private fun ControlPanelRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(36.dp)
+            .height(ROW_HEIGHT)
             .graphicsLayer {
                 translationY = rowMotion.translateY.toPx()
                 alpha = rowMotion.alpha
             },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Label: 60 dp wide, uppercase, engrave shadow
+        // Label: 72 dp wide, uppercase, engrave shadow
         Box(
-            modifier = Modifier.width(60.dp),
+            modifier = Modifier.width(LABEL_WIDTH),
             contentAlignment = Alignment.CenterStart
         ) {
             val mono = LocalMonoFont.current
@@ -280,56 +289,6 @@ private fun ControlPanelRow(
 
 @Composable
 fun BoxScope.ControlPanel(
-    visible: Boolean,
-    lampColor: Rgb,
-    settings: LampSettings,
-    onChange: (LampSettings) -> Unit,
-    onDetent: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-    enterProgressMs: Long? = null,
-    liftedFaderIndex: Int? = null,
-    reduceEffects: Boolean = false
-) = ControlPanel(
-    visible = visible,
-    lampColor = Color(lampColor.r, lampColor.g, lampColor.b),
-    settings = settings,
-    onChange = onChange,
-    onDetent = onDetent,
-    modifier = modifier,
-    enterProgressMs = enterProgressMs,
-    liftedFaderIndex = liftedFaderIndex,
-    reduceEffects = reduceEffects
-)
-
-@Composable
-fun ControlPanel(
-    visible: Boolean,
-    lampColor: Color,
-    settings: LampSettings,
-    onChange: (LampSettings) -> Unit,
-    onDetent: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-    enterProgressMs: Long? = null,
-    liftedFaderIndex: Int? = null,
-    reduceEffects: Boolean = false
-) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        ControlPanel(
-            visible = visible,
-            lampColor = lampColor,
-            settings = settings,
-            onChange = onChange,
-            onDetent = onDetent,
-            modifier = modifier,
-            enterProgressMs = enterProgressMs,
-            liftedFaderIndex = liftedFaderIndex,
-            reduceEffects = reduceEffects
-        )
-    }
-}
-
-@Composable
-fun ControlPanel(
     visible: Boolean,
     lampColor: Rgb,
     settings: LampSettings,

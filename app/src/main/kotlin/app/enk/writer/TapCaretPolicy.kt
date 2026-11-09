@@ -16,7 +16,7 @@ object TapCaretPolicy {
         geometry: WriterGeometry,
         lines: List<GridLine>,
         feedOffsetDp: Float,
-        paperTopDp: Float = 64f
+        paperTopDp: Float = WriterGeometry.PAPER_TOP_DP
     ): Int {
         if (lines.isEmpty()) return 0
 

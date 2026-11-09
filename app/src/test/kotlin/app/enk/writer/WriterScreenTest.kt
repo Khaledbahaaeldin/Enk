@@ -33,6 +33,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import java.io.File
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w400dp-h820dp")
@@ -254,5 +259,61 @@ class WriterScreenTest {
 
         // Hint must not be visible when lamp is on
         composeTestRule.onNodeWithText("drag marker to scrub", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun typingThroughTheImeFieldReachesTheViewModel(): Unit = runBlocking {
+        val note = repo.createNote(dividerId = null)
+        val viewModel = WriterViewModel(note.id, repo, settingsStore, testScope)
+
+        composeTestRule.setContent {
+            WriterScreen(
+                viewModel = viewModel,
+                settings = Settings(),
+                player = dummyPlayer,
+                haptics = dummyHaptics,
+                onOpenBox = {}
+            )
+        }
+        composeTestRule.waitForIdle()
+        withTimeout(5_000) { while (!viewModel.state.value.loaded) delay(10) }
+
+        val field = composeTestRule.onNode(hasSetTextAction())
+        // Burst of separate commits, the way fast key presses arrive.
+        for (ch in "hello") {
+            field.performTextInput(ch.toString())
+        }
+        field.performTextInput(" world")
+        composeTestRule.waitForIdle()
+
+        assertEquals("hello world", viewModel.state.value.pages[0].text)
+        assertEquals(11, viewModel.state.value.caret)
+        composeTestRule.onNodeWithText("hello world", substring = true).assertExists()
+    }
+
+    @Test
+    fun activityViewModelStoreSurvivesRotationAndFlushesWhenCleared(): Unit = runBlocking {
+        val note = repo.createNote(dividerId = null)
+        val store = ViewModelStore()
+        val factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                WriterViewModel(note.id, repo, settingsStore) as T
+        }
+        val key = "writer-${note.id}"
+        val first = ViewModelProvider(store, factory)[key, WriterViewModel::class.java]
+        withTimeout(5_000) { while (!first.state.value.loaded) delay(10) }
+        first.dispatch(WriterEvent.Insert("last words"))
+
+        // A rotation recreates the activity but keeps the store: same instance, same text.
+        val second = ViewModelProvider(store, factory)[key, WriterViewModel::class.java]
+        assertTrue("rotation must reuse the writer view model", first === second)
+        assertEquals("last words", second.state.value.pages[0].text)
+
+        // Finishing the activity clears the store, and onCleared must flush the pending edit.
+        store.clear()
+        withTimeout(5_000) {
+            while (repo.load(note.id)?.pages?.firstOrNull()?.text != "last words") delay(25)
+        }
     }
 }

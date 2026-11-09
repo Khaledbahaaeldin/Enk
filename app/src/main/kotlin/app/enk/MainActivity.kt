@@ -12,18 +12,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import app.enk.design.EnkMaterials
 import app.enk.settings.Settings
 import app.enk.writer.WriterScreen
 import app.enk.writer.WriterViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 
 class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels {
         MainViewModel.factory(applicationContext)
     }
-    private var writerViewModel: WriterViewModel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -32,17 +33,28 @@ class MainActivity : ComponentActivity() {
         setContent {
             val container = mainViewModel.container
             val noteId by mainViewModel.currentNoteId.collectAsState()
+            val scope = rememberCoroutineScope()
 
-            if (noteId == null) {
+            val id = noteId
+            if (id == null) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(EnkMaterials.chassisDay)
                 )
             } else {
-                val vm = remember(noteId) {
-                    WriterViewModel(noteId!!, container.repo, container.settingsStore)
-                }.also { writerViewModel = it }
+                // Owned by the activity's ViewModelStore: it survives rotation and onCleared()
+                // flushes the last edits when the activity is finished.
+                val vm = remember(id) {
+                    ViewModelProvider(
+                        this@MainActivity,
+                        object : ViewModelProvider.Factory {
+                            @Suppress("UNCHECKED_CAST")
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                                WriterViewModel(id, container.repo, container.settingsStore) as T
+                        }
+                    )["writer-$id", WriterViewModel::class.java]
+                }
 
                 val settings by container.settingsStore.settings.collectAsState(initial = Settings())
 
@@ -50,23 +62,13 @@ class MainActivity : ComponentActivity() {
                     viewModel = vm,
                     settings = settings,
                     player = container.soundPlayer,
+                    soundSets = container.soundManifest,
                     haptics = container.haptics,
                     onOpenBox = { /* no-op in Batch 6 */ },
-                    onSettingsChange = { newSettings ->
-                        lifecycleScope.launch {
-                            container.settingsStore.update { newSettings }
-                        }
+                    onSettingsChange = { change ->
+                        scope.launch { container.settingsStore.update { it.change() } }
                     }
                 )
-            }
-        }
-    }
-
-    override fun onStop() {
-        super.onStop()
-        writerViewModel?.let { vm ->
-            lifecycleScope.launch {
-                vm.flush()
             }
         }
     }

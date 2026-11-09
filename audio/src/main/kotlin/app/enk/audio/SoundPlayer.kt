@@ -10,6 +10,13 @@ import kotlin.random.Random
 
 interface SoundPlayer {
     fun play(event: SoundEvent, set: SoundSet, volume: Float = 1f)
+
+    /** Loads [set] ahead of time. Blocking; call off the main thread. */
+    fun prepare(set: SoundSet) {}
+
+    /** Plays the fader detent tick for a 0..100 [position]. */
+    fun playTick(position: Int, volume: Float = 1f) {}
+
     fun release()
 }
 
@@ -116,7 +123,7 @@ class SoundPoolPlayer(private val context: Context) : SoundPlayer {
      * Starts loading every sample of [set]. SoundPool decodes asynchronously, so call this when the
      * set is chosen (not on the first keystroke); a sample that has not finished loading is silent.
      */
-    fun prepare(set: SoundSet) {
+    override fun prepare(set: SoundSet) {
         if (isReleased.get()) return
         val allSamples = set.keys + listOf(set.space, set.enter, set.backspace, set.bell)
         for (sample in allSamples) {
@@ -139,7 +146,7 @@ class SoundPoolPlayer(private val context: Context) : SoundPlayer {
         }
     }
 
-    fun playTick(position: Int, volume: Float = 1f) {
+    override fun playTick(position: Int, volume: Float) {
         if (isReleased.get() || volume <= 0f) return
         var track: AudioTrack? = null
         try {

@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -84,6 +85,8 @@ fun Fader(
     enabled: Boolean = true
 ) {
     val density = LocalDensity.current
+    val latestOnValueChange by rememberUpdatedState(onValueChange)
+    val latestOnDetent by rememberUpdatedState(onDetent)
     var isPressed by remember { mutableStateOf(false) }
 
     val isLifted = lifted ?: isPressed
@@ -132,10 +135,10 @@ fun Fader(
                 setProgress { targetValue ->
                     val newVal = targetValue.roundToInt().coerceIn(min, max)
                     if (newVal != value) {
-                        onValueChange(newVal)
+                        latestOnValueChange(newVal)
                         val frac = FaderMath.fractionFor(newVal, min, max)
                         val detentIdx = (FaderMath.detent(frac) * 20f).roundToInt()
-                        onDetent(detentIdx * 5)
+                        latestOnDetent(detentIdx * 5)
                         true
                     } else {
                         false
@@ -159,12 +162,12 @@ fun Fader(
                         val index = (d * 20f).roundToInt()
                         if (index != currentDetentIndex) {
                             currentDetentIndex = index
-                            onDetent(index * 5)
+                            latestOnDetent(index * 5)
                         }
                         val newVal = FaderMath.valueFor(d, min, max)
                         if (newVal != currentValue) {
                             currentValue = newVal
-                            onValueChange(newVal)
+                            latestOnValueChange(newVal)
                         }
                     }
 

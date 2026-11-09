@@ -108,6 +108,11 @@ class WriterViewModel(
         }
     }
 
+    /** Flushes on the view model's own scope so a closing screen cannot cancel the write. */
+    fun flushAsync() {
+        scope.launch { flush() }
+    }
+
     suspend fun flush() {
         if (_state.value.missing) return
         autosaver.flush()

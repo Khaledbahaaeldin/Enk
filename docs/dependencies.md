@@ -104,7 +104,7 @@
   - Haze `1.7.0` to `1.7.3` fail with 3 to 22 issues (require `compileSdk >= 36` for transitive `androidx.activity:1.11.0`).
   - While Haze `1.6.10` passes, Backdrop 1.0.4's own blur natively covers the API 31-32 Blur path on the captured backdrop layer without needing an additional third-party library. Haze was therefore dropped from the catalog, build dependencies, and CREDITS.md to maintain a minimal, robust dependency footprint.
 
-### 7. Paparazzi in `:app`: targetSdk workaround
+### 8. Paparazzi in `:app`: targetSdk workaround
 - Paparazzi 1.3.5 bundles LayoutLib for Android API 34. Compose UI calls `View.setRequestedFrameRate` when the app's `targetSdkVersion` is 35 or higher, which does not exist there, so every snapshot would crash with `NoSuchMethodError`.
 - `app/build.gradle.kts` therefore rewrites `"targetSdkVersion": "35"` to `"34"` only in Paparazzi's generated `build/intermediates/paparazzi/**/resources.json`, after the `preparePaparazzi*` tasks. The APK, lint and AAR checks still see `targetSdk = 35`.
 - Remove this hook when a Paparazzi release bundles LayoutLib API 35 (toolchain upgrade batch).

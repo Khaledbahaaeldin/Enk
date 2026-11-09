@@ -89,5 +89,3 @@ tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {
         }
     }
 }
-
-

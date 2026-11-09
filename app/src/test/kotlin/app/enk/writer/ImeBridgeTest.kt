@@ -164,6 +164,66 @@ class ImeBridgeTest {
     }
 
     @Test
+    fun commitWithTrailingSpaceKeepsTheSpace() {
+        val bridge = ImeBridge()
+        val composing = "hello world"
+        bridge.onTextChanged(
+            "hello ",
+            TextFieldValue(composing, composition = TextRange(6, 11), selection = TextRange(11)),
+            composingNow = true
+        )
+        // Space typed straight after a composed word: the IME commits "world " in one change.
+        val events = bridge.onTextChanged(
+            composing,
+            TextFieldValue("hello world ", selection = TextRange(12)),
+            composingNow = false
+        )
+        assertEquals(listOf(WriterEvent.Insert("world ", composing = false)), events)
+    }
+
+    @Test
+    fun suggestionReplacesComposedWord() {
+        val bridge = ImeBridge()
+        bridge.onTextChanged(
+            "hi ",
+            TextFieldValue("hi tehre", composition = TextRange(3, 8), selection = TextRange(8)),
+            composingNow = true
+        )
+        val events = bridge.onTextChanged(
+            "hi tehre",
+            TextFieldValue("hi there ", selection = TextRange(9)),
+            composingNow = false
+        )
+        assertEquals(listOf(WriterEvent.Insert("there ", composing = false)), events)
+    }
+
+    @Test
+    fun commitReplacesComposingRangeInTheReducer() {
+        val bridge = ImeBridge()
+        var state = WriterState(noteId = "n", pages = listOf(app.enk.text.StruckPage("hello ")), pageIndex = 0, caret = 6)
+        fun apply(events: List<WriterEvent>) {
+            for (e in events) state = reduce(state, e, CorrectionMode.CleanErase)
+        }
+        apply(
+            bridge.onTextChanged(
+                "hello ",
+                TextFieldValue("hello wor", composition = TextRange(6, 9), selection = TextRange(9)),
+                composingNow = true
+            )
+        )
+        apply(
+            bridge.onTextChanged(
+                "hello wor",
+                TextFieldValue("hello world ", selection = TextRange(12)),
+                composingNow = false
+            )
+        )
+        assertEquals("hello world ", state.pages[0].text)
+        assertEquals(12, state.caret)
+        assertEquals(null, state.composingRange)
+    }
+
+    @Test
     fun pasteOf200kCharacters() {
         val bridge = ImeBridge()
         val bigText = "a".repeat(200_000)
@@ -254,8 +314,9 @@ class ImeBridgeTest {
                     for (e in compEvents) {
                         state = reduce(state, e, CorrectionMode.CleanErase)
                     }
+                    // The field still holds the composing text when the IME commits it.
                     val commitEvents = bridge.onTextChanged(
-                        modelText,
+                        composingText,
                         TextFieldValue(composingText, composition = null),
                         composingNow = false
                     )
