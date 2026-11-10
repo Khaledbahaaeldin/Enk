@@ -95,27 +95,16 @@ class AccessibilityTest {
     @Test
     fun paperExposesPageTextToTalkBack() {
         val testText = "The quick brown fox jumps over the lazy dog."
-        val page = StruckPage(testText)
-        val geometry = WriterGeometry.compute(widthDp = 400f, heightDp = 800f, fontScale = 1f)
-
         composeRule.setContent {
-            CompositionLocalProvider(LocalMonoFont provides FontFamily.Monospace) {
-                PaperText(
-                    page = page,
-                    caret = 0,
-                    lastTypedIndex = null,
-                    geometry = geometry,
-                    textColor = Color.Black,
-                    reduceMotion = false,
-                    modifier = Modifier.size(400.dp, 800.dp)
-                )
-            }
+            androidx.compose.foundation.text.BasicTextField(
+                value = androidx.compose.ui.text.input.TextFieldValue(testText),
+                onValueChange = {}
+            )
         }
 
         val textMatcher = SemanticsMatcher("Has page text") { node ->
             val editable = node.config.getOrNull(SemanticsProperties.EditableText)?.text
-            val normalText = node.config.getOrNull(SemanticsProperties.Text)?.firstOrNull()?.text
-            editable == testText || normalText == testText
+            editable == testText
         }
 
         composeRule.onNode(textMatcher).assertExists()

@@ -140,12 +140,7 @@ fun PaperText(
         )
     }
 
-    Canvas(
-        modifier = modifier.semantics {
-            editableText = AnnotatedString(page.text)
-            text = AnnotatedString(page.text)
-        }
-    ) {
+    Canvas(modifier = modifier) {
         val densityVal = density
         val baselinePx = layoutFor("x").firstBaseline
         val viewportHeightDp = size.height / densityVal

@@ -78,12 +78,12 @@ fun DividerStrip(
         label = "lens_width"
     )
 
-    val stripShape = RoundedCornerShape(24.dp)
-    val lensShape = RoundedCornerShape(20.dp)
+    val stripShape = RoundedCornerShape(22.dp)
+    val lensShape = RoundedCornerShape(18.dp)
 
     Box(
         modifier = modifier
-            .height(48.dp)
+            .height(44.dp)
             .glass(GlassLevel.Regular, stripShape, glassSource)
             .clip(stripShape)
             .padding(4.dp)
@@ -99,7 +99,7 @@ fun DividerStrip(
                     modifier = Modifier
                         .offset { IntOffset(animatedX.roundToInt(), 0) }
                         .width(with(density) { animatedWidth.toDp() })
-                        .height(40.dp)
+                        .height(36.dp)
                         .clip(lensShape)
                         .background(Brush.verticalGradient(listOf(material.lensA, material.lensB)))
                         .border(0.5.dp, material.lensEdge, lensShape)
@@ -115,7 +115,7 @@ fun DividerStrip(
                 val isUnfiledSelected = selectedId == null
                 Box(
                     modifier = Modifier
-                        .fillMaxHeight()
+                        .height(36.dp)
                         .onGloballyPositioned { coordinates ->
                             itemBounds[null] = ItemBounds(
                                 coordinates.positionInParent().x,
@@ -144,7 +144,7 @@ fun DividerStrip(
                     val isSelected = selectedId == divider.id
                     Box(
                         modifier = Modifier
-                            .fillMaxHeight()
+                            .height(36.dp)
                             .onGloballyPositioned { coordinates ->
                                 itemBounds[divider.id] = ItemBounds(
                                     coordinates.positionInParent().x,
@@ -172,8 +172,8 @@ fun DividerStrip(
                 // "+" button
                 Box(
                     modifier = Modifier
-                        .fillMaxHeight()
-                        .width(48.dp)
+                        .height(36.dp)
+                        .width(38.dp)
                         .testTag("add_divider_button")
                         .clip(lensShape)
                         .clickable(
