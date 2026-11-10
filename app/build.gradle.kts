@@ -81,6 +81,7 @@ tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEa
     exclude("**/ShellScaffoldTest*")
     exclude("**/StartHandoffTest*")
     exclude("**/SystemBarIconsTest*")
+    exclude("**/BoxInteractionTest*")
 }
 
 tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {

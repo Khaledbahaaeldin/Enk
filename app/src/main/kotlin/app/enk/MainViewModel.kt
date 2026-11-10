@@ -45,6 +45,9 @@ class MainViewModel(
         private set
 
     fun navigate(route: Route) {
+        if (route is Route.Note) {
+            _currentNoteId.value = route.id
+        }
         _currentRoute.value = route
     }
 
@@ -68,6 +71,10 @@ class MainViewModel(
             _currentNoteId.value = note.id
             _restoredNote.value = recent
             _isLoaded.value = true
+            try {
+                container.repo.purgeExpired()
+            } catch (_: Exception) {
+            }
         }
     }
 

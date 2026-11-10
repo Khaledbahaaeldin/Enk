@@ -20,6 +20,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.enk.AppContainer
 import app.enk.MainViewModel
 import app.enk.design.theme.LocalShellColors
+import app.enk.box.BoxScreen
+import app.enk.box.BoxViewModel
+import app.enk.box.TrashScreen
+import kotlinx.coroutines.Dispatchers
 import app.enk.writer.WriterScreen
 import app.enk.writer.WriterIntro
 import app.enk.writer.WriterViewModel
@@ -53,17 +57,18 @@ fun EnkNavHost(
                 val storeOwner = LocalViewModelStoreOwner.current
 
                 val writerVm = remember(noteId, activity, storeOwner) {
+                    val page = if (route is Route.Note) route.page else 0
                     val factory = object : ViewModelProvider.Factory {
                         @Suppress("UNCHECKED_CAST")
                         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                            WriterViewModel(noteId, container.repo, container.settingsStore) as T
+                            WriterViewModel(noteId, container.repo, container.settingsStore, initialPage = page) as T
                     }
                     if (activity != null) {
                         ViewModelProvider(activity, factory)["writer-$noteId", WriterViewModel::class.java]
                     } else if (storeOwner != null) {
                         ViewModelProvider(storeOwner, factory)["writer-$noteId", WriterViewModel::class.java]
                     } else {
-                        WriterViewModel(noteId, container.repo, container.settingsStore)
+                        WriterViewModel(noteId, container.repo, container.settingsStore, initialPage = page)
                     }
                 }
 
@@ -86,12 +91,79 @@ fun EnkNavHost(
                 Box(modifier = modifier.fillMaxSize())
             }
         }
-        Route.Box, Route.Find, Route.Setup, Route.Trash -> {
+        Route.Box, Route.Trash -> {
+            val context = LocalContext.current
+            val activity = context as? ComponentActivity
+            val storeOwner = LocalViewModelStoreOwner.current
+
+            val boxVm = remember(activity, storeOwner) {
+                val factory = BoxViewModel.factory(container)
+                if (activity != null) {
+                    ViewModelProvider(activity, factory)["box-vm", BoxViewModel::class.java]
+                } else if (storeOwner != null) {
+                    ViewModelProvider(storeOwner, factory)["box-vm", BoxViewModel::class.java]
+                } else {
+                    BoxViewModel(container.repo, container.db.dividerDao())
+                }
+            }
+
+            SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
+            val scope = rememberCoroutineScope()
+
+            if (route == Route.Box) {
+                BoxScreen(
+                    viewModel = boxVm,
+                    onNavigate = { dest ->
+                        val nextRoute = when (dest) {
+                            Dest.Write -> Route.Writer
+                            Dest.Box -> Route.Box
+                            Dest.Find -> Route.Find
+                            Dest.Setup -> Route.Setup
+                        }
+                        mainViewModel.navigate(nextRoute)
+                    },
+                    onNavigateToNote = { noteId ->
+                        mainViewModel.navigate(Route.Note(noteId, 0))
+                    },
+                    onNewNote = {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val selectedDivider = boxVm.state.value.selectedDividerId
+                                val newNote = container.repo.createNote(dividerId = selectedDivider)
+                                mainViewModel.navigate(Route.Note(newNote.id, 0))
+                            } catch (_: Exception) {
+                            }
+                        }
+                    },
+                    onNavigateBack = {
+                        mainViewModel.handleBack()
+                    },
+                    modifier = modifier
+                )
+            } else {
+                TrashScreen(
+                    viewModel = boxVm,
+                    onNavigate = { dest ->
+                        val nextRoute = when (dest) {
+                            Dest.Write -> Route.Writer
+                            Dest.Box -> Route.Box
+                            Dest.Find -> Route.Find
+                            Dest.Setup -> Route.Setup
+                        }
+                        mainViewModel.navigate(nextRoute)
+                    },
+                    onNavigateBack = {
+                        mainViewModel.handleBack()
+                    },
+                    modifier = modifier
+                )
+            }
+        }
+        Route.Find, Route.Setup -> {
             val (title, meta) = when (route) {
-                Route.Box -> "The Box" to null
-                Route.Trash -> "Trash" to null
                 Route.Find -> "Find" to null
                 Route.Setup -> "Setup" to "Enk 1.0"
+                else -> "" to null
             }
 
             SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
