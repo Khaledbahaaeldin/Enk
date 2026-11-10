@@ -28,7 +28,7 @@ class TokensTest {
         assertEquals(0xFFFF5A1FL, colorToHex(EnkColors.accent))
         assertEquals(0xB3FF5A1FL, colorToHex(EnkColors.accentGlowNight))
         assertEquals(0xFFCFC8BAL, colorToHex(EnkColors.textOnChassis))
-        assertEquals(0xFF8B8578L, colorToHex(EnkColors.textMuted))
+        assertEquals(0xFF948F83L, colorToHex(EnkColors.textMuted))
         assertEquals(0xFF161514L, colorToHex(EnkColors.slotDark))
         assertEquals(0xFF121110L, colorToHex(EnkColors.trackDark))
         assertEquals(0xFF3A3936L, colorToHex(EnkColors.panelTop))

@@ -11,6 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.semantics.editableText
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -136,7 +140,12 @@ fun PaperText(
         )
     }
 
-    Canvas(modifier = modifier) {
+    Canvas(
+        modifier = modifier.semantics {
+            editableText = AnnotatedString(page.text)
+            text = AnnotatedString(page.text)
+        }
+    ) {
         val densityVal = density
         val baselinePx = layoutFor("x").firstBaseline
         val viewportHeightDp = size.height / densityVal

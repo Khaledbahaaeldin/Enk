@@ -25,6 +25,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import app.enk.design.CourierPrime
 import androidx.compose.ui.unit.dp
@@ -119,6 +122,10 @@ fun Carriage(
                     height = CarriageGeometry.interactiveHeightDp.dp
                 )
                 .testTag("carriage")
+                .semantics {
+                    contentDescription = "Writing marker. Drag to scrub, long press to toggle lamp"
+                    stateDescription = if (night) "Lamp on" else "Lamp off"
+                }
                 .then(
                     if (onHitAreaMeasured == null) Modifier else Modifier.onGloballyPositioned {
                         onHitAreaMeasured(it.size.width / density.density, it.size.height / density.density)

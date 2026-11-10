@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
@@ -265,7 +266,7 @@ fun WriterScreen(
                         if (motion == CarriageMotion.Dragging) {
                             hintPolicy = hintPolicy.onScrub()
                             if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                                onSettingsChange { (this as Settings).copy(hintDismissed = true) }
+                                onSettingsChange { this.copy(hintDismissed = true) }
                             }
                         }
                     },
@@ -275,7 +276,7 @@ fun WriterScreen(
                         pulse(14)
                         hintPolicy = hintPolicy.onLongPress()
                         if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                            onSettingsChange { (this as Settings).copy(hintDismissed = true) }
+                            onSettingsChange { this.copy(hintDismissed = true) }
                         }
                     },
                     currentCarriageXDp = { dragCarriageXDp ?: geometry.carriageCenterXDp(caretPos.col) }
@@ -394,7 +395,10 @@ fun WriterScreen(
                         modifier = Modifier
                             .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                             .testTag("wordmark")
-                            .semantics { role = Role.Button }
+                            .semantics {
+                                role = Role.Button
+                                contentDescription = "Open the Box"
+                            }
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -424,7 +428,7 @@ fun WriterScreen(
                 settings = lampSettings,
                 onChange = { lamp ->
                     onSettingsChange {
-                        (this as Settings).copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
+                        this.copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
                     }
                 },
                 onDetent = { pos ->
@@ -435,8 +439,9 @@ fun WriterScreen(
                 modifier = Modifier.testTag("control_panel")
             )
 
-            // Hint text (DS 6.9, Finding 5)
-            if (!hintPolicy.isDismissed && !settings.hintDismissed && !state.lampOn) {
+            // Hint text (DS 6.9, Finding 5): hidden when paper is short (landscape keyboard, etc.)
+            val isShortPaper = screenHeightDp < 360f || (screenHeightDp - geometry.railYDp) < 100f
+            if (!isShortPaper && !hintPolicy.isDismissed && !settings.hintDismissed && !state.lampOn) {
                 Text(
                     text = stringResource(R.string.writer_hint),
                     style = EnkType.hint.copy(fontFamily = LocalMonoFont.current),

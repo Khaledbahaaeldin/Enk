@@ -14,7 +14,7 @@ object EnkColors {
     val accent = Color(0xFFFF5A1F)
     val accentGlowNight = Color(0xB3FF5A1F) // 70% opacity per DS 2.1 (0xB3 = round(0.70 * 255))
     val textOnChassis = Color(0xFFCFC8BA)
-    val textMuted = Color(0xFF8B8578)
+    val textMuted = Color(0xFF948F83)
     val slotDark = Color(0xFF161514)
     val trackDark = Color(0xFF121110)
     val panelTop = Color(0xFF3A3936)
