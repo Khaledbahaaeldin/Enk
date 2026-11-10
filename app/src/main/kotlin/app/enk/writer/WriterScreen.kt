@@ -266,7 +266,7 @@ fun WriterScreen(
                         if (motion == CarriageMotion.Dragging) {
                             hintPolicy = hintPolicy.onScrub()
                             if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                                onSettingsChange { this.copy(hintDismissed = true) }
+                                onSettingsChange { s: Settings -> s.copy(hintDismissed = true) }
                             }
                         }
                     },
@@ -276,7 +276,7 @@ fun WriterScreen(
                         pulse(14)
                         hintPolicy = hintPolicy.onLongPress()
                         if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                            onSettingsChange { this.copy(hintDismissed = true) }
+                            onSettingsChange { s: Settings -> s.copy(hintDismissed = true) }
                         }
                     },
                     currentCarriageXDp = { dragCarriageXDp ?: geometry.carriageCenterXDp(caretPos.col) }
@@ -427,8 +427,8 @@ fun WriterScreen(
                 lampColor = lampColor,
                 settings = lampSettings,
                 onChange = { lamp ->
-                    onSettingsChange {
-                        this.copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
+                    onSettingsChange { s: Settings ->
+                        s.copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
                     }
                 },
                 onDetent = { pos ->
