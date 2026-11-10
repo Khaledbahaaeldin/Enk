@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.enk.AppContainer
 import app.enk.MainViewModel
 import app.enk.design.theme.LocalShellColors
+import app.enk.about.AboutScreen
 import app.enk.box.BoxScreen
 import app.enk.box.BoxViewModel
 import app.enk.box.TrashScreen
@@ -162,6 +163,15 @@ fun EnkNavHost(
                 viewModel(key = SETTINGS_VM_KEY, factory = SettingsViewModel.factory(context, container))
             SettingsScreen(
                 viewModel = settingsVm,
+                onNavigate = { mainViewModel.navigate(it.toRoute()) },
+                onNavigateBack = { mainViewModel.handleBack() },
+                onOpenCredits = { mainViewModel.navigate(Route.Credits) },
+                modifier = modifier
+            )
+        }
+        Route.Credits -> {
+            SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
+            AboutScreen(
                 onNavigate = { mainViewModel.navigate(it.toRoute()) },
                 onNavigateBack = { mainViewModel.handleBack() },
                 modifier = modifier

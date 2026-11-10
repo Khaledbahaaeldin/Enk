@@ -101,3 +101,86 @@ tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {
         }
     }
 }
+
+tasks.register("generateCredits") {
+    val csvFile = rootProject.file("docs/provenance.csv")
+    val jsonFile = file("src/main/assets/credits.json")
+    val libCsvFile = rootProject.file("docs/libraries.csv")
+    val libAssetFile = file("src/main/assets/libraries.csv")
+    inputs.file(csvFile)
+    inputs.file(libCsvFile)
+    outputs.file(jsonFile)
+    outputs.file(libAssetFile)
+    doLast {
+        val lines = csvFile.readLines().filter { it.isNotBlank() }
+        val header = lines.first().split(",")
+        val fileIdx = header.indexOf("file")
+        val sourceIdx = header.indexOf("source_url")
+        val authorIdx = header.indexOf("author")
+        val licenseIdx = header.indexOf("license")
+        val records = lines.drop(1).map { line ->
+            val cols = line.split(",")
+            mapOf(
+                "title" to cols[fileIdx],
+                "author" to cols[authorIdx],
+                "source" to cols[sourceIdx],
+                "license" to cols[licenseIdx]
+            )
+        }
+        val json = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(records))
+        jsonFile.parentFile.mkdirs()
+        jsonFile.writeText(json + "\n")
+
+        libAssetFile.parentFile.mkdirs()
+        libAssetFile.writeText(libCsvFile.readText())
+    }
+}
+
+tasks.register("checkCredits") {
+    mustRunAfter("generateCredits")
+    val csvFile = rootProject.file("docs/provenance.csv")
+    val jsonFile = file("src/main/assets/credits.json")
+    val libCsvFile = rootProject.file("docs/libraries.csv")
+    val libAssetFile = file("src/main/assets/libraries.csv")
+    inputs.file(csvFile)
+    inputs.file(jsonFile)
+    inputs.file(libCsvFile)
+    inputs.file(libAssetFile)
+    doLast {
+        if (!jsonFile.exists()) {
+            throw GradleException("credits.json does not exist. Run ./gradlew generateCredits")
+        }
+        if (!libAssetFile.exists()) {
+            throw GradleException("libraries.csv does not exist in assets. Run ./gradlew generateCredits")
+        }
+        val lines = csvFile.readLines().filter { it.isNotBlank() }
+        val header = lines.first().split(",")
+        val fileIdx = header.indexOf("file")
+        val sourceIdx = header.indexOf("source_url")
+        val authorIdx = header.indexOf("author")
+        val licenseIdx = header.indexOf("license")
+        val records = lines.drop(1).map { line ->
+            val cols = line.split(",")
+            mapOf(
+                "title" to cols[fileIdx],
+                "author" to cols[authorIdx],
+                "source" to cols[sourceIdx],
+                "license" to cols[licenseIdx]
+            )
+        }
+        val expected = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(records)) + "\n"
+        val actual = jsonFile.readText().replace("\r\n", "\n")
+        if (expected != actual) {
+            throw GradleException("credits.json is out of date with docs/provenance.csv. Run ./gradlew generateCredits")
+        }
+        val expectedLibs = libCsvFile.readText().replace("\r\n", "\n")
+        val actualLibs = libAssetFile.readText().replace("\r\n", "\n")
+        if (expectedLibs != actualLibs) {
+            throw GradleException("assets/libraries.csv is out of date with docs/libraries.csv. Run ./gradlew generateCredits")
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn("checkCredits")
+}

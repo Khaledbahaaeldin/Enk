@@ -59,6 +59,7 @@ fun SettingsContent(
     modifier: Modifier = Modifier,
     onExport: () -> Unit = {},
     onImport: () -> Unit = {},
+    onOpenCredits: () -> Unit = {},
     listState: LazyListState = rememberLazyListState(),
     showNav: Boolean = true,
     onNavigate: (Dest) -> Unit = {}
@@ -282,6 +283,20 @@ fun SettingsContent(
                             )
                         }
                     )
+
+                    GroupedDivider()
+
+                    GroupedRow(
+                        title = "Credits and licenses",
+                        onClick = onOpenCredits,
+                        trailing = {
+                            Text(
+                                text = "›",
+                                color = colors.t2,
+                                fontSize = 18.sp
+                            )
+                        }
+                    )
                 }
             }
 
@@ -297,6 +312,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel,
     onNavigate: (Dest) -> Unit,
     onNavigateBack: () -> Unit,
+    onOpenCredits: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val settings by viewModel.settings.collectAsState()
@@ -329,6 +345,7 @@ fun SettingsScreen(
             },
             onExport = { exportLauncher.launch(exportFileName(LocalDate.now())) },
             onImport = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
+            onOpenCredits = onOpenCredits,
             onNavigate = onNavigate,
             modifier = Modifier.fillMaxSize()
         )
