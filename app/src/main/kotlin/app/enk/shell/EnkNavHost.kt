@@ -159,12 +159,34 @@ fun EnkNavHost(
                 )
             }
         }
-        Route.Find, Route.Setup -> {
-            val (title, meta) = when (route) {
-                Route.Find -> "Find" to null
-                Route.Setup -> "Setup" to "Enk 1.0"
-                else -> "" to null
-            }
+        Route.Find -> {
+            val searchVm: app.enk.search.SearchViewModel = viewModel(
+                factory = app.enk.search.SearchViewModel.factory(container)
+            )
+            SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
+            app.enk.search.SearchScreen(
+                viewModel = searchVm,
+                onNavigate = { dest ->
+                    val nextRoute = when (dest) {
+                        Dest.Write -> Route.Writer
+                        Dest.Box -> Route.Box
+                        Dest.Find -> Route.Find
+                        Dest.Setup -> Route.Setup
+                    }
+                    mainViewModel.navigate(nextRoute)
+                },
+                onNavigateToNote = { noteId, pageIndex ->
+                    mainViewModel.navigate(Route.Note(noteId, pageIndex))
+                },
+                onNavigateBack = {
+                    mainViewModel.handleBack()
+                },
+                modifier = modifier
+            )
+        }
+        Route.Setup -> {
+            val title = "Setup"
+            val meta = "Enk 1.0"
 
             SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
             ShellScaffold(

@@ -37,18 +37,21 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.enk.data.NoteSummary
+import app.enk.data.SearchHit
 import app.enk.design.LocalMonoFont
 import app.enk.design.ShadowLayer
 import app.enk.design.enkShadow
 import app.enk.design.motion.ShellMotion
 import app.enk.design.paperGrain
 import app.enk.design.theme.LocalShellMaterial
+import app.enk.search.matchStyled
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -235,3 +238,66 @@ fun NoteCard(
         }
     }
 }
+
+@Composable
+fun NoteCard(
+    hit: SearchHit,
+    query: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val material = LocalShellMaterial.current
+    val mono = LocalMonoFont.current
+
+    val shape = RoundedCornerShape(14.dp)
+    val shadowLayers = remember(material.cardShadow) {
+        listOf(
+            ShadowLayer(0.dp, 0.5.dp, 0.dp, 0.dp, Color.White.copy(alpha = 0.60f), inset = true),
+            ShadowLayer(0.dp, 1.dp, 2.dp, 0.dp, Color.Black.copy(alpha = 0.25f)),
+            ShadowLayer(0.dp, 8.dp, 18.dp, (-8).dp, material.cardShadow)
+        )
+    }
+
+    val styledText = remember(hit.snippet, query) {
+        matchStyled(hit.snippet, query)
+    }
+
+    Box(
+        modifier = modifier
+            .testTag("search_hit_${hit.noteId}_${hit.pageIndex}")
+            .enkShadow(shadowLayers, shape)
+            .clip(shape)
+            .background(PaperColor)
+            .paperGrain(0.3f)
+            .clickable(onClick = onClick)
+            .padding(top = 14.dp, start = 16.dp, end = 16.dp, bottom = 12.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = styledText,
+                fontFamily = mono,
+                fontSize = 15.sp,
+                color = CardTextColor,
+                lineHeight = 20.sp,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "p.${hit.pageIndex + 1}",
+                    fontFamily = mono,
+                    fontSize = 11.sp,
+                    color = CardSubtextColor
+                )
+            }
+        }
+    }
+}
+

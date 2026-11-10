@@ -18,9 +18,9 @@ fun sanitizeQuery(raw: String): String? {
     return words.dropLast(1).plus(words.last() + "*").joinToString(" ")
 }
 
-class SearchRepository(private val db: EnkDatabase) {
+open class SearchRepository(private val db: EnkDatabase) {
 
-    suspend fun search(query: String, limit: Int = 50): List<SearchHit> {
+    open suspend fun search(query: String, limit: Int = 50): List<SearchHit> {
         val sanitized = sanitizeQuery(query) ?: return emptyList()
 
         val results = db.pageFtsDao().search(sanitized, limit)

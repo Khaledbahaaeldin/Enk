@@ -12,6 +12,7 @@ import app.enk.audio.SoundPoolPlayer
 import app.enk.audio.SoundSet
 import app.enk.data.EnkDatabase
 import app.enk.data.NoteRepository
+import app.enk.data.SearchRepository
 import app.enk.data.SystemClock
 import app.enk.settings.SettingsStore
 import app.enk.writer.AndroidHaptics
@@ -20,6 +21,7 @@ import app.enk.writer.Haptics
 interface AppContainer {
     val db: EnkDatabase
     val repo: NoteRepository
+    val searchRepo: SearchRepository
     val settingsStore: SettingsStore
     val soundManifest: List<SoundSet>
     val soundPlayer: SoundPlayer
@@ -33,6 +35,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val repo: NoteRepository by lazy {
         NoteRepository(db, SystemClock)
+    }
+
+    override val searchRepo: SearchRepository by lazy {
+        SearchRepository(db)
     }
 
     override val settingsStore: SettingsStore by lazy {
