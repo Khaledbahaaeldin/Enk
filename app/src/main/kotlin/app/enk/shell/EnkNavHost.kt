@@ -185,15 +185,13 @@ fun EnkNavHost(
             )
         }
         Route.Setup -> {
-            val title = "Setup"
-            val meta = "Enk 1.0"
-
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val settingsVm: app.enk.settings.SettingsViewModel = viewModel(
+                factory = app.enk.settings.SettingsViewModel.factory(context, container)
+            )
             SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
-            ShellScaffold(
-                title = title,
-                meta = meta,
-                showNav = true,
-                selected = navSelection(route),
+            app.enk.settings.SettingsScreen(
+                viewModel = settingsVm,
                 onNavigate = { dest ->
                     val nextRoute = when (dest) {
                         Dest.Write -> Route.Writer
@@ -203,18 +201,11 @@ fun EnkNavHost(
                     }
                     mainViewModel.navigate(nextRoute)
                 },
+                onNavigateBack = {
+                    mainViewModel.handleBack()
+                },
                 modifier = modifier
-            ) { _, _ ->
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = title,
-                        color = LocalShellColors.current.t3
-                    )
-                }
-            }
+            )
         }
     }
 }
