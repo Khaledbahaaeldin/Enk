@@ -73,7 +73,10 @@ class MainViewModel(
             _isLoaded.value = true
             try {
                 container.repo.purgeExpired()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (_: Exception) {
+                // Old trash stays until the next launch; nothing to tell the user.
             }
         }
     }

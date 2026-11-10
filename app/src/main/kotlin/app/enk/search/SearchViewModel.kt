@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import app.enk.AppContainer
 import app.enk.data.SearchHit
 import app.enk.data.SearchRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,8 +42,12 @@ class SearchViewModel(
                 if (trimmed.isEmpty()) {
                     emit(emptyList())
                 } else {
-                    val hits = withContext(ioDispatcher) {
-                        repo.search(trimmed)
+                    val hits = try {
+                        withContext(ioDispatcher) { repo.search(trimmed) }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        emptyList()
                     }
                     emit(hits)
                 }

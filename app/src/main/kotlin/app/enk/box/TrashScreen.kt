@@ -71,8 +71,6 @@ fun TrashContent(
     val density = LocalDensity.current
     val mono = LocalMonoFont.current
 
-    var showAlert by remember { mutableStateOf(false) }
-
     val cardShape = RoundedCornerShape(14.dp)
     val pillShape = RoundedCornerShape(14.dp)
     val buttonShape = RoundedCornerShape(18.dp)
@@ -181,6 +179,18 @@ fun TrashContent(
                 }
             }
 
+            if (trashedNotes.isEmpty()) {
+                item(key = "trash_empty") {
+                    Text(
+                        text = "Nothing in the trash.",
+                        fontSize = 14.sp,
+                        color = colors.t3,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(top = 24.dp)
+                    )
+                }
+            }
+
             // Footer info
             item {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -206,7 +216,7 @@ fun TrashContent(
                                 .height(36.dp)
                                 .glass(GlassLevel.Regular, buttonShape, glassSource)
                                 .clip(buttonShape)
-                                .clickable { showAlert = true }
+                                .clickable(onClick = onDeleteAllForever)
                                 .padding(horizontal = 18.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -221,16 +231,51 @@ fun TrashContent(
                 }
             }
         }
+    }
+}
 
-        if (showAlert) {
+/** The Trash with its Delete all forever alert, from plain values; the screen below feeds it from the view model. */
+@Composable
+fun TrashScreen(
+    trashed: List<TrashedSummary>,
+    onRestore: (String) -> Unit,
+    onDeleteAllForever: () -> Unit,
+    onNavigate: (Dest) -> Unit,
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var alertOpen by remember { mutableStateOf(false) }
+
+    BackHandler { onNavigateBack() }
+    // Registered after the one above, so it wins while the alert is open.
+    BackHandler(enabled = alertOpen) { alertOpen = false }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        ShellScaffold(
+            title = "Trash",
+            meta = null,
+            showNav = true,
+            selected = Dest.Box,
+            onNavigate = onNavigate
+        ) { listState, contentPadding ->
+            TrashContent(
+                trashedNotes = trashed,
+                onRestore = onRestore,
+                onDeleteAllForever = { alertOpen = true },
+                listState = listState,
+                contentPadding = contentPadding
+            )
+        }
+
+        // Above the scaffold, so the alert and its scrim cover the navigation bar.
+        if (alertOpen) {
             DeleteForeverAlert(
-                count = trashedNotes.size,
+                count = trashed.size,
                 onConfirm = {
-                    showAlert = false
+                    alertOpen = false
                     onDeleteAllForever()
                 },
-                onDismiss = { showAlert = false },
-                glassSource = glassSource
+                onDismiss = { alertOpen = false }
             )
         }
     }
@@ -244,26 +289,12 @@ fun TrashScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsState()
-    var isAlertOpen by remember { mutableStateOf(false) }
-
-    BackHandler(enabled = isAlertOpen) {
-        isAlertOpen = false
-    }
-
-    ShellScaffold(
-        title = "Trash",
-        meta = null,
-        showNav = true,
-        selected = Dest.Box,
+    TrashScreen(
+        trashed = state.trashed,
+        onRestore = { viewModel.restore(it) },
+        onDeleteAllForever = { viewModel.deleteAllForever() },
         onNavigate = onNavigate,
+        onNavigateBack = onNavigateBack,
         modifier = modifier
-    ) { listState, contentPadding ->
-        TrashContent(
-            trashedNotes = state.trashed,
-            onRestore = { viewModel.restore(it) },
-            onDeleteAllForever = { viewModel.deleteAllForever() },
-            listState = listState,
-            contentPadding = contentPadding
-        )
-    }
+    )
 }

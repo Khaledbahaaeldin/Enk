@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -28,6 +29,11 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.enk.design.theme.LocalShellColors
@@ -39,7 +45,8 @@ object ShellFaderMath {
     const val trackHeightDp = 6f
     const val knobSizeDp = 24f
 
-    fun fraction(value: Float): Float = value.coerceIn(0f, 1f)
+    /** Clamped to 0..1; NaN (a bad stored value) is the start of the track. */
+    fun fraction(value: Float): Float = if (value.isNaN()) 0f else value.coerceIn(0f, 1f)
 }
 
 /**
@@ -74,6 +81,14 @@ fun ShellFader(
         modifier = modifier
             .fillMaxWidth()
             .height(ShellFaderMath.touchHeightDp.dp)
+            .testTag("shell_fader")
+            .semantics {
+                progressBarRangeInfo = ProgressBarRangeInfo(clampedValue, 0f..1f)
+                setProgress { target ->
+                    currentOnChange(ShellFaderMath.fraction(target))
+                    true
+                }
+            }
             .onSizeChanged { trackWidthPx = it.width }
             .pointerInput(trackWidthPx) {
                 awaitEachGesture {
@@ -131,8 +146,14 @@ fun ShellFader(
                     scaleX = knobScale
                     scaleY = knobScale
                 }
-                .clip(CircleShape)
-                .background(Color.White)
-        )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag("shell_fader_knob")
+                    .clip(CircleShape)
+                    .background(Color.White)
+            )
+        }
     }
 }

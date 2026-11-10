@@ -1,6 +1,14 @@
 package app.enk.settings
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.testTag
+import app.enk.shell.MessagePill
+import kotlinx.coroutines.delay
+import java.time.LocalDate
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -79,13 +87,14 @@ fun SettingsContent(
                     selectedTheme = settings.theme,
                     onThemeSelect = { theme -> onSettingsChange { it.copy(theme = theme) } },
                     selectedMode = settings.themeMode,
-                    onModeSelect = { mode -> onSettingsChange { it.copy(themeMode = mode) } }
+                    onModeSelect = { mode -> onSettingsChange { it.copy(themeMode = mode) } },
+                    modifier = Modifier.testTag("group_appearance")
                 )
             }
 
             // 2. Writing Group
             item(key = "group_writing") {
-                GroupedSection(title = "Writing") {
+                GroupedSection(title = "Writing", footer = WRITING_FOOTER) {
                     Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         val corrItems = listOf("Clean erase", "Strike-through")
                         val corrIndex = if (settings.correction == CorrectionMode.CleanErase) 0 else 1
@@ -191,7 +200,7 @@ fun SettingsContent(
 
             // 4. Display Group
             item(key = "group_display") {
-                GroupedSection(title = "Display") {
+                GroupedSection(title = "Display", footer = DISPLAY_FOOTER) {
                     GroupedRow(
                         title = "Reduce effects",
                         trailing = {
@@ -291,45 +300,68 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val settings by viewModel.settings.collectAsState()
-    val scope = rememberCoroutineScope()
+    val transfer by viewModel.transfer.collectAsState()
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/zip")
-    ) { uri ->
-        if (uri != null) {
-            scope.launch { viewModel.exportTo(uri) }
-        }
-    }
+    ) { uri -> if (uri != null) viewModel.exportNotes(uri) }
 
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            scope.launch { viewModel.importFrom(uri) }
+    ) { uri -> if (uri != null) viewModel.importNotes(uri) }
+
+    BackHandler { onNavigateBack() }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        SettingsContent(
+            settings = settings,
+            onSettingsChange = { change ->
+                val updated = change(settings)
+                if (updated.theme != settings.theme) viewModel.setTheme(updated.theme)
+                if (updated.themeMode != settings.themeMode) viewModel.setThemeMode(updated.themeMode)
+                if (updated.correction != settings.correction) viewModel.setCorrection(updated.correction)
+                if (updated.autocorrect != settings.autocorrect) viewModel.setAutocorrect(updated.autocorrect)
+                if (updated.soundSet != settings.soundSet) viewModel.setSoundSet(updated.soundSet)
+                if (updated.muted != settings.muted) viewModel.setMuted(updated.muted)
+                if (updated.bellVolume != settings.bellVolume) viewModel.setBellVolume(updated.bellVolume)
+                if (updated.haptics != settings.haptics) viewModel.setHaptics(updated.haptics)
+                if (updated.reduceEffects != settings.reduceEffects) viewModel.setReduceEffects(updated.reduceEffects)
+            },
+            onExport = { exportLauncher.launch(exportFileName(LocalDate.now())) },
+            onImport = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
+            onNavigate = onNavigate,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        val message = when (val t = transfer) {
+            TransferState.Idle -> null
+            is TransferState.Running -> t.message
+            is TransferState.Done -> t.message
+            is TransferState.Failed -> t.message
+        }
+        if (message != null) {
+            if (transfer !is TransferState.Running) {
+                LaunchedEffect(transfer) {
+                    delay(TRANSFER_MESSAGE_MS)
+                    viewModel.clearTransfer()
+                }
+            }
+            MessagePill(
+                text = message,
+                tag = "transfer_message",
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(bottom = 110.dp, start = 24.dp, end = 24.dp)
+            )
         }
     }
-
-    BackHandler {
-        onNavigateBack()
-    }
-
-    SettingsContent(
-        settings = settings,
-        onSettingsChange = { change ->
-            val updated = change(settings)
-            if (updated.theme != settings.theme) viewModel.setTheme(updated.theme)
-            if (updated.themeMode != settings.themeMode) viewModel.setThemeMode(updated.themeMode)
-            if (updated.correction != settings.correction) viewModel.setCorrection(updated.correction)
-            if (updated.autocorrect != settings.autocorrect) viewModel.setAutocorrect(updated.autocorrect)
-            if (updated.soundSet != settings.soundSet) viewModel.setSoundSet(updated.soundSet)
-            if (updated.muted != settings.muted) viewModel.setMuted(updated.muted)
-            if (updated.bellVolume != settings.bellVolume) viewModel.setBellVolume(updated.bellVolume)
-            if (updated.haptics != settings.haptics) viewModel.setHaptics(updated.haptics)
-            if (updated.reduceEffects != settings.reduceEffects) viewModel.setReduceEffects(updated.reduceEffects)
-        },
-        onExport = { exportLauncher.launch("enk-export.zip") },
-        onImport = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
-        onNavigate = onNavigate,
-        modifier = modifier
-    )
 }
+
+internal const val TRANSFER_MESSAGE_MS = 4_000L
+
+/** Design system 12.10 footers. */
+internal const val APPEARANCE_FOOTER =
+    "Themes colour menus and controls. The writing page always keeps its paper and steel. Dynamic follows your Android wallpaper."
+internal const val WRITING_FOOTER = "Strike-through keeps deleted letters on the paper, as a typewriter would."
+internal const val DISPLAY_FOOTER = "Reduce effects turns off paper grain, glass blur, and extra motion."

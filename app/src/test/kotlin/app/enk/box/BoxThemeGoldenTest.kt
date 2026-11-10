@@ -78,13 +78,14 @@ class BoxThemeGoldenTest {
     private fun BoxScene(theme: ThemeId, mode: ThemeMode) {
         CompositionLocalProvider(LocalMonoFont provides courier) {
             EnkShellTheme(theme = theme, mode = mode) {
-                BoxContent(
+                BoxScreen(
                     state = BoxUiState(
                         dividers = sampleDividers,
                         selectedDividerId = 1L,
                         notes = sampleNotes,
                         trashCount = 2
-                    )
+                    ),
+                    entranceProgress = 1f
                 )
             }
         }
@@ -105,13 +106,14 @@ class BoxThemeGoldenTest {
             LocalShellColors provides colors,
             LocalShellMaterial provides material
         ) {
-            BoxContent(
+            BoxScreen(
                 state = BoxUiState(
                     dividers = sampleDividers,
                     selectedDividerId = 1L,
                     notes = sampleNotes,
                     trashCount = 2
-                )
+                ),
+                entranceProgress = 1f
             )
         }
     }
@@ -120,8 +122,12 @@ class BoxThemeGoldenTest {
     private fun TrashScene(theme: ThemeId, mode: ThemeMode) {
         CompositionLocalProvider(LocalMonoFont provides courier) {
             EnkShellTheme(theme = theme, mode = mode) {
-                TrashContent(
-                    trashedNotes = sampleTrashed
+                TrashScreen(
+                    trashed = sampleTrashed,
+                    onRestore = {},
+                    onDeleteAllForever = {},
+                    onNavigate = {},
+                    onNavigateBack = {}
                 )
             }
         }

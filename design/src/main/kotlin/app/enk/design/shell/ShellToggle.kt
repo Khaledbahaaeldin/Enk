@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -26,6 +27,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.enk.design.motion.ShellMotion
@@ -92,6 +100,15 @@ fun ShellToggle(
         modifier = modifier
             .width(ShellToggleMath.trackWidthDp.dp)
             .height(ShellToggleMath.touchHeightDp.dp)
+            .testTag("shell_toggle")
+            .semantics {
+                role = Role.Switch
+                toggleableState = ToggleableState(checked)
+                onClick {
+                    currentOnChange(!checked)
+                    true
+                }
+            }
             .pointerInput(checked) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -118,10 +135,13 @@ fun ShellToggle(
             modifier = Modifier
                 .width(ShellToggleMath.trackWidthDp.dp)
                 .height(ShellToggleMath.trackHeightDp.dp)
+                .testTag("shell_toggle_track")
                 .clip(trackShape)
                 .background(trackColor)
         ) {
             // Bead: 26 x 26 dp
+            // The layer that stretches the bead is the parent of the tagged visual, so the visual's
+            // bounds in the root include the stretch.
             Box(
                 modifier = Modifier
                     .offset { IntOffset((animatedOffsetDp * density).roundToInt(), (ShellToggleMath.paddingDp * density).roundToInt()) }
@@ -130,9 +150,15 @@ fun ShellToggle(
                         scaleX = animatedScaleX
                         scaleY = 1.0f
                     }
-                    .clip(CircleShape)
-                    .background(Color.White)
-            )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag("shell_toggle_bead")
+                        .clip(CircleShape)
+                        .background(Color.White)
+                )
+            }
         }
     }
 }

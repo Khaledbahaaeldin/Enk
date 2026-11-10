@@ -9,6 +9,7 @@ import app.enk.data.DividerEntity
 import app.enk.data.NoteRepository
 import app.enk.data.NoteSummary
 import app.enk.data.TrashedSummary
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -47,6 +48,7 @@ class BoxViewModel(
     private val ownsScope = externalScope == null
     private val scope = externalScope ?: kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + ioDispatcher)
 
+    private val deleting = java.util.concurrent.atomic.AtomicBoolean(false)
     private val _selectedDividerId = MutableStateFlow<Long?>(null)
     private val _userMessage = MutableStateFlow<String?>(null)
 
@@ -101,101 +103,81 @@ class BoxViewModel(
     fun validateDividerName(name: String, existingNames: List<String> = emptyList()): DividerValidationResult =
         dividerNameValid(name, existingNames)
 
+    /**
+     * Runs [block] on the view model's scope. A failure leaves the list as it was and shows [failure]
+     * once; cancellation is never swallowed.
+     */
+    private fun guarded(failure: String, block: suspend () -> Unit) {
+        scope.launch(ioDispatcher) {
+            try {
+                block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _userMessage.value = failure
+            }
+        }
+    }
+
     fun addDivider(name: String) {
         val validation = dividerNameValid(name, state.value.dividers.map { it.name })
         if (validation !is DividerValidationResult.Valid) return
-        scope.launch(ioDispatcher) {
-            try {
-                val position = state.value.dividers.size
-                dividers.insert(DividerEntity(name = validation.name, position = position))
-            } catch (e: Exception) {
-                _userMessage.value = e.message ?: "Failed to add divider"
-            }
+        guarded("Couldn't add that divider.") {
+            dividers.insert(DividerEntity(name = validation.name, position = state.value.dividers.size))
         }
     }
 
     fun renameDivider(id: Long, name: String) {
         val validation = dividerNameValid(name, state.value.dividers.filter { it.id != id }.map { it.name })
         if (validation !is DividerValidationResult.Valid) return
-        scope.launch(ioDispatcher) {
-            try {
-                dividers.rename(id, validation.name)
-            } catch (e: Exception) {
-                _userMessage.value = e.message ?: "Failed to rename divider"
-            }
-        }
+        guarded("Couldn't rename that divider.") { dividers.rename(id, validation.name) }
     }
 
     fun deleteDivider(id: Long) {
         if (_selectedDividerId.value == id) {
             _selectedDividerId.value = null
         }
-        scope.launch(ioDispatcher) {
-            try {
-                dividers.delete(id)
-            } catch (e: Exception) {
-                _userMessage.value = e.message ?: "Failed to delete divider"
-            }
-        }
+        guarded("Couldn't delete that divider.") { dividers.delete(id) }
     }
 
-    fun move(noteId: String, dividerId: Long?) {
-        scope.launch(ioDispatcher) {
-            try {
-                repo.moveToDivider(noteId, dividerId)
-            } catch (e: Exception) {
-                _userMessage.value = e.message ?: "Failed to move note"
-            }
-        }
-    }
+    fun move(noteId: String, dividerId: Long?) = guarded("Couldn't move that note.") { repo.moveToDivider(noteId, dividerId) }
 
-    fun trash(noteId: String) {
-        scope.launch(ioDispatcher) {
-            try {
-                repo.trash(noteId)
-            } catch (e: Exception) {
-                _userMessage.value = e.message ?: "Failed to trash note"
-            }
-        }
-    }
+    fun trash(noteId: String) = guarded("Couldn't move that note to the trash.") { repo.trash(noteId) }
 
-    fun restore(noteId: String) {
-        scope.launch(ioDispatcher) {
-            try {
-                repo.restore(noteId)
-            } catch (e: Exception) {
-                _userMessage.value = e.message ?: "Failed to restore note"
-            }
-        }
-    }
+    fun restore(noteId: String) = guarded("Couldn't restore that note.") { repo.restore(noteId) }
 
-    fun reorderNotes(ids: List<String>) {
-        scope.launch(ioDispatcher) {
-            try {
-                repo.reorderNotes(_selectedDividerId.value, ids)
-            } catch (e: Exception) {
-                _userMessage.value = e.message ?: "Failed to reorder notes"
-            }
-        }
-    }
+    fun reorderNotes(ids: List<String>) =
+        guarded("Couldn't reorder the notes.") { repo.reorderNotes(_selectedDividerId.value, ids) }
 
-    fun reorderDividers(ids: List<Long>) {
-        scope.launch(ioDispatcher) {
-            try {
-                repo.reorderDividers(ids)
-            } catch (e: Exception) {
-                _userMessage.value = e.message ?: "Failed to reorder dividers"
-            }
-        }
-    }
+    fun reorderDividers(ids: List<Long>) = guarded("Couldn't reorder the dividers.") { repo.reorderDividers(ids) }
 
+    /** Erases every trashed note for good. A second call while one is running does nothing. */
     fun deleteAllForever() {
-        scope.launch(ioDispatcher) {
+        if (!deleting.compareAndSet(false, true)) return
+        guarded("Couldn't erase the trash.") {
             try {
                 repo.deleteAllForever()
-            } catch (e: Exception) {
-                _userMessage.value = e.message ?: "Failed to delete forever"
+            } finally {
+                deleting.set(false)
             }
+        }
+    }
+
+    /**
+     * Creates a note in the selected divider and reports its id. On failure the Box stays as it is and
+     * a message is shown.
+     */
+    fun newNote(onCreated: (String) -> Unit) {
+        scope.launch(ioDispatcher) {
+            val created = try {
+                repo.createNote(dividerId = _selectedDividerId.value)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _userMessage.value = "Couldn't create a note."
+                return@launch
+            }
+            onCreated(created.id)
         }
     }
 

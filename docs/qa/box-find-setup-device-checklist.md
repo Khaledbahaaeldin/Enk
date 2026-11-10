@@ -37,7 +37,7 @@ Manual verification checklist for Tasks 21, 22, and 23 on Android virtual device
   - "Move to divider" opens bottom sheet with destination dividers.
   - "Move to trash" moves note to trash, decrements active count, and updates trash count.
 - [ ] **1.6 New Divider Sheet**
-  - Tapping "+" opens 320 dp bottom sheet.
+  - Tapping "+" opens the bottom sheet, with the name field focused and the keyboard up.
   - Validates names: rejects blank, duplicate (case-insensitive), or >40 characters.
   - Dragging down past midpoint dismisses sheet.
 - [ ] **1.7 Trash Screen & Delete Alert**
@@ -102,3 +102,16 @@ Manual verification checklist for Tasks 21, 22, and 23 on Android virtual device
 - [ ] **4.2 System Bar Icons**
   - In light mode: dark status bar and navigation bar icons.
   - In dark mode: light status bar and navigation bar icons.
+
+---
+
+## 0. Found on a device in the Batch 8 audit (check these first; each has a unit test but only a device shows the real thing)
+
+- [ ] **0.1 Titles and the status bar.** On Box, Find, Trash and Setup the large title sits fully below the status bar clock, and the first content (divider strip, search field, first group) starts below the title with a visible gap.
+- [ ] **0.2 Trash is reachable.** The Box ends with a "Trash" row showing "Empty" or "N notes". Tapping it opens the Trash; back returns to the Box. A note moved to the trash appears there with "N days left" and can be restored; "Delete all forever" shows the alert over the whole screen (the nav bar is covered), Keep closes it, Delete erases the notes (check Find: they no longer match).
+- [ ] **0.3 New divider sheet with the keyboard.** Tap "+": the keyboard opens with the field focused; the sheet sits fully above the keyboard with Cancel and Add visible and tappable; the nav bar is covered by the scrim, not drawn over the sheet. The keyboard's Done key adds a valid name. Dragging the sheet down fast dismisses it.
+- [ ] **0.4 Move to divider sheet** sits above the navigation bar and lists Unfiled and the dividers.
+- [ ] **0.5 Setup footers and messages.** Appearance, Writing and Display show the design system's footer text. Export opens the file picker with the name `enk-notes-YYYY-MM-DD.zip`; after saving, a message "Notes exported." appears for a few seconds. Import of a valid zip shows "Imported N notes." (with skips if any); a damaged zip shows "Couldn't import: ..." and no note is lost. Leaving Setup while an import runs does not cancel it.
+- [ ] **0.6 Pressed feedback.** Holding a toggle stretches its bead (about 12%); holding a fader makes its knob about 12% larger. (Not measurable in unit tests.)
+- [ ] **0.7 Sound set preview.** Choosing a sound set plays one key sound unless Mute is on.
+- [ ] **0.8 Rotation.** Rotating on Box, Find (with a query), and Setup keeps the selected divider, the query and the scroll position.

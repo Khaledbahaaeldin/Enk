@@ -12,7 +12,13 @@ import app.enk.data.ImportResult
 import app.enk.data.Importer
 import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import java.io.IOException
+import app.enk.audio.SoundEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -46,6 +52,24 @@ val SETUP_GROUP_ORDER: List<String> = listOf(
     "Data",
     "About"
 )
+
+/** An export or import in progress, or its last result. */
+sealed interface TransferState {
+    data object Idle : TransferState
+    data class Running(val message: String) : TransferState
+    data class Done(val message: String) : TransferState
+    data class Failed(val message: String) : TransferState
+}
+
+/** "Imported 12 notes, 2 skipped." */
+internal fun importSummary(result: ImportResult.Done): String {
+    val imported = result.added + result.replaced
+    val notes = if (imported == 1) "1 note" else "$imported notes"
+    return if (result.skipped == 0) "Imported $notes." else "Imported $notes, ${result.skipped} skipped."
+}
+
+/** The name offered to the file picker for an export made on [date]. */
+internal fun exportFileName(date: java.time.LocalDate): String = "enk-notes-$date.zip"
 
 class SettingsViewModel(
     private val store: SettingsStore,
@@ -92,13 +116,13 @@ class SettingsViewModel(
         }
     }
 
+    /** Saves the choice, prepares the set off the main thread and plays one key so it can be heard. */
     fun setSoundSet(id: SoundSetId) {
-        val soundSet = soundManifest.find { it.id.equals(id.name, ignoreCase = true) }
-        if (soundSet != null) {
-            soundPlayer?.prepare(soundSet)
-        }
         scope.launch(ioDispatcher) {
             store.update { it.copy(soundSet = id) }
+            val soundSet = soundManifest.find { it.id.equals(id.name, ignoreCase = true) } ?: return@launch
+            soundPlayer?.prepare(soundSet)
+            if (!store.settings.first().muted) soundPlayer?.play(SoundEvent.Key, soundSet, 1f)
         }
     }
 
@@ -126,12 +150,62 @@ class SettingsViewModel(
         }
     }
 
-    suspend fun exportTo(uri: Uri) = withContext(ioDispatcher) {
-        val cr = context?.contentResolver
-            ?: throw IllegalStateException("Context required to open URI")
-        cr.openOutputStream(uri)?.use { out ->
-            exporter.export(out)
+    private val _transfer = MutableStateFlow<TransferState>(TransferState.Idle)
+
+    /** The state of the export or import in progress, or its last result until it is cleared. */
+    val transfer: StateFlow<TransferState> = _transfer.asStateFlow()
+
+    fun clearTransfer() {
+        if (_transfer.value !is TransferState.Running) _transfer.value = TransferState.Idle
+    }
+
+    /**
+     * Exports on this view model's scope, so leaving the screen cannot cancel it half way, and reports
+     * the result. A second request while one is running does nothing.
+     */
+    fun exportNotes(uri: Uri) {
+        if (!startTransfer("Exporting your notes…")) return
+        scope.launch(ioDispatcher) {
+            _transfer.value = try {
+                exportTo(uri)
+                TransferState.Done("Notes exported.")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                TransferState.Failed("Couldn't export your notes.")
+            }
         }
+    }
+
+    /** Imports on this view model's scope and reports what was added, replaced or skipped. */
+    fun importNotes(uri: Uri) {
+        if (!startTransfer("Importing notes…")) return
+        scope.launch(ioDispatcher) {
+            _transfer.value = try {
+                when (val result = importFrom(uri)) {
+                    is ImportResult.Done -> TransferState.Done(importSummary(result))
+                    is ImportResult.Failed -> TransferState.Failed("Couldn't import: ${result.reason}")
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                TransferState.Failed("Couldn't import those notes.")
+            }
+        }
+    }
+
+    private fun startTransfer(message: String): Boolean {
+        while (true) {
+            val current = _transfer.value
+            if (current is TransferState.Running) return false
+            if (_transfer.compareAndSet(current, TransferState.Running(message))) return true
+        }
+    }
+
+    suspend fun exportTo(uri: Uri) = withContext(ioDispatcher) {
+        val cr = context?.contentResolver ?: throw IOException("No context to open the file with.")
+        val out = cr.openOutputStream(uri) ?: throw IOException("Could not open the file to write.")
+        out.use { exporter.export(it) }
     }
 
     suspend fun importFrom(uri: Uri): ImportResult = withContext(ioDispatcher) {

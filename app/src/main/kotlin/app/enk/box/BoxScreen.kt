@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,14 +13,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,232 +41,125 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.enk.design.LocalMonoFont
-import app.enk.design.shell.GlassSource
 import app.enk.design.shell.rememberGlassSource
 import app.enk.design.theme.LocalShellColors
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTag
 import app.enk.shell.Dest
-import app.enk.shell.GlassNavBar
+import app.enk.shell.MessagePill
 import app.enk.shell.ShellScaffold
+import kotlinx.coroutines.delay
 
+/** How long a one-shot message stays on screen. */
+internal const val MESSAGE_VISIBLE_MS = 3_000L
+
+/** "0 notes", "1 note", "N notes". */
+internal fun noteCountText(count: Int): String = when (count) {
+    1 -> "1 note"
+    else -> "$count notes"
+}
+
+/**
+ * The Box (design system 12.10): large title with the note count, the divider strip, the ghost card,
+ * the note cards and a Trash row, inside the shared [ShellScaffold]. The context menu, the sheets and
+ * the message are drawn above the scaffold so they cover its navigation bar.
+ *
+ * [entranceProgress] freezes the cards' entrance for goldens (0 to 1); it is null in the app, where the
+ * entrance runs when the list first appears and when the divider changes.
+ */
 @Composable
-fun BoxContent(
+fun BoxScreen(
     state: BoxUiState,
     modifier: Modifier = Modifier,
     onSelectDivider: (Long?) -> Unit = {},
     onAddDivider: (String) -> Unit = {},
-    onAddDividerClick: () -> Unit = {},
     onNewNote: () -> Unit = {},
     onNoteClick: (String) -> Unit = {},
-    onNoteHold: (String) -> Unit = {},
-    onMoveToDivider: (String, Long?) -> Unit = { _, _ -> },
     onTrashNote: (String) -> Unit = {},
-    listState: LazyListState = rememberLazyListState(),
-    contentPadding: PaddingValues = PaddingValues(top = 16.dp, bottom = 120.dp),
-    glassSource: GlassSource = rememberGlassSource()
+    onMoveToDivider: (String, Long?) -> Unit = { _, _ -> },
+    onOpenTrash: () -> Unit = {},
+    onMessageShown: () -> Unit = {},
+    onNavigateBack: () -> Unit = {},
+    onNavigate: (Dest) -> Unit = {},
+    entranceProgress: Float? = null
 ) {
-    val colors = LocalShellColors.current
-    val mono = LocalMonoFont.current
-    val isInspection = LocalInspectionMode.current
-
     var showNewDividerSheet by remember { mutableStateOf(false) }
     var heldNoteId by remember { mutableStateOf<String?>(null) }
     var movingNoteId by remember { mutableStateOf<String?>(null) }
+    val cardBoundsMap = remember { mutableStateMapOf<String, Rect>() }
+    val glassSource = rememberGlassSource()
 
-    val hasOverlay = heldNoteId != null || showNewDividerSheet || movingNoteId != null
-    BackHandler(enabled = hasOverlay) {
+    BackHandler { onNavigateBack() }
+    // Registered after the one above, so it wins while something is open: back closes it first.
+    BackHandler(enabled = heldNoteId != null || showNewDividerSheet || movingNoteId != null) {
         heldNoteId = null
         showNewDividerSheet = false
         movingNoteId = null
     }
 
-    val cardBoundsMap = remember { mutableStateMapOf<String, Rect>() }
-
-    val metaText = when (state.notes.size) {
-        0 -> "0 notes"
-        1 -> "1 note"
-        else -> "${state.notes.size} notes"
-    }
-
-    val entranceProgress = remember(state.selectedDividerId) {
-        Animatable(if (isInspection) 1f else 0f)
-    }
-
-    LaunchedEffect(state.selectedDividerId) {
-        if (!isInspection) {
-            entranceProgress.snapTo(0f)
-            entranceProgress.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(
-                    durationMillis = 500,
-                    easing = CubicBezierEasing(0.2f, 0.9f, 0.3f, 1f)
-                )
+    Box(modifier = modifier.fillMaxSize()) {
+        ShellScaffold(
+            title = "The Box",
+            meta = noteCountText(state.notes.size),
+            showNav = true,
+            selected = Dest.Box,
+            onNavigate = onNavigate
+        ) { listState, contentPadding ->
+            BoxList(
+                state = state,
+                listState = listState,
+                contentPadding = contentPadding,
+                heldNoteId = heldNoteId,
+                cardBoundsMap = cardBoundsMap,
+                onSelectDivider = onSelectDivider,
+                onAddDividerClick = { showNewDividerSheet = true },
+                onNewNote = onNewNote,
+                onNoteClick = onNoteClick,
+                onNoteHold = { heldNoteId = it },
+                onNoteMove = { movingNoteId = it },
+                onNoteTrash = onTrashNote,
+                onOpenTrash = onOpenTrash,
+                entranceProgress = entranceProgress
             )
         }
-    }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp)
-        ) {
-            // Header: Title and Note count
-            item(key = "box_header") {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .semantics(mergeDescendants = true) {
-                                testTag = "large_title"
-                            }
-                            .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        Text(
-                            text = "The Box",
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.t1
-                        )
-                        Text(
-                            text = metaText,
-                            fontFamily = mono,
-                            fontSize = 14.sp,
-                            color = colors.t2,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                    }
-
-                    // Divider strip
-                    DividerStrip(
-                        dividers = state.dividers,
-                        selectedId = state.selectedDividerId,
-                        onSelect = onSelectDivider,
-                        onAdd = {
-                            showNewDividerSheet = true
-                            onAddDividerClick()
-                        },
-                        glassSource = glassSource,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+        state.userMessage?.let { message ->
+            val latestShown by rememberUpdatedState(onMessageShown)
+            LaunchedEffect(message) {
+                delay(MESSAGE_VISIBLE_MS)
+                latestShown()
             }
-
-            // Ghost Card: Always first!
-            item(key = "ghost_card") {
-                val ghostShape = RoundedCornerShape(14.dp)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .clip(ghostShape)
-                        .border(1.dp, colors.hair, ghostShape)
-                        .clickable(onClick = onNewNote)
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "New note",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = colors.t2
-                    )
-                }
-            }
-
-            // Real Note Cards
-            itemsIndexed(state.notes, key = { _, item -> item.id }) { index, note ->
-                val delayFraction = (index * 0.08f).coerceAtMost(0.5f)
-                val cardProgress = if (isInspection) 1f else {
-                    ((entranceProgress.value - delayFraction) / (1f - delayFraction)).coerceIn(0f, 1f)
-                }
-                val cardAlpha = cardProgress
-                val cardOffsetY = 14.dp * (1f - cardProgress)
-
-                val isLifted = heldNoteId == note.id
-
-                NoteCard(
-                    summary = note,
-                    onClick = { onNoteClick(note.id) },
-                    onHold = {
-                        heldNoteId = note.id
-                        onNoteHold(note.id)
-                    },
-                    lifted = isLifted,
-                    onMoveToDivider = {
-                        movingNoteId = note.id
-                    },
-                    onMoveToTrash = {
-                        onTrashNote(note.id)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { coordinates ->
-                            cardBoundsMap[note.id] = coordinates.boundsInRoot()
-                        }
-                        .graphicsLayer {
-                            alpha = cardAlpha
-                            translationY = cardOffsetY.toPx()
-                        }
-                )
-            }
-
-            // End hint
-            if (state.notes.isNotEmpty()) {
-                item(key = "end_hint") {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Hold a note for options",
-                        fontFamily = mono,
-                        fontSize = 11.sp,
-                        color = colors.t3,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
+            MessagePill(
+                text = message,
+                tag = "box_message",
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(bottom = 110.dp, start = 24.dp, end = 24.dp)
+            )
         }
 
-        // Context menu overlay
         if (heldNoteId != null) {
-            val bounds = cardBoundsMap[heldNoteId]
             ContextMenu(
-                cardBounds = bounds,
+                cardBounds = cardBoundsMap[heldNoteId],
                 onMoveToDivider = {
-                    val id = heldNoteId
+                    movingNoteId = heldNoteId
                     heldNoteId = null
-                    movingNoteId = id
                 },
                 onMoveToTrash = {
                     val id = heldNoteId
                     heldNoteId = null
                     if (id != null) onTrashNote(id)
                 },
-                onDismiss = {
-                    heldNoteId = null
-                },
+                onDismiss = { heldNoteId = null },
                 glassSource = glassSource
             )
         }
 
-        // New divider sheet
         if (showNewDividerSheet) {
             NewDividerSheet(
                 onDismiss = { showNewDividerSheet = false },
@@ -275,14 +172,13 @@ fun BoxContent(
             )
         }
 
-        // Move to divider sheet
         if (movingNoteId != null) {
             MoveToDividerSheet(
                 dividers = state.dividers,
-                onSelectDivider = { divId ->
+                onSelectDivider = { dividerId ->
                     val noteId = movingNoteId
                     movingNoteId = null
-                    if (noteId != null) onMoveToDivider(noteId, divId)
+                    if (noteId != null) onMoveToDivider(noteId, dividerId)
                 },
                 onDismiss = { movingNoteId = null },
                 glassSource = glassSource
@@ -292,44 +188,135 @@ fun BoxContent(
 }
 
 @Composable
-fun BoxScreen(
+private fun BoxList(
     state: BoxUiState,
-    modifier: Modifier = Modifier,
-    onSelectDivider: (Long?) -> Unit = {},
-    onAddDivider: (String) -> Unit = {},
-    onAddDividerClick: () -> Unit = {},
-    onNewNote: () -> Unit = {},
-    onNoteClick: (String) -> Unit = {},
-    onTrashNote: (String) -> Unit = {},
-    onMoveToDivider: (String, Long?) -> Unit = { _, _ -> },
-    onNavigateBack: () -> Unit = {},
-    onNavigate: (Dest) -> Unit = {}
+    listState: LazyListState,
+    contentPadding: PaddingValues,
+    heldNoteId: String?,
+    cardBoundsMap: MutableMap<String, Rect>,
+    onSelectDivider: (Long?) -> Unit,
+    onAddDividerClick: () -> Unit,
+    onNewNote: () -> Unit,
+    onNoteClick: (String) -> Unit,
+    onNoteHold: (String) -> Unit,
+    onNoteMove: (String) -> Unit,
+    onNoteTrash: (String) -> Unit,
+    onOpenTrash: () -> Unit,
+    entranceProgress: Float?
 ) {
-    BackHandler {
-        onNavigateBack()
+    val colors = LocalShellColors.current
+    val mono = LocalMonoFont.current
+
+    val entrance = remember(state.selectedDividerId) { Animatable(entranceProgress ?: 0f) }
+    LaunchedEffect(state.selectedDividerId, entranceProgress) {
+        if (entranceProgress == null) {
+            entrance.snapTo(0f)
+            entrance.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 500, easing = CubicBezierEasing(0.2f, 0.9f, 0.3f, 1f))
+            )
+        }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        BoxContent(
-            state = state,
-            onSelectDivider = onSelectDivider,
-            onAddDivider = onAddDivider,
-            onAddDividerClick = onAddDividerClick,
-            onNewNote = onNewNote,
-            onNoteClick = onNoteClick,
-            onTrashNote = onTrashNote,
-            onMoveToDivider = onMoveToDivider,
-            modifier = Modifier.fillMaxSize()
-        )
+    LazyColumn(
+        state = listState,
+        contentPadding = contentPadding,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp)
+    ) {
+        item(key = "divider_strip") {
+            DividerStrip(
+                dividers = state.dividers,
+                selectedId = state.selectedDividerId,
+                onSelect = onSelectDivider,
+                onAdd = onAddDividerClick,
+                modifier = Modifier.fillMaxWidth().testTag("divider_strip")
+            )
+        }
 
-        GlassNavBar(
-            selected = Dest.Box,
-            onSelect = onNavigate,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = 24.dp, vertical = 16.dp)
-        )
+        item(key = "ghost_card") {
+            val ghostShape = RoundedCornerShape(14.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("ghost_card")
+                    .clip(ghostShape)
+                    .border(1.dp, colors.hair, ghostShape)
+                    .clickable(onClick = onNewNote)
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "New note", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = colors.t2)
+            }
+        }
+
+        itemsIndexed(state.notes, key = { _, item -> item.id }) { index, note ->
+            val delayFraction = (index * 0.08f).coerceAtMost(0.5f)
+            val cardProgress = ((entrance.value - delayFraction) / (1f - delayFraction)).coerceIn(0f, 1f)
+            NoteCard(
+                summary = note,
+                onClick = { onNoteClick(note.id) },
+                onHold = { onNoteHold(note.id) },
+                lifted = heldNoteId == note.id,
+                onMoveToDivider = { onNoteMove(note.id) },
+                onMoveToTrash = { onNoteTrash(note.id) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { cardBoundsMap[note.id] = it.boundsInRoot() }
+                    .graphicsLayer {
+                        alpha = cardProgress
+                        translationY = 14.dp.toPx() * (1f - cardProgress)
+                    }
+            )
+        }
+
+        if (state.notes.isNotEmpty()) {
+            item(key = "end_hint") {
+                Text(
+                    text = "Hold a note for options",
+                    fontFamily = mono,
+                    fontSize = 11.sp,
+                    color = colors.t3,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                )
+            }
+        }
+
+        item(key = "trash_row") {
+            TrashRow(count = state.trashCount, onClick = onOpenTrash)
+        }
+    }
+}
+
+/** The way into the Trash: a row below the notes, with the number of trashed notes. */
+@Composable
+internal fun TrashRow(count: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalShellColors.current
+    val shape = RoundedCornerShape(14.dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .testTag("trash_row")
+            .clip(shape)
+            .background(colors.g1)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = "Trash", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = colors.t1)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = if (count == 0) "Empty" else noteCountText(count), fontSize = 14.sp, color = colors.t2)
+            Spacer(modifier = Modifier.padding(start = 8.dp))
+            Text(text = "›", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = colors.t3)
+        }
     }
 }
 
@@ -339,6 +326,7 @@ fun BoxScreen(
     onNavigate: (Dest) -> Unit,
     onNavigateToNote: (String) -> Unit,
     onNewNote: () -> Unit,
+    onOpenTrash: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -351,7 +339,9 @@ fun BoxScreen(
         onNewNote = onNewNote,
         onNoteClick = onNavigateToNote,
         onTrashNote = { viewModel.trash(it) },
-        onMoveToDivider = { noteId, divId -> viewModel.move(noteId, divId) },
+        onMoveToDivider = { noteId, dividerId -> viewModel.move(noteId, dividerId) },
+        onOpenTrash = onOpenTrash,
+        onMessageShown = { viewModel.clearUserMessage() },
         onNavigateBack = onNavigateBack,
         onNavigate = onNavigate,
         modifier = modifier

@@ -3,6 +3,11 @@ package app.enk.box
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -69,6 +74,7 @@ fun MoveToDividerSheet(
                 .heightIn(max = 420.dp)
                 .glass(GlassLevel.Thick, sheetShape, glassSource)
                 .clip(sheetShape)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
                 .padding(top = 10.dp, start = 20.dp, end = 20.dp, bottom = 24.dp)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {

@@ -33,6 +33,12 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -105,7 +111,8 @@ fun ShellSegmented(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(ShellSegmentedMath.touchHeightDp.dp),
+            .height(ShellSegmentedMath.touchHeightDp.dp)
+            .testTag("shell_segmented"),
         contentAlignment = Alignment.Center
     ) {
         // Control track (36 dp)
@@ -163,7 +170,15 @@ fun ShellSegmented(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clickable { onSelect(index) },
+                            .testTag("shell_segment_$index")
+                            .semantics {
+                                role = Role.RadioButton
+                                this.selected = isSelected
+                                onClick {
+                                    currentOnSelect(index)
+                                    true
+                                }
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

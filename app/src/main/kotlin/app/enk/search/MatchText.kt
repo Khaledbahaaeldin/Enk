@@ -6,7 +6,13 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import java.util.Locale
+
+/** The ink of a match: near-black, the same on every theme because the card is always paper. */
+internal val MatchInk = Color(0xFF14110D)
+
+private fun splitsPair(text: String, start: Int, end: Int): Boolean =
+    (start > 0 && text[start - 1].isHighSurrogate() && text[start].isLowSurrogate()) ||
+        (end < text.length && text[end - 1].isHighSurrogate() && text[end].isLowSurrogate())
 
 /**
  * Marks each case-insensitive match of words in [query] with weight 700,
@@ -23,17 +29,19 @@ fun matchStyled(text: String, query: String): AnnotatedString {
         return AnnotatedString(text)
     }
 
-    val lowerText = text.lowercase(Locale.ROOT)
     val intervals = mutableListOf<IntRange>()
 
+    // Compared in place, ignoring case, so a character whose lower case has another length can never
+    // shift the positions; a match never starts or ends inside a surrogate pair.
     for (term in terms) {
-        val lowerTerm = term.lowercase(Locale.ROOT)
-        var startIndex = 0
-        while (startIndex < lowerText.length) {
-            val idx = lowerText.indexOf(lowerTerm, startIndex)
-            if (idx == -1) break
-            intervals.add(idx until (idx + lowerTerm.length))
-            startIndex = idx + maxOf(1, lowerTerm.length)
+        var i = 0
+        while (i <= text.length - term.length) {
+            if (text.regionMatches(i, term, 0, term.length, ignoreCase = true) && !splitsPair(text, i, i + term.length)) {
+                intervals.add(i until (i + term.length))
+                i += term.length
+            } else {
+                i++
+            }
         }
     }
 
@@ -59,7 +67,7 @@ fun matchStyled(text: String, query: String): AnnotatedString {
         append(text)
         val style = SpanStyle(
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF14110D),
+            color = MatchInk,
             textDecoration = TextDecoration.Underline,
             background = Color.Unspecified
         )

@@ -23,7 +23,10 @@ import app.enk.design.theme.LocalShellColors
 import app.enk.box.BoxScreen
 import app.enk.box.BoxViewModel
 import app.enk.box.TrashScreen
-import kotlinx.coroutines.Dispatchers
+import app.enk.search.SearchScreen
+import app.enk.search.SearchViewModel
+import app.enk.settings.SettingsScreen
+import app.enk.settings.SettingsViewModel
 import app.enk.writer.WriterScreen
 import app.enk.writer.WriterIntro
 import app.enk.writer.WriterViewModel
@@ -91,121 +94,56 @@ fun EnkNavHost(
                 Box(modifier = modifier.fillMaxSize())
             }
         }
-        Route.Box, Route.Trash -> {
-            val context = LocalContext.current
-            val activity = context as? ComponentActivity
-            val storeOwner = LocalViewModelStoreOwner.current
-
-            val boxVm = remember(activity, storeOwner) {
-                val factory = BoxViewModel.factory(container)
-                if (activity != null) {
-                    ViewModelProvider(activity, factory)["box-vm", BoxViewModel::class.java]
-                } else if (storeOwner != null) {
-                    ViewModelProvider(storeOwner, factory)["box-vm", BoxViewModel::class.java]
-                } else {
-                    BoxViewModel(container.repo, container.db.dividerDao())
-                }
-            }
-
+        Route.Box -> {
             SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
-            val scope = rememberCoroutineScope()
-
-            if (route == Route.Box) {
-                BoxScreen(
-                    viewModel = boxVm,
-                    onNavigate = { dest ->
-                        val nextRoute = when (dest) {
-                            Dest.Write -> Route.Writer
-                            Dest.Box -> Route.Box
-                            Dest.Find -> Route.Find
-                            Dest.Setup -> Route.Setup
-                        }
-                        mainViewModel.navigate(nextRoute)
-                    },
-                    onNavigateToNote = { noteId ->
-                        mainViewModel.navigate(Route.Note(noteId, 0))
-                    },
-                    onNewNote = {
-                        scope.launch(Dispatchers.IO) {
-                            try {
-                                val selectedDivider = boxVm.state.value.selectedDividerId
-                                val newNote = container.repo.createNote(dividerId = selectedDivider)
-                                mainViewModel.navigate(Route.Note(newNote.id, 0))
-                            } catch (_: Exception) {
-                            }
-                        }
-                    },
-                    onNavigateBack = {
-                        mainViewModel.handleBack()
-                    },
-                    modifier = modifier
-                )
-            } else {
-                TrashScreen(
-                    viewModel = boxVm,
-                    onNavigate = { dest ->
-                        val nextRoute = when (dest) {
-                            Dest.Write -> Route.Writer
-                            Dest.Box -> Route.Box
-                            Dest.Find -> Route.Find
-                            Dest.Setup -> Route.Setup
-                        }
-                        mainViewModel.navigate(nextRoute)
-                    },
-                    onNavigateBack = {
-                        mainViewModel.handleBack()
-                    },
-                    modifier = modifier
-                )
-            }
+            val boxVm: BoxViewModel = viewModel(key = BOX_VM_KEY, factory = BoxViewModel.factory(container))
+            BoxScreen(
+                viewModel = boxVm,
+                onNavigate = { mainViewModel.navigate(it.toRoute()) },
+                onNavigateToNote = { noteId -> mainViewModel.navigate(Route.Note(noteId, 0)) },
+                onNewNote = { boxVm.newNote { id -> mainViewModel.navigate(Route.Note(id, 0)) } },
+                onOpenTrash = { mainViewModel.navigate(Route.Trash) },
+                onNavigateBack = { mainViewModel.handleBack() },
+                modifier = modifier
+            )
+        }
+        Route.Trash -> {
+            SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
+            val boxVm: BoxViewModel = viewModel(key = BOX_VM_KEY, factory = BoxViewModel.factory(container))
+            TrashScreen(
+                viewModel = boxVm,
+                onNavigate = { mainViewModel.navigate(it.toRoute()) },
+                onNavigateBack = { mainViewModel.handleBack() },
+                modifier = modifier
+            )
         }
         Route.Find -> {
-            val searchVm: app.enk.search.SearchViewModel = viewModel(
-                factory = app.enk.search.SearchViewModel.factory(container)
-            )
             SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
-            app.enk.search.SearchScreen(
+            val searchVm: SearchViewModel = viewModel(key = SEARCH_VM_KEY, factory = SearchViewModel.factory(container))
+            SearchScreen(
                 viewModel = searchVm,
-                onNavigate = { dest ->
-                    val nextRoute = when (dest) {
-                        Dest.Write -> Route.Writer
-                        Dest.Box -> Route.Box
-                        Dest.Find -> Route.Find
-                        Dest.Setup -> Route.Setup
-                    }
-                    mainViewModel.navigate(nextRoute)
-                },
-                onNavigateToNote = { noteId, pageIndex ->
-                    mainViewModel.navigate(Route.Note(noteId, pageIndex))
-                },
-                onNavigateBack = {
-                    mainViewModel.handleBack()
-                },
+                onNavigate = { mainViewModel.navigate(it.toRoute()) },
+                onNavigateToNote = { noteId, pageIndex -> mainViewModel.navigate(Route.Note(noteId, pageIndex)) },
+                onNavigateBack = { mainViewModel.handleBack() },
                 modifier = modifier
             )
         }
         Route.Setup -> {
-            val context = androidx.compose.ui.platform.LocalContext.current
-            val settingsVm: app.enk.settings.SettingsViewModel = viewModel(
-                factory = app.enk.settings.SettingsViewModel.factory(context, container)
-            )
             SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
-            app.enk.settings.SettingsScreen(
+            val context = LocalContext.current
+            val settingsVm: SettingsViewModel =
+                viewModel(key = SETTINGS_VM_KEY, factory = SettingsViewModel.factory(context, container))
+            SettingsScreen(
                 viewModel = settingsVm,
-                onNavigate = { dest ->
-                    val nextRoute = when (dest) {
-                        Dest.Write -> Route.Writer
-                        Dest.Box -> Route.Box
-                        Dest.Find -> Route.Find
-                        Dest.Setup -> Route.Setup
-                    }
-                    mainViewModel.navigate(nextRoute)
-                },
-                onNavigateBack = {
-                    mainViewModel.handleBack()
-                },
+                onNavigate = { mainViewModel.navigate(it.toRoute()) },
+                onNavigateBack = { mainViewModel.handleBack() },
                 modifier = modifier
             )
         }
     }
 }
+
+/** Keys of the screen view models in the activity's store, so a rotation keeps their state. */
+internal const val BOX_VM_KEY = "box-vm"
+internal const val SEARCH_VM_KEY = "search-vm"
+internal const val SETTINGS_VM_KEY = "settings-vm"

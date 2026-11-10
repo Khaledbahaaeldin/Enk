@@ -68,7 +68,7 @@ class BoxInteractionTest {
     fun ghostCardIsFirst() {
         composeTestRule.setContent {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                BoxContent(
+                BoxScreen(
                     state = BoxUiState(
                         dividers = sampleDividers,
                         selectedDividerId = null,
@@ -95,17 +95,16 @@ class BoxInteractionTest {
 
     @Test
     fun longPress420msOpensMenu() {
-        var menuOpened = false
+        fun menuOpened() = composeTestRule.onAllNodesWithText("Move to divider").fetchSemanticsNodes().isNotEmpty()
         composeTestRule.setContent {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                BoxContent(
+                BoxScreen(
                     state = BoxUiState(
                         dividers = sampleDividers,
                         selectedDividerId = null,
                         notes = sampleNotes,
                         trashCount = 0
-                    ),
-                    onNoteHold = { menuOpened = true }
+                    )
                 )
             }
         }
@@ -120,7 +119,7 @@ class BoxInteractionTest {
             up()
         }
         composeTestRule.waitForIdle()
-        assertFalse("Menu should not open at 419 ms", menuOpened)
+        assertFalse("Menu should not open at 419 ms", menuOpened())
         composeTestRule.onNodeWithText("Move to divider").assertDoesNotExist()
 
         // 2. Advance by 420 ms (threshold): menu must open
@@ -130,11 +129,14 @@ class BoxInteractionTest {
             up()
         }
         composeTestRule.waitForIdle()
-        assertTrue("Menu should open at 420 ms", menuOpened)
+        assertTrue("Menu should open at 420 ms", menuOpened())
         composeTestRule.onNodeWithText("Move to divider").assertIsDisplayed()
 
         // 3. Movement > drag slop cancels hold
-        menuOpened = false
+        // Back closes the open menu before anything else.
+        composeTestRule.runOnIdle { composeTestRule.activity.onBackPressedDispatcher.onBackPressed() }
+        composeTestRule.waitForIdle()
+        assertFalse("Back must close the menu", menuOpened())
         cardNode.performTouchInput {
             down(center)
             moveBy(Offset(0f, with(composeTestRule.density) { (ShellMotion.DRAG_SLOP_DP + 5f).dp.toPx() }))
@@ -142,14 +144,14 @@ class BoxInteractionTest {
             up()
         }
         composeTestRule.waitForIdle()
-        assertFalse("Moving past slop cancels hold", menuOpened)
+        assertFalse("Moving past slop cancels hold", menuOpened())
     }
 
     @Test
     fun menuOpensBelowHeldCard() {
         composeTestRule.setContent {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                BoxContent(
+                BoxScreen(
                     state = BoxUiState(
                         dividers = sampleDividers,
                         selectedDividerId = null,
@@ -212,7 +214,7 @@ class BoxInteractionTest {
     fun plusOpensNewDividerSheet() {
         composeTestRule.setContent {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                BoxContent(
+                BoxScreen(
                     state = BoxUiState(
                         dividers = sampleDividers,
                         selectedDividerId = null,
@@ -273,10 +275,12 @@ class BoxInteractionTest {
 
         composeTestRule.setContent {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                TrashContent(
-                    trashedNotes = trashedItems,
+                TrashScreen(
+                    trashed = trashedItems,
                     onRestore = { restoredId = it },
-                    onDeleteAllForever = {}
+                    onDeleteAllForever = {},
+                    onNavigate = {},
+                    onNavigateBack = {}
                 )
             }
         }
@@ -308,10 +312,12 @@ class BoxInteractionTest {
 
         composeTestRule.setContent {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                TrashContent(
-                    trashedNotes = trashedItems,
+                TrashScreen(
+                    trashed = trashedItems,
                     onRestore = {},
-                    onDeleteAllForever = { deletedForeverCalled = true }
+                    onDeleteAllForever = { deletedForeverCalled = true },
+                    onNavigate = {},
+                    onNavigateBack = {}
                 )
             }
         }
@@ -432,7 +438,7 @@ class BoxInteractionTest {
 
         composeTestRule.setContent {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                BoxContent(
+                BoxScreen(
                     state = BoxUiState(
                         dividers = emptyList<DividerEntity>(),
                         selectedDividerId = null,

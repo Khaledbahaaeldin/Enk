@@ -7,6 +7,18 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +74,9 @@ fun NewDividerSheet(
     val density = LocalDensity.current
 
     var text by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    // The reason for opening the sheet is to type a name, so the keyboard comes up with it.
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
     var dragY by remember { mutableFloatStateOf(0f) }
 
     val animatedDragY by animateFloatAsState(
@@ -103,7 +118,6 @@ fun NewDividerSheet(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(320.dp)
                 .offset { IntOffset(0, animatedDragY.coerceAtLeast(0f).roundToInt()) }
                 .testTag("new_divider_sheet")
                 .draggable(
@@ -123,6 +137,8 @@ fun NewDividerSheet(
                 )
                 .glass(GlassLevel.Thick, sheetShape, glassSource)
                 .clip(sheetShape)
+                // Above the keyboard when it is up, above the navigation bar when it is not.
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
                 .padding(top = 10.dp, start = 20.dp, end = 20.dp, bottom = 20.dp)
         ) {
             Column(
@@ -164,6 +180,14 @@ fun NewDividerSheet(
                     value = text,
                     onValueChange = { text = it },
                     singleLine = true,
+                    modifier = Modifier.focusRequester(focusRequester).testTag("divider_name_field"),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (validationResult is DividerValidationResult.Valid) {
+                            onAdd(validationResult.name)
+                            onDismiss()
+                        }
+                    }),
                     textStyle = TextStyle(
                         fontSize = 17.sp,
                         color = colors.t1
@@ -209,7 +233,7 @@ fun NewDividerSheet(
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Buttons row
                 Row(
@@ -220,6 +244,7 @@ fun NewDividerSheet(
                     Box(
                         modifier = Modifier
                             .weight(1f)
+                            .testTag("new_divider_cancel")
                             .height(48.dp)
                             .clip(RoundedCornerShape(24.dp))
                             .background(colors.g1.copy(alpha = 0.6f))
@@ -238,6 +263,7 @@ fun NewDividerSheet(
                     Box(
                         modifier = Modifier
                             .weight(1f)
+                            .testTag("new_divider_add")
                             .height(48.dp)
                             .clip(RoundedCornerShape(24.dp))
                             .background(if (isValid) colors.ui else colors.ui.copy(alpha = 0.4f))

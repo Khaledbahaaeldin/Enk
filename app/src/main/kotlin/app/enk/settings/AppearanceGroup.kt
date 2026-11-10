@@ -33,7 +33,7 @@ fun AppearanceGroup(
 ) {
     GroupedSection(
         title = "Appearance",
-        footer = "The resolved mode also drives the typewriter's night lamp behavior.",
+        footer = APPEARANCE_FOOTER,
         modifier = modifier
     ) {
         Column(
