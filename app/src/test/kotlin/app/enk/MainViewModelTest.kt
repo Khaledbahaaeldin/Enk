@@ -58,6 +58,7 @@ class MainViewModelTest {
         container = object : AppContainer {
             override val db: EnkDatabase = this@MainViewModelTest.db
             override val repo: NoteRepository = this@MainViewModelTest.repo
+            override val searchRepo: app.enk.data.SearchRepository = app.enk.data.SearchRepository(this@MainViewModelTest.db)
             override val settingsStore: SettingsStore = this@MainViewModelTest.settingsStore
             override val soundManifest: List<SoundSet> = emptyList()
             override val soundPlayer: SoundPlayer = object : SoundPlayer {

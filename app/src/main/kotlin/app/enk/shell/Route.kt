@@ -23,3 +23,11 @@ fun routeBack(current: Route): Route? = when (current) {
     Route.Trash, is Route.Note -> Route.Box
     Route.Writer -> null
 }
+
+/** The route a nav bar destination opens. */
+fun Dest.toRoute(): Route = when (this) {
+    Dest.Write -> Route.Writer
+    Dest.Box -> Route.Box
+    Dest.Find -> Route.Find
+    Dest.Setup -> Route.Setup
+}

@@ -45,6 +45,9 @@ class MainViewModel(
         private set
 
     fun navigate(route: Route) {
+        if (route is Route.Note) {
+            _currentNoteId.value = route.id
+        }
         _currentRoute.value = route
     }
 
@@ -68,6 +71,13 @@ class MainViewModel(
             _currentNoteId.value = note.id
             _restoredNote.value = recent
             _isLoaded.value = true
+            try {
+                container.repo.purgeExpired()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Old trash stays until the next launch; nothing to tell the user.
+            }
         }
     }
 

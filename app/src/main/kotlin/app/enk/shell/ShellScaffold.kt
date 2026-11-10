@@ -84,11 +84,13 @@ fun ShellScaffold(
             meta = meta,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .onSizeChanged { largeTitleHeightPx = it.height }
                 .graphicsLayer {
                     translationY = -with(density) { scrollYDp.dp.toPx() }
                 }
+                // Measured outside the status bar padding, so the content below starts under the
+                // whole title including the bar; measured inside it, titles and content overlapped.
+                .onSizeChanged { largeTitleHeightPx = it.height }
+                .windowInsetsPadding(WindowInsets.statusBars)
         )
 
         // Compact bar pinned at top

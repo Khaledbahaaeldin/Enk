@@ -8,6 +8,7 @@ import app.enk.audio.SoundPlayer
 import app.enk.audio.SoundSet
 import app.enk.data.EnkDatabase
 import app.enk.data.NoteRepository
+import app.enk.data.SearchRepository
 import app.enk.data.SystemClock
 import app.enk.settings.SettingsStore
 import app.enk.writer.Haptics
@@ -27,6 +28,7 @@ fun testContainer(context: Context, settingsDir: File): AppContainer {
     return object : AppContainer {
         override val db: EnkDatabase = database
         override val repo: NoteRepository = NoteRepository(database, SystemClock)
+        override val searchRepo: SearchRepository = SearchRepository(database)
         override val settingsStore: SettingsStore = SettingsStore(PreferenceDataStoreFactory.create(produceFile = { file }))
         override val soundManifest: List<SoundSet> = emptyList()
         override val soundPlayer: SoundPlayer = object : SoundPlayer {

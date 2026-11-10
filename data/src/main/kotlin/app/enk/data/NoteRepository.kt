@@ -175,6 +175,17 @@ class NoteRepository(
         }
     }
 
+    suspend fun deleteAllForever(): Int {
+        return db.withTransaction {
+            val trashed = db.noteDao().findTrashedBefore(Long.MAX_VALUE)
+            for (n in trashed) {
+                db.pageDao().deleteForNote(n.id)
+                db.pageFtsDao().deleteForNote(n.id)
+            }
+            db.noteDao().purgeTrashedBefore(Long.MAX_VALUE)
+        }
+    }
+
     fun observeBox(dividerId: Long?): Flow<List<NoteSummary>> {
         return db.noteDao().observeByDivider(dividerId).map { notes ->
             notes.map { note ->

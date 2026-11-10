@@ -22,6 +22,7 @@ class WriterViewModel(
     private val repo: NoteRepository,
     private val settings: SettingsStore,
     ioScope: CoroutineScope? = null,
+    initialPage: Int = 0
 ) : ViewModel() {
 
     private val ownsScope = ioScope == null
@@ -65,11 +66,13 @@ class WriterViewModel(
                 return@launch
             }
             val initialPages = note.pages.ifEmpty { listOf(StruckPage("")) }
+            val targetPage = initialPage.coerceIn(0, (initialPages.size - 1).coerceAtLeast(0))
+            val targetCaret = initialPages.getOrNull(targetPage)?.length ?: 0
             var current = WriterState(
                 noteId = noteId,
                 pages = initialPages,
-                pageIndex = 0,
-                caret = initialPages.first().length,
+                pageIndex = targetPage,
+                caret = targetCaret,
                 loaded = true
             )
             synchronized(lock) {
