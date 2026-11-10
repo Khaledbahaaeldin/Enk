@@ -42,7 +42,8 @@ class BoxViewModel(
     val repo: NoteRepository,
     val dividers: DividerDao,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    externalScope: kotlinx.coroutines.CoroutineScope? = null
+    externalScope: kotlinx.coroutines.CoroutineScope? = null,
+    private val onWidgetUpdate: (() -> Unit)? = null
 ) : ViewModel() {
 
     private val ownsScope = externalScope == null
@@ -142,9 +143,15 @@ class BoxViewModel(
 
     fun move(noteId: String, dividerId: Long?) = guarded("Couldn't move that note.") { repo.moveToDivider(noteId, dividerId) }
 
-    fun trash(noteId: String) = guarded("Couldn't move that note to the trash.") { repo.trash(noteId) }
+    fun trash(noteId: String) = guarded("Couldn't move that note to the trash.") {
+        repo.trash(noteId)
+        onWidgetUpdate?.invoke()
+    }
 
-    fun restore(noteId: String) = guarded("Couldn't restore that note.") { repo.restore(noteId) }
+    fun restore(noteId: String) = guarded("Couldn't restore that note.") {
+        repo.restore(noteId)
+        onWidgetUpdate?.invoke()
+    }
 
     fun reorderNotes(ids: List<String>) =
         guarded("Couldn't reorder the notes.") { repo.reorderNotes(_selectedDividerId.value, ids) }
@@ -188,11 +195,12 @@ class BoxViewModel(
     companion object {
         fun factory(
             container: AppContainer,
-            ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+            ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+            onWidgetUpdate: (() -> Unit)? = null
         ) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                BoxViewModel(container.repo, container.db.dividerDao(), ioDispatcher) as T
+                BoxViewModel(container.repo, container.db.dividerDao(), ioDispatcher, onWidgetUpdate = onWidgetUpdate) as T
         }
     }
 }

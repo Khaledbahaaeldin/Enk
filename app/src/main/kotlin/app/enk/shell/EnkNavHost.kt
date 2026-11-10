@@ -29,6 +29,7 @@ import app.enk.settings.SettingsScreen
 import app.enk.settings.SettingsViewModel
 import app.enk.writer.WriterScreen
 import app.enk.writer.WriterIntro
+import app.enk.widget.EnkWidgetManager
 import app.enk.writer.WriterViewModel
 import kotlinx.coroutines.launch
 
@@ -64,14 +65,26 @@ fun EnkNavHost(
                     val factory = object : ViewModelProvider.Factory {
                         @Suppress("UNCHECKED_CAST")
                         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                            WriterViewModel(noteId, container.repo, container.settingsStore, initialPage = page) as T
+                            WriterViewModel(
+                                noteId,
+                                container.repo,
+                                container.settingsStore,
+                                initialPage = page,
+                                onPostSave = { EnkWidgetManager.requestUpdate(context.applicationContext) }
+                            ) as T
                     }
                     if (activity != null) {
                         ViewModelProvider(activity, factory)["writer-$noteId", WriterViewModel::class.java]
                     } else if (storeOwner != null) {
                         ViewModelProvider(storeOwner, factory)["writer-$noteId", WriterViewModel::class.java]
                     } else {
-                        WriterViewModel(noteId, container.repo, container.settingsStore, initialPage = page)
+                        WriterViewModel(
+                            noteId,
+                            container.repo,
+                            container.settingsStore,
+                            initialPage = page,
+                            onPostSave = { EnkWidgetManager.requestUpdate(context.applicationContext) }
+                        )
                     }
                 }
 
@@ -96,7 +109,14 @@ fun EnkNavHost(
         }
         Route.Box -> {
             SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
-            val boxVm: BoxViewModel = viewModel(key = BOX_VM_KEY, factory = BoxViewModel.factory(container))
+            val context = LocalContext.current
+            val boxVm: BoxViewModel = viewModel(
+                key = BOX_VM_KEY,
+                factory = BoxViewModel.factory(
+                    container,
+                    onWidgetUpdate = { EnkWidgetManager.requestUpdate(context.applicationContext) }
+                )
+            )
             BoxScreen(
                 viewModel = boxVm,
                 onNavigate = { mainViewModel.navigate(it.toRoute()) },
@@ -109,7 +129,14 @@ fun EnkNavHost(
         }
         Route.Trash -> {
             SystemBarIcons(onDarkSurface = isDarkSurface(LocalShellColors.current.bg))
-            val boxVm: BoxViewModel = viewModel(key = BOX_VM_KEY, factory = BoxViewModel.factory(container))
+            val context = LocalContext.current
+            val boxVm: BoxViewModel = viewModel(
+                key = BOX_VM_KEY,
+                factory = BoxViewModel.factory(
+                    container,
+                    onWidgetUpdate = { EnkWidgetManager.requestUpdate(context.applicationContext) }
+                )
+            )
             TrashScreen(
                 viewModel = boxVm,
                 onNavigate = { mainViewModel.navigate(it.toRoute()) },

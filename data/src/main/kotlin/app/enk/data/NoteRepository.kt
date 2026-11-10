@@ -148,6 +148,10 @@ class NoteRepository(
         }
     }
 
+    suspend fun isTrashed(noteId: String): Boolean {
+        return db.noteDao().get(noteId)?.trashedAt != null
+    }
+
     suspend fun trash(noteId: String) {
         db.withTransaction {
             db.noteDao().trash(noteId, clock.now())

@@ -103,6 +103,16 @@
 - **License:** SIL Open Font License, Version 1.1 (OFL-1.1)
 - **Role in Enk:** The wordmark "enk" is outlined directly from Inter Bold with tracking -4.5% and paired with the brand's orange caret bar. The full license text is preserved at `app/src/main/assets/licenses/OFL-Inter.txt`.
 
+### 6. AndroidX Glance AppWidget
+- **Coordinate:** `androidx.glance:glance-appwidget:1.1.1`
+- **Repository:** Google Maven (`dl.google.com/dl/android/maven2`)
+- **License:** Apache License, Version 2.0
+- **Version Verification:**
+  - Google Maven release metadata lists `1.1.1` as stable release.
+  - Tested under AGP `8.13.2` and `compileSdk = 35`: passes `checkDebugAarMetadata` and `checkReleaseAarMetadata` cleanly with 0 issues.
+  - Manifest enforcement: `androidx.work:work-runtime`'s default permission `android.permission.ACCESS_NETWORK_STATE` is removed via `tools:node="remove"` in `app/src/main/AndroidManifest.xml`, ensuring `scripts/check-no-network.sh` verifies zero network permissions.
+- **Role in Enk:** Declarative, responsive Compose-style home-screen widgets (Wide card, Small panel, Empty-state card).
+
 ---
 
 ## Considered, Not Used

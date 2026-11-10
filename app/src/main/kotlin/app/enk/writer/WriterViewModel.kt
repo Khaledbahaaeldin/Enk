@@ -22,7 +22,8 @@ class WriterViewModel(
     private val repo: NoteRepository,
     private val settings: SettingsStore,
     ioScope: CoroutineScope? = null,
-    initialPage: Int = 0
+    initialPage: Int = 0,
+    private val onPostSave: (() -> Unit)? = null
 ) : ViewModel() {
 
     private val ownsScope = ioScope == null
@@ -36,6 +37,7 @@ class WriterViewModel(
         save = { pages ->
             if (!_state.value.missing) {
                 repo.savePages(noteId, pages)
+                onPostSave?.invoke()
             }
         }
     )

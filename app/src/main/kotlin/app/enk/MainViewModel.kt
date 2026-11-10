@@ -8,6 +8,7 @@ import app.enk.data.Note
 import app.enk.settings.Settings
 import app.enk.shell.Route
 import app.enk.shell.routeBack
+import app.enk.widget.WidgetIntentAction
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +24,7 @@ import kotlinx.coroutines.launch
 class MainViewModel(
     context: Context,
     val container: AppContainer = DefaultAppContainer(context.applicationContext),
-    ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
 
     private val _isLoaded = MutableStateFlow(false)
@@ -56,6 +57,49 @@ class MainViewModel(
         val next = routeBack(_currentRoute.value) ?: return false
         _currentRoute.value = next
         return true
+    }
+
+    private val processedTapIds = mutableSetOf<String>()
+
+    fun handleWidgetAction(action: WidgetIntentAction) {
+        when (action) {
+            is WidgetIntentAction.NewNote -> {
+                synchronized(processedTapIds) {
+                    if (processedTapIds.contains(action.tapId)) return
+                    processedTapIds.add(action.tapId)
+                }
+                viewModelScope.launch(ioDispatcher) {
+                    try {
+                        val newNote = container.repo.createNote(dividerId = null)
+                        _currentNoteId.value = newNote.id
+                        _currentRoute.value = Route.Note(newNote.id, 0)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            is WidgetIntentAction.OpenNote -> {
+                viewModelScope.launch(ioDispatcher) {
+                    try {
+                        val isTrashed = container.repo.isTrashed(action.noteId)
+                        val note = if (!isTrashed) container.repo.load(action.noteId) else null
+                        if (note != null) {
+                            _currentNoteId.value = note.id
+                            _currentRoute.value = Route.Note(note.id, 0)
+                        } else {
+                            val recent = container.repo.mostRecent() ?: container.repo.createNote(dividerId = null)
+                            _currentNoteId.value = recent.id
+                            _currentRoute.value = Route.Note(recent.id, 0)
+                        }
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            WidgetIntentAction.None -> {}
+        }
     }
 
     init {
