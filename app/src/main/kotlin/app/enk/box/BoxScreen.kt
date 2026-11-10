@@ -46,7 +46,13 @@ import app.enk.design.LocalMonoFont
 import app.enk.design.shell.GlassSource
 import app.enk.design.shell.rememberGlassSource
 import app.enk.design.theme.LocalShellColors
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import app.enk.shell.Dest
+import app.enk.shell.GlassNavBar
 import app.enk.shell.ShellScaffold
 
 @Composable
@@ -119,6 +125,9 @@ fun BoxContent(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier
+                            .semantics(mergeDescendants = true) {
+                                testTag = "large_title"
+                            }
                             .fillMaxWidth()
                             .padding(top = 8.dp, bottom = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -300,17 +309,28 @@ fun BoxScreen(
         onNavigateBack()
     }
 
-    BoxContent(
-        state = state,
-        onSelectDivider = onSelectDivider,
-        onAddDivider = onAddDivider,
-        onAddDividerClick = onAddDividerClick,
-        onNewNote = onNewNote,
-        onNoteClick = onNoteClick,
-        onTrashNote = onTrashNote,
-        onMoveToDivider = onMoveToDivider,
-        modifier = modifier
-    )
+    Box(modifier = modifier.fillMaxSize()) {
+        BoxContent(
+            state = state,
+            onSelectDivider = onSelectDivider,
+            onAddDivider = onAddDivider,
+            onAddDividerClick = onAddDividerClick,
+            onNewNote = onNewNote,
+            onNoteClick = onNoteClick,
+            onTrashNote = onTrashNote,
+            onMoveToDivider = onMoveToDivider,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        GlassNavBar(
+            selected = Dest.Box,
+            onSelect = onNavigate,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+        )
+    }
 }
 
 @Composable

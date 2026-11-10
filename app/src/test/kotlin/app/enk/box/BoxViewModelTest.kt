@@ -88,6 +88,7 @@ class BoxViewModelTest {
 
         // Deleting the divider moves its notes to Unfiled
         vm.deleteDivider(dividerId)
+        vm.state.first { state -> state.dividers.none { it.id == dividerId } }
 
         // Verify in repository that note's dividerId is now null
         val loadedNote = container.repo.load(note.id)
