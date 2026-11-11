@@ -59,6 +59,7 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.glance.appwidget)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
@@ -87,6 +88,10 @@ tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEa
     exclude("**/AppearanceGroupTest*")
     exclude("**/ShellScreensLayoutTest*")
     exclude("**/ShellControlsCompositionTest*")
+    exclude("**/AccessibilityTest*")
+    exclude("**/WriterAccessibilityTest*")
+    exclude("**/LargeTextLayoutTest*")
+    exclude("**/WriterCompactLayoutTest*")
 }
 
 tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {
@@ -99,4 +104,77 @@ tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {
             }
         }
     }
+}
+
+// credits.json, libraries.csv and the Apache licence text are generated from their sources so the
+// Credits screen cannot drift from docs/provenance.csv, docs/libraries.csv and LICENSE.
+val creditsCsv = rootProject.file("docs/provenance.csv")
+val creditsJson = file("src/main/assets/credits.json")
+val librariesCsv = rootProject.file("docs/libraries.csv")
+val librariesAsset = file("src/main/assets/libraries.csv")
+val licenseFile = rootProject.file("LICENSE")
+val licenseAsset = file("src/main/assets/licenses/Apache-2.0.txt")
+
+fun expectedCreditsJson(): String {
+    val lines = creditsCsv.readLines().filter { it.isNotBlank() }
+    val header = lines.first().split(",")
+    val fileIdx = header.indexOf("file")
+    val sourceIdx = header.indexOf("source_url")
+    val authorIdx = header.indexOf("author")
+    val licenseIdx = header.indexOf("license")
+    val records = lines.drop(1).mapIndexed { row, line ->
+        val cols = line.split(",")
+        if (cols.size != header.size) {
+            throw GradleException("docs/provenance.csv row ${row + 2} has ${cols.size} columns, expected ${header.size}")
+        }
+        mapOf(
+            "title" to cols[fileIdx],
+            "author" to cols[authorIdx],
+            "source" to cols[sourceIdx],
+            "license" to cols[licenseIdx]
+        )
+    }
+    return groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(records)) + "\n"
+}
+
+fun normalised(file: File): String = file.readText().replace("\r\n", "\n")
+
+tasks.register("generateCredits") {
+    inputs.files(creditsCsv, librariesCsv, licenseFile)
+    outputs.files(creditsJson, librariesAsset, licenseAsset)
+    doLast {
+        creditsJson.parentFile.mkdirs()
+        creditsJson.writeText(expectedCreditsJson())
+        librariesAsset.writeText(normalised(librariesCsv))
+        licenseAsset.parentFile.mkdirs()
+        licenseAsset.writeText(normalised(licenseFile))
+    }
+}
+
+tasks.register("checkCredits") {
+    mustRunAfter("generateCredits")
+    inputs.files(creditsCsv, librariesCsv, licenseFile, creditsJson, librariesAsset, licenseAsset)
+    doLast {
+        for (generated in listOf(creditsJson, librariesAsset, licenseAsset)) {
+            if (!generated.exists()) throw GradleException("${generated.name} is missing. Run ./gradlew generateCredits")
+        }
+        if (expectedCreditsJson() != normalised(creditsJson)) {
+            throw GradleException("credits.json is out of date with docs/provenance.csv. Run ./gradlew generateCredits")
+        }
+        if (normalised(librariesCsv) != normalised(librariesAsset)) {
+            throw GradleException("assets/libraries.csv is out of date with docs/libraries.csv. Run ./gradlew generateCredits")
+        }
+        if (normalised(licenseFile) != normalised(licenseAsset)) {
+            throw GradleException("assets/licenses/Apache-2.0.txt is out of date with LICENSE. Run ./gradlew generateCredits")
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn("checkCredits")
+}
+
+// generateCredits writes into src/main/assets; when both run in one build, assets are merged after it.
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    mustRunAfter("generateCredits")
 }

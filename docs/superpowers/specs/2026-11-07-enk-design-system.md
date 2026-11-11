@@ -37,7 +37,7 @@ This is the single source of truth for how Enk looks, moves, and sounds. Every d
 | `accent` | `#FF5A1F` | Caret, indicator strips, index lines, wordmark dot |
 | `accentGlowNight` | `#FF5A1F` at 70% | Indicator-strip glow at night (see 6.3) |
 | `textOnChassis` | `#CFC8BA` | Wordmark, panel values |
-| `textMuted` | `#8B8578` | Meta text, panel labels, hint text |
+| `textMuted` | `#948F83` | Meta text, panel labels, hint text (raised from #8B8578 for WCAG 4.5:1 contrast) |
 | `slotDark` | `#161514` | Carriage slot window |
 | `trackDark` | `#121110` | Fader track |
 | `panelTop` | `#3A3936` | Panel gradient top |

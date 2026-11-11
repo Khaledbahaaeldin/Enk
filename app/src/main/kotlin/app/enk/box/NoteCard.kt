@@ -128,6 +128,10 @@ fun NoteCard(
             .semantics {
                 set(NoteCardLiftedKey, lifted)
                 customActions = buildList {
+                    add(CustomAccessibilityAction("Open note actions") {
+                        currentOnHold()
+                        true
+                    })
                     if (onMoveToDivider != null) {
                         add(CustomAccessibilityAction("Move to divider") {
                             onMoveToDivider()

@@ -25,6 +25,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import app.enk.design.CourierPrime
 import androidx.compose.ui.unit.dp
@@ -61,6 +66,8 @@ fun Carriage(
     reduceEffects: Boolean,
     lampIntensity: Float = 1f,
     lamp: Rgb = LampColor.fromWarmth(25),
+    /** The long press as an action a TalkBack user can run without the gesture. */
+    onToggleLamp: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     /** Freezes the slug strike at this progress (0..1) for goldens and previews; null runs the animation. */
     slugProgress: Float? = null,
@@ -119,6 +126,18 @@ fun Carriage(
                     height = CarriageGeometry.interactiveHeightDp.dp
                 )
                 .testTag("carriage")
+                .semantics {
+                    contentDescription = "Writing marker. Drag to scrub, long press to toggle lamp"
+                    stateDescription = if (night) "Lamp on" else "Lamp off"
+                    if (onToggleLamp != null) {
+                        customActions = listOf(
+                            CustomAccessibilityAction("Toggle lamp") {
+                                onToggleLamp()
+                                true
+                            }
+                        )
+                    }
+                }
                 .then(
                     if (onHitAreaMeasured == null) Modifier else Modifier.onGloballyPositioned {
                         onHitAreaMeasured(it.size.width / density.density, it.size.height / density.density)

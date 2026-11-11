@@ -6,6 +6,8 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
+fun wcagContrast(fg: Color, bg: Color): Float = Contrast.ratio(fg, bg).toFloat()
+
 object Contrast {
 
     fun ratio(fg: Color, bg: Color): Double {

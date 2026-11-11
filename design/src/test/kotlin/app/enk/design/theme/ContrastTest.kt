@@ -75,4 +75,19 @@ class ContrastTest {
         assertEquals(0.75f, fixed.alpha, 0.001f)
         assertTrue(Contrast.ratio(fixed, Color.Black) >= 4.5)
     }
+
+    @Test
+    fun writerScreenContrastMinimums() {
+        val inkOnPaper = wcagContrast(app.enk.design.EnkColors.ink, app.enk.design.EnkColors.paper)
+        assertTrue("ink on paper ($inkOnPaper) >= 4.5", inkOnPaper >= 4.5f)
+
+        val textOnChassisOnPanelBottom = wcagContrast(app.enk.design.EnkColors.textOnChassis, app.enk.design.EnkColors.panelBottom)
+        assertTrue("textOnChassis on panelBottom ($textOnChassisOnPanelBottom) >= 4.5", textOnChassisOnPanelBottom >= 4.5f)
+
+        val mutedOnChassisBottom = wcagContrast(app.enk.design.EnkColors.textMuted, app.enk.design.EnkColors.chassisBottom)
+        val mutedOnPanelBottom = wcagContrast(app.enk.design.EnkColors.textMuted, app.enk.design.EnkColors.panelBottom)
+
+        assertTrue("textMuted on chassisBottom ($mutedOnChassisBottom) >= 4.5", mutedOnChassisBottom >= 4.5f)
+        assertTrue("textMuted on panelBottom ($mutedOnPanelBottom) >= 4.5", mutedOnPanelBottom >= 4.5f)
+    }
 }

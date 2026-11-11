@@ -22,6 +22,7 @@ class RouteTest {
     fun findAndSetup() {
         assertEquals(Dest.Find, navSelection(Route.Find))
         assertEquals(Dest.Setup, navSelection(Route.Setup))
+        assertEquals(Dest.Setup, navSelection(Route.Credits))
     }
 
     @Test
@@ -42,6 +43,11 @@ class RouteTest {
     @Test
     fun backFromSetupGoesToWriter() {
         assertEquals(Route.Writer, routeBack(Route.Setup))
+    }
+
+    @Test
+    fun backFromCreditsGoesToSetup() {
+        assertEquals(Route.Setup, routeBack(Route.Credits))
     }
 
     @Test

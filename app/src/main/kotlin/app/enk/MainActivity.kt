@@ -19,6 +19,9 @@ import app.enk.shell.EnkNavHost
 import app.enk.start.SplashHold
 import app.enk.start.SplashHost
 import app.enk.start.StartGate
+import app.enk.widget.EnkWidgetManager
+import app.enk.widget.WidgetIntentAction
+import app.enk.widget.WidgetIntentParser
 import app.enk.writer.rememberReduceMotion
 
 class MainActivity : ComponentActivity() {
@@ -41,6 +44,7 @@ class MainActivity : ComponentActivity() {
         processHasLaunched = true
         val restoredState = savedInstanceState != null
         val launchedByIntent = intent?.action != null && intent.action != Intent.ACTION_MAIN
+        if (!restoredState) handleWidgetIntent(intent)
         // The system splash follows the launch configuration, not the app's Mode setting.
         val lightSplash = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) !=
             Configuration.UI_MODE_NIGHT_YES
@@ -88,6 +92,23 @@ class MainActivity : ComponentActivity() {
     private fun releaseSystemSplash() {
         systemSplash?.remove()
         systemSplash = null
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleWidgetIntent(intent)
+    }
+
+    /** Acts on a widget intent once: consuming marks it handled, so it is never replayed. */
+    private fun handleWidgetIntent(intent: Intent?) {
+        val action = WidgetIntentParser.consume(intent)
+        if (action !is WidgetIntentAction.None) mainViewModel.handleWidgetAction(action)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        EnkWidgetManager.requestUpdate(applicationContext)
     }
 
     override fun onDestroy() {
