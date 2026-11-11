@@ -12,6 +12,7 @@ import app.enk.data.ImportResult
 import app.enk.data.Importer
 import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
+import app.enk.widget.EnkWidgetManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,7 +80,8 @@ class SettingsViewModel(
     private val soundManifest: List<SoundSet> = emptyList(),
     private val context: Context? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    externalScope: CoroutineScope? = null
+    externalScope: CoroutineScope? = null,
+    private val onNotesChanged: (() -> Unit)? = null
 ) : ViewModel() {
 
     private val ownsScope = externalScope == null
@@ -183,7 +185,10 @@ class SettingsViewModel(
         scope.launch(ioDispatcher) {
             _transfer.value = try {
                 when (val result = importFrom(uri)) {
-                    is ImportResult.Done -> TransferState.Done(importSummary(result))
+                    is ImportResult.Done -> {
+                        onNotesChanged?.invoke()
+                        TransferState.Done(importSummary(result))
+                    }
                     is ImportResult.Failed -> TransferState.Failed("Couldn't import: ${result.reason}")
                 }
             } catch (e: CancellationException) {
@@ -240,7 +245,8 @@ class SettingsViewModel(
                         soundPlayer = container.soundPlayer,
                         soundManifest = container.soundManifest,
                         context = context.applicationContext,
-                        ioDispatcher = ioDispatcher
+                        ioDispatcher = ioDispatcher,
+                        onNotesChanged = { EnkWidgetManager.requestUpdate(context.applicationContext) }
                     ) as T
                 }
             }

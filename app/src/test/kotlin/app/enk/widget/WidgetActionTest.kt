@@ -33,7 +33,7 @@ class WidgetActionTest {
         val initialNoteCount = container.repo.observeBox(null).first().size
 
         // Deliver NEW_NOTE action
-        vm.handleWidgetAction(WidgetIntentAction.NewNote(tapId = "tap-1"))
+        vm.handleWidgetAction(WidgetIntentAction.NewNote)
         vm.currentRoute.first { it is Route.Note }
 
         val notesAfter = container.repo.observeBox(null).first()
@@ -45,35 +45,17 @@ class WidgetActionTest {
     }
 
     @Test
-    fun secondIdenticalIntentWhileInFlightDoesNotCreateDuplicate() = runBlocking {
+    fun eachTapCreatesItsOwnNote() = runBlocking {
         val container = testContainer(context, context.cacheDir)
         val vm = MainViewModel(context, container)
         vm.isLoaded.first { it }
 
         val initialNoteCount = container.repo.observeBox(null).first().size
 
-        // Send same tap ID twice in flight
-        vm.handleWidgetAction(WidgetIntentAction.NewNote(tapId = "same-tap-token"))
-        vm.handleWidgetAction(WidgetIntentAction.NewNote(tapId = "same-tap-token"))
+        vm.handleWidgetAction(WidgetIntentAction.NewNote)
         vm.currentRoute.first { it is Route.Note }
 
-        val notesAfter = container.repo.observeBox(null).first()
-        // Exactly one note created for the same tap
-        assertEquals(initialNoteCount + 1, notesAfter.size)
-    }
-
-    @Test
-    fun newTapWithDifferentTokenCreatesSecondNote() = runBlocking {
-        val container = testContainer(context, context.cacheDir)
-        val vm = MainViewModel(context, container)
-        vm.isLoaded.first { it }
-
-        val initialNoteCount = container.repo.observeBox(null).first().size
-
-        vm.handleWidgetAction(WidgetIntentAction.NewNote(tapId = "tap-1"))
-        vm.currentRoute.first { it is Route.Note }
-
-        vm.handleWidgetAction(WidgetIntentAction.NewNote(tapId = "tap-2"))
+        vm.handleWidgetAction(WidgetIntentAction.NewNote)
         val notesAfter = container.repo.observeBox(null).first { it.size == initialNoteCount + 2 }
         assertEquals(initialNoteCount + 2, notesAfter.size)
     }

@@ -14,7 +14,7 @@ class WidgetIntentParserTest {
             action = WidgetIntentParser.ACTION_NEW_NOTE,
             extras = { null }
         )
-        assertTrue(result is WidgetIntentAction.NewNote)
+        assertEquals(WidgetIntentAction.NewNote, result)
     }
 
     @Test
@@ -68,6 +68,34 @@ class WidgetIntentParserTest {
             extras = { "some-data" }
         )
         assertEquals(WidgetIntentAction.None, result)
+    }
+
+    @Test
+    fun anIntentAlreadyHandledIsNeverActedOnAgain() {
+        val handled = { key: String -> if (key == WidgetIntentParser.EXTRA_HANDLED) true else "note-1" }
+        assertEquals(WidgetIntentAction.None, WidgetIntentParser.parse(WidgetIntentParser.ACTION_NEW_NOTE, handled))
+        assertEquals(WidgetIntentAction.None, WidgetIntentParser.parse(WidgetIntentParser.ACTION_OPEN_NOTE, handled))
+    }
+
+    @Test
+    fun aNonBooleanHandledExtraDoesNotCountAsHandled() {
+        val result = WidgetIntentParser.parse(WidgetIntentParser.ACTION_NEW_NOTE) { key ->
+            if (key == WidgetIntentParser.EXTRA_HANDLED) "true" else null
+        }
+        assertEquals(WidgetIntentAction.NewNote, result)
+    }
+
+    @Test
+    fun anExtrasLookupThatThrowsIsTreatedAsMissing() {
+        val throwing = { _: String -> throw IllegalStateException("bad parcel") }
+        assertEquals(WidgetIntentAction.NewNote, WidgetIntentParser.parse(WidgetIntentParser.ACTION_NEW_NOTE, throwing))
+        assertEquals(WidgetIntentAction.None, WidgetIntentParser.parse(WidgetIntentParser.ACTION_OPEN_NOTE, throwing))
+    }
+
+    @Test
+    fun nullAndEmptyActionsAreIgnored() {
+        assertEquals(WidgetIntentAction.None, WidgetIntentParser.parse(null) { null })
+        assertEquals(WidgetIntentAction.None, WidgetIntentParser.parse("") { null })
     }
 
     @Test

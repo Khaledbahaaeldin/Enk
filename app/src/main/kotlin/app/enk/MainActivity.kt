@@ -44,12 +44,7 @@ class MainActivity : ComponentActivity() {
         processHasLaunched = true
         val restoredState = savedInstanceState != null
         val launchedByIntent = intent?.action != null && intent.action != Intent.ACTION_MAIN
-        if (!restoredState) {
-            val widgetAction = WidgetIntentParser.parse(intent?.action) { intent?.extras?.get(it) }
-            if (widgetAction !is WidgetIntentAction.None) {
-                mainViewModel.handleWidgetAction(widgetAction)
-            }
-        }
+        if (!restoredState) handleWidgetIntent(intent)
         // The system splash follows the launch configuration, not the app's Mode setting.
         val lightSplash = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) !=
             Configuration.UI_MODE_NIGHT_YES
@@ -102,10 +97,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val widgetAction = WidgetIntentParser.parse(intent.action) { intent.extras?.get(it) }
-        if (widgetAction !is WidgetIntentAction.None) {
-            mainViewModel.handleWidgetAction(widgetAction)
-        }
+        handleWidgetIntent(intent)
+    }
+
+    /** Acts on a widget intent once: consuming marks it handled, so it is never replayed. */
+    private fun handleWidgetIntent(intent: Intent?) {
+        val action = WidgetIntentParser.consume(intent)
+        if (action !is WidgetIntentAction.None) mainViewModel.handleWidgetAction(action)
     }
 
     override fun onStop() {

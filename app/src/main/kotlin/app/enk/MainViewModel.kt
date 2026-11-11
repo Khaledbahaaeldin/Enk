@@ -59,17 +59,12 @@ class MainViewModel(
         return true
     }
 
-    private val processedTapIds = mutableSetOf<String>()
-
     fun handleWidgetAction(action: WidgetIntentAction) {
         when (action) {
-            is WidgetIntentAction.NewNote -> {
-                synchronized(processedTapIds) {
-                    if (processedTapIds.contains(action.tapId)) return
-                    processedTapIds.add(action.tapId)
-                }
+            WidgetIntentAction.NewNote -> {
                 viewModelScope.launch(ioDispatcher) {
                     try {
+                        _isLoaded.first { it } // start-up sets the current note; the widget's choice must come after
                         val newNote = container.repo.createNote(dividerId = null)
                         _currentNoteId.value = newNote.id
                         _currentRoute.value = Route.Note(newNote.id, 0)
@@ -82,6 +77,7 @@ class MainViewModel(
             is WidgetIntentAction.OpenNote -> {
                 viewModelScope.launch(ioDispatcher) {
                     try {
+                        _isLoaded.first { it } // start-up sets the current note; the widget's choice must come after
                         val isTrashed = container.repo.isTrashed(action.noteId)
                         val note = if (!isTrashed) container.repo.load(action.noteId) else null
                         if (note != null) {

@@ -35,7 +35,6 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import app.enk.DefaultAppContainer
 import app.enk.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,7 +62,7 @@ class EnkWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Responsive(setOf(SMALL_BOX, WIDE_BOX))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val container = DefaultAppContainer(context.applicationContext)
+        val container = WidgetContainer.get(context)
         val model = buildWidgetModel(container.repo)
 
         provideContent {
