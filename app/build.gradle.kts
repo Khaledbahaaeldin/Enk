@@ -89,6 +89,9 @@ tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEa
     exclude("**/ShellScreensLayoutTest*")
     exclude("**/ShellControlsCompositionTest*")
     exclude("**/AccessibilityTest*")
+    exclude("**/WriterAccessibilityTest*")
+    exclude("**/LargeTextLayoutTest*")
+    exclude("**/WriterCompactLayoutTest*")
 }
 
 tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {
@@ -103,85 +106,75 @@ tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {
     }
 }
 
-tasks.register("generateCredits") {
-    val csvFile = rootProject.file("docs/provenance.csv")
-    val jsonFile = file("src/main/assets/credits.json")
-    val libCsvFile = rootProject.file("docs/libraries.csv")
-    val libAssetFile = file("src/main/assets/libraries.csv")
-    inputs.file(csvFile)
-    inputs.file(libCsvFile)
-    outputs.file(jsonFile)
-    outputs.file(libAssetFile)
-    doLast {
-        val lines = csvFile.readLines().filter { it.isNotBlank() }
-        val header = lines.first().split(",")
-        val fileIdx = header.indexOf("file")
-        val sourceIdx = header.indexOf("source_url")
-        val authorIdx = header.indexOf("author")
-        val licenseIdx = header.indexOf("license")
-        val records = lines.drop(1).map { line ->
-            val cols = line.split(",")
-            mapOf(
-                "title" to cols[fileIdx],
-                "author" to cols[authorIdx],
-                "source" to cols[sourceIdx],
-                "license" to cols[licenseIdx]
-            )
-        }
-        val json = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(records))
-        jsonFile.parentFile.mkdirs()
-        jsonFile.writeText(json + "\n")
+// credits.json, libraries.csv and the Apache licence text are generated from their sources so the
+// Credits screen cannot drift from docs/provenance.csv, docs/libraries.csv and LICENSE.
+val creditsCsv = rootProject.file("docs/provenance.csv")
+val creditsJson = file("src/main/assets/credits.json")
+val librariesCsv = rootProject.file("docs/libraries.csv")
+val librariesAsset = file("src/main/assets/libraries.csv")
+val licenseFile = rootProject.file("LICENSE")
+val licenseAsset = file("src/main/assets/licenses/Apache-2.0.txt")
 
-        libAssetFile.parentFile.mkdirs()
-        libAssetFile.writeText(libCsvFile.readText())
+fun expectedCreditsJson(): String {
+    val lines = creditsCsv.readLines().filter { it.isNotBlank() }
+    val header = lines.first().split(",")
+    val fileIdx = header.indexOf("file")
+    val sourceIdx = header.indexOf("source_url")
+    val authorIdx = header.indexOf("author")
+    val licenseIdx = header.indexOf("license")
+    val records = lines.drop(1).mapIndexed { row, line ->
+        val cols = line.split(",")
+        if (cols.size != header.size) {
+            throw GradleException("docs/provenance.csv row ${row + 2} has ${cols.size} columns, expected ${header.size}")
+        }
+        mapOf(
+            "title" to cols[fileIdx],
+            "author" to cols[authorIdx],
+            "source" to cols[sourceIdx],
+            "license" to cols[licenseIdx]
+        )
+    }
+    return groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(records)) + "\n"
+}
+
+fun normalised(file: File): String = file.readText().replace("\r\n", "\n")
+
+tasks.register("generateCredits") {
+    inputs.files(creditsCsv, librariesCsv, licenseFile)
+    outputs.files(creditsJson, librariesAsset, licenseAsset)
+    doLast {
+        creditsJson.parentFile.mkdirs()
+        creditsJson.writeText(expectedCreditsJson())
+        librariesAsset.writeText(normalised(librariesCsv))
+        licenseAsset.parentFile.mkdirs()
+        licenseAsset.writeText(normalised(licenseFile))
     }
 }
 
 tasks.register("checkCredits") {
     mustRunAfter("generateCredits")
-    val csvFile = rootProject.file("docs/provenance.csv")
-    val jsonFile = file("src/main/assets/credits.json")
-    val libCsvFile = rootProject.file("docs/libraries.csv")
-    val libAssetFile = file("src/main/assets/libraries.csv")
-    inputs.file(csvFile)
-    inputs.file(jsonFile)
-    inputs.file(libCsvFile)
-    inputs.file(libAssetFile)
+    inputs.files(creditsCsv, librariesCsv, licenseFile, creditsJson, librariesAsset, licenseAsset)
     doLast {
-        if (!jsonFile.exists()) {
-            throw GradleException("credits.json does not exist. Run ./gradlew generateCredits")
+        for (generated in listOf(creditsJson, librariesAsset, licenseAsset)) {
+            if (!generated.exists()) throw GradleException("${generated.name} is missing. Run ./gradlew generateCredits")
         }
-        if (!libAssetFile.exists()) {
-            throw GradleException("libraries.csv does not exist in assets. Run ./gradlew generateCredits")
-        }
-        val lines = csvFile.readLines().filter { it.isNotBlank() }
-        val header = lines.first().split(",")
-        val fileIdx = header.indexOf("file")
-        val sourceIdx = header.indexOf("source_url")
-        val authorIdx = header.indexOf("author")
-        val licenseIdx = header.indexOf("license")
-        val records = lines.drop(1).map { line ->
-            val cols = line.split(",")
-            mapOf(
-                "title" to cols[fileIdx],
-                "author" to cols[authorIdx],
-                "source" to cols[sourceIdx],
-                "license" to cols[licenseIdx]
-            )
-        }
-        val expected = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(records)) + "\n"
-        val actual = jsonFile.readText().replace("\r\n", "\n")
-        if (expected != actual) {
+        if (expectedCreditsJson() != normalised(creditsJson)) {
             throw GradleException("credits.json is out of date with docs/provenance.csv. Run ./gradlew generateCredits")
         }
-        val expectedLibs = libCsvFile.readText().replace("\r\n", "\n")
-        val actualLibs = libAssetFile.readText().replace("\r\n", "\n")
-        if (expectedLibs != actualLibs) {
+        if (normalised(librariesCsv) != normalised(librariesAsset)) {
             throw GradleException("assets/libraries.csv is out of date with docs/libraries.csv. Run ./gradlew generateCredits")
+        }
+        if (normalised(licenseFile) != normalised(licenseAsset)) {
+            throw GradleException("assets/licenses/Apache-2.0.txt is out of date with LICENSE. Run ./gradlew generateCredits")
         }
     }
 }
 
 tasks.named("check") {
     dependsOn("checkCredits")
+}
+
+// generateCredits writes into src/main/assets; when both run in one build, assets are merged after it.
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    mustRunAfter("generateCredits")
 }

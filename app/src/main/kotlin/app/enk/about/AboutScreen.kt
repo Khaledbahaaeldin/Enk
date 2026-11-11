@@ -14,6 +14,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -35,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,8 +82,8 @@ fun AboutScreen(
         }
     }
 
-    val licenseInfo = remember { getAppLicenseInfo() }
-    var showLicenseDialog by remember { mutableStateOf(false) }
+    val soundCredits = remember(credits) { groupSoundCredits(credits) }
+    var shownLicense by remember { mutableStateOf<LicenseDoc?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     fun openUrl(url: String) {
@@ -116,18 +122,15 @@ fun AboutScreen(
                 item(key = "group_app_license") {
                     GroupedSection(
                         title = "App License",
+                        modifier = Modifier.testTag("group_app_license"),
                         footer = "Enk is free and open-source software."
                     ) {
                         GroupedRow(
-                            title = licenseInfo.name,
-                            subtitle = "Tap to read full license",
-                            onClick = { showLicenseDialog = true },
+                            title = LicenseDocs.App.title,
+                            subtitle = "Tap to read the full license",
+                            onClick = { shownLicense = LicenseDocs.App },
                             trailing = {
-                                Text(
-                                    text = "Apache-2.0",
-                                    color = colors.t2,
-                                    fontSize = 13.sp
-                                )
+                                Text(text = "›", color = colors.t2, fontSize = 18.sp)
                             }
                         )
                     }
@@ -140,33 +143,33 @@ fun AboutScreen(
                         footer = "Both typefaces are licensed under the SIL Open Font License, Version 1.1."
                     ) {
                         GroupedRow(
-                            title = "Courier Prime",
-                            subtitle = "Quote-Unquote Apps · SIL OFL 1.1",
-                            onClick = { openUrl("https://quoteunquoteapps.com/courierprime/") },
-                            trailing = { Text(text = "↗", color = colors.t2, fontSize = 14.sp) }
+                            title = LicenseDocs.CourierPrime.title,
+                            subtitle = "The Courier Prime Project Authors · SIL OFL 1.1",
+                            onClick = { shownLicense = LicenseDocs.CourierPrime },
+                            trailing = { Text(text = "›", color = colors.t2, fontSize = 18.sp) }
                         )
                         GroupedDivider()
                         GroupedRow(
-                            title = "Inter",
-                            subtitle = "Rasmus Andersson · SIL OFL 1.1",
-                            onClick = { openUrl("https://rsms.me/inter/") },
-                            trailing = { Text(text = "↗", color = colors.t2, fontSize = 14.sp) }
+                            title = LicenseDocs.Inter.title,
+                            subtitle = "The Inter Project Authors · SIL OFL 1.1",
+                            onClick = { shownLicense = LicenseDocs.Inter },
+                            trailing = { Text(text = "›", color = colors.t2, fontSize = 18.sp) }
                         )
                     }
                 }
 
                 // 3. Sounds Group
-                if (credits.isNotEmpty()) {
+                if (soundCredits.isNotEmpty()) {
                     item(key = "group_sounds") {
                         GroupedSection(
                             title = "Sounds",
-                            footer = "Typewriter and mechanical switch audio recordings."
+                            footer = "Typewriter and keyboard recordings, each shared by its author."
                         ) {
-                            credits.forEachIndexed { index, credit ->
+                            soundCredits.forEachIndexed { index, credit ->
                                 if (index > 0) GroupedDivider()
                                 GroupedRow(
-                                    title = credit.title,
-                                    subtitle = "${credit.author} · ${credit.license}",
+                                    title = credit.author,
+                                    subtitle = "${credit.usedIn} · ${credit.license}",
                                     onClick = { openUrl(credit.source) },
                                     trailing = { Text(text = "↗", color = colors.t2, fontSize = 14.sp) }
                                 )
@@ -201,49 +204,8 @@ fun AboutScreen(
             }
         }
 
-        if (showLicenseDialog) {
-            BasicAlertDialog(
-                onDismissRequest = { showLicenseDialog = false }
-            ) {
-                val dialogShape = RoundedCornerShape(20.dp)
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .clip(dialogShape)
-                        .background(colors.g1)
-                        .padding(24.dp)
-                ) {
-                    Text(
-                        text = licenseInfo.name,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.t1
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = licenseInfo.notice,
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp,
-                        color = colors.t2
-                    )
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.End)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(material.field2)
-                            .clickable { showLicenseDialog = false }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = "Close",
-                            color = colors.t1,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
+        shownLicense?.let { doc ->
+            LicenseDialog(doc = doc, onClose = { shownLicense = null })
         }
 
         if (errorMessage != null) {
@@ -259,6 +221,59 @@ fun AboutScreen(
                     .windowInsetsPadding(WindowInsets.navigationBars)
                     .padding(bottom = 110.dp, start = 24.dp, end = 24.dp)
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LicenseDialog(doc: LicenseDoc, onClose: () -> Unit) {
+    val context = LocalContext.current
+    val colors = LocalShellColors.current
+    val material = LocalShellMaterial.current
+    val text = remember(doc) {
+        try {
+            context.assets.open(doc.assetPath).bufferedReader().use { it.readText() }
+        } catch (_: Exception) {
+            "The license text could not be loaded."
+        }
+    }
+    BasicAlertDialog(onDismissRequest = onClose) {
+        val dialogShape = RoundedCornerShape(20.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .clip(dialogShape)
+                .background(colors.g1)
+                .padding(24.dp)
+                .testTag("license_dialog")
+        ) {
+            Text(text = doc.title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = colors.t1)
+            Text(text = doc.subtitle, fontSize = 13.sp, color = colors.t2)
+            Spacer(modifier = Modifier.height(12.dp))
+            Box(modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                Text(
+                    text = text,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    color = colors.t1,
+                    modifier = Modifier.testTag("license_text")
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(material.field2)
+                    .clickable(role = Role.Button, onClick = onClose)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .testTag("license_close"),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "Close", color = colors.t1, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            }
         }
     }
 }

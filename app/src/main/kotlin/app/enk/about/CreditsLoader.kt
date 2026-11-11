@@ -17,11 +17,21 @@ data class LibraryCredit(
     val sourceUrl: String
 )
 
-data class AppLicenseInfo(
-    val name: String,
-    val notice: String,
-    val courierPrimeNotice: String,
-    val interNotice: String
+/** One licence text shown from an asset: the app's Apache-2.0 text and the two font licences. */
+data class LicenseDoc(val title: String, val subtitle: String, val assetPath: String)
+
+object LicenseDocs {
+    val App = LicenseDoc("Apache License, Version 2.0", "Enk", "licenses/Apache-2.0.txt")
+    val CourierPrime = LicenseDoc("Courier Prime", "SIL Open Font License 1.1", "licenses/OFL-CourierPrime.txt")
+    val Inter = LicenseDoc("Inter", "SIL Open Font License 1.1", "licenses/OFL-Inter.txt")
+}
+
+/** Recordings by one author under one licence from one source, and where Enk uses them. */
+data class SoundCredit(
+    val author: String,
+    val license: String,
+    val source: String,
+    val usedIn: String
 )
 
 fun loadCredits(json: String): List<Credit> {
@@ -72,11 +82,28 @@ fun loadLibraries(csv: String): List<LibraryCredit> {
     return list
 }
 
-fun getAppLicenseInfo(): AppLicenseInfo {
-    return AppLicenseInfo(
-        name = "Apache License, Version 2.0",
-        notice = "Licensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0",
-        courierPrimeNotice = "Courier Prime is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2013 Quote-Unquote Apps (http://quoteunquoteapps.com).",
-        interNotice = "Inter is licensed under the SIL Open Font License, Version 1.1. Copyright (c) 2016-2024 The Inter Project Authors (https://github.com/rsms/inter)."
-    )
+/**
+ * Collapses the per-file provenance rows into one row per author, source and licence. A row's file is
+ * `sounds/<set>/<name>.ogg`; its use is listed as `Classic: keys, space, backspace`.
+ */
+fun groupSoundCredits(credits: List<Credit>): List<SoundCredit> {
+    data class Key(val author: String, val license: String, val source: String)
+
+    val order = LinkedHashMap<Key, LinkedHashMap<String, LinkedHashSet<String>>>()
+    for (credit in credits) {
+        val parts = credit.title.split("/")
+        val soundSet = if (parts.size >= 3 && parts[0] == "sounds") parts[1] else ""
+        val fileName = parts.last().substringBeforeLast('.')
+        val kind = if (Regex("key_[0-9]+").matches(fileName)) "keys" else fileName
+        order.getOrPut(Key(credit.author, credit.license, credit.source)) { LinkedHashMap() }
+            .getOrPut(soundSet) { LinkedHashSet() }
+            .add(kind)
+    }
+    return order.map { (key, sets) ->
+        val usedIn = sets.entries.joinToString("; ") { (soundSet, kinds) ->
+            val name = soundSet.replaceFirstChar { it.uppercase() }
+            if (name.isEmpty()) kinds.joinToString(", ") else "$name: ${kinds.joinToString(", ")}"
+        }
+        SoundCredit(key.author, key.license, key.source, usedIn)
+    }
 }

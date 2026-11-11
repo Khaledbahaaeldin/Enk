@@ -14,3 +14,4 @@ androidx.room:room-runtime,2.8.5,Apache-2.0,https://developer.android.com/jetpac
 androidx.room:room-ktx,2.8.5,Apache-2.0,https://developer.android.com/jetpack/androidx/releases/room
 io.github.kyant0:backdrop,1.0.4,Apache-2.0,https://github.com/Kyant0/AndroidLiquidGlass
 androidx.glance:glance-appwidget,1.1.1,Apache-2.0,https://developer.android.com/jetpack/androidx/releases/glance
+androidx.compose.ui:ui-tooling-preview,2026.06.01,Apache-2.0,https://developer.android.com/jetpack/androidx/releases/compose-ui
