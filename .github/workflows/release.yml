@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Make scripts executable
+        run: chmod +x gradlew scripts/check-no-network.sh scripts/check-fdroid-rules.sh
+
+      - name: Build Release APK
+        run: ./gradlew :app:assembleRelease
+
+      - name: Check F-Droid Compliance Rules
+        run: ./scripts/check-fdroid-rules.sh
+
+      - name: Sign Release APK
+        id: sign_apk
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ENK_RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ENK_RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ENK_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ENK_RELEASE_KEY_PASSWORD }}
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/release -type f -name "*.apk" | head -n 1)
+          if [ -n "${KEYSTORE_BASE64:-}" ] && [ -n "${KEYSTORE_PASSWORD:-}" ] && [ -n "${KEY_ALIAS:-}" ] && [ -n "${KEY_PASSWORD:-}" ]; then
+            echo "Signing release APK..."
+            KEYSTORE_FILE=$(mktemp)
+            echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_FILE"
+            
+            # Find apksigner from Android SDK
+            APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner | sort -V | tail -n 1)
+            
+            SIGNED_APK="app/build/outputs/apk/release/enk-${GITHUB_REF_NAME}.apk"
+            "$APKSIGNER" sign --ks "$KEYSTORE_FILE" \
+              --ks-pass "pass:$KEYSTORE_PASSWORD" \
+              --ks-key-alias "$KEY_ALIAS" \
+              --key-pass "pass:$KEY_PASSWORD" \
+              --out "$SIGNED_APK" \
+              "$APK_PATH"
+            
+            rm -f "$KEYSTORE_FILE"
+            echo "RELEASE_APK=$SIGNED_APK" >> $GITHUB_ENV
+          else
+            echo "No signing secrets provided; publishing unsigned release APK."
+            UNSIGNED_APK="app/build/outputs/apk/release/enk-${GITHUB_REF_NAME}-unsigned.apk"
+            cp "$APK_PATH" "$UNSIGNED_APK"
+            echo "RELEASE_APK=$UNSIGNED_APK" >> $GITHUB_ENV
+          fi
+
+      - name: Compute SHA-256 Checksum
+        run: |
+          cd "$(dirname "$RELEASE_APK")"
+          sha256sum "$(basename "$RELEASE_APK")" > "$(basename "$RELEASE_APK").sha256"
+          cat "$(basename "$RELEASE_APK").sha256"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.RELEASE_APK }}
+            ${{ env.RELEASE_APK }}.sha256
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

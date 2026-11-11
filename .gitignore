@@ -11,6 +11,11 @@
 .kotlin/
 docs/antigravity/
 
+# Keystores and release signing properties
+keystore.properties
+*.jks
+*.keystore
+
 # Local copies of the full OpenGameArt pack; only Single Keys/ and readme.txt are archived in git
 docs/archive/keyboard-opengameart-soundpack-1/unicae_games_keyboard_soundpack_1.zip
 docs/archive/keyboard-opengameart-soundpack-1/unicae_games_keyboard_soundpack_1/Generated Typing/
