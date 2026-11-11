@@ -1,0 +1,10 @@
+file,source,author,license
+design/src/main/res/font/courier_prime_regular.ttf,https://github.com/quoteunquoteapps/CourierPrime,The Courier Prime Project Authors,SIL Open Font License 1.1
+design/src/main/res/font/courier_prime_bold.ttf,https://github.com/quoteunquoteapps/CourierPrime,The Courier Prime Project Authors,SIL Open Font License 1.1
+fastlane/metadata/android/en-US/images/icon.png,created for Enk,Enk Authors,Apache-2.0
+design/src/main/res/drawable/enk_wordmark.xml,created for Enk,Enk Authors,Apache-2.0
+design/src/main/res/drawable/ic_launcher_foreground.xml,created for Enk,Enk Authors,Apache-2.0
+design/src/main/res/drawable/ic_launcher_background.xml,created for Enk,Enk Authors,Apache-2.0
+design/src/main/res/drawable/ic_launcher_monochrome.xml,created for Enk,Enk Authors,Apache-2.0
+design/src/main/res/drawable/ic_splash_symbol.xml,created for Enk,Enk Authors,Apache-2.0
+design/src/main/res/drawable/ic_splash_symbol_light.xml,created for Enk,Enk Authors,Apache-2.0

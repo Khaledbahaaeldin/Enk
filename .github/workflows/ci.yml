@@ -25,13 +25,16 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Make scripts executable
-        run: chmod +x gradlew scripts/check-no-network.sh
+        run: chmod +x gradlew scripts/check-no-network.sh scripts/check-fdroid-rules.sh
 
       - name: Build and Test
-        run: ./gradlew build test
+        run: ./gradlew build test :app:assembleRelease
 
       - name: Process Debug Manifest
         run: ./gradlew :app:processDebugManifest
 
       - name: Check No Network Permissions
         run: ./scripts/check-no-network.sh
+
+      - name: Check F-Droid Compliance Rules
+        run: ./scripts/check-fdroid-rules.sh

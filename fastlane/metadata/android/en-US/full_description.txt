@@ -1,0 +1,15 @@
+Enk is an offline, private typewriter notebook for Android designed for focused, deliberate writing.
+
+What it is:
+• A mechanical typewriter writing experience with tactile acoustic feedback, moving carriage rail, margin return bell, and night lamp.
+• Two ways to correct yourself: clean erase (the default) or strike-through, which keeps your corrections on the page like a real typed draft.
+• A physical note organization system: file notes into Dividers in the Box, search by text match, and review trashed pages.
+• Fully offline: zero internet permission declared in the manifest, zero background tracking, and zero analytics.
+• Clean export and import: backup your notes as standard ZIP archives at any time.
+
+What it is not:
+• It is not a cloud-synchronized notebook. Notes live entirely on your device.
+• It is not a rich-text or markdown word processor. Every character is monospaced type on virtual paper.
+
+Privacy & Licensing:
+Enk is free and open-source software licensed under the Apache License, Version 2.0. Typewriter mechanical sound samples are licensed under CC0 Public Domain Dedication. Complete third-party licenses, font attributions, and sound provenance are available within the app under Setup > About > Credits and licenses.

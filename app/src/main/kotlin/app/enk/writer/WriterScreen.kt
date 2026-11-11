@@ -525,6 +525,7 @@ fun WriterScreen(
                 },
                 modifier = Modifier
                     .size(1.dp)
+                    .testTag("writer_input")
                     .focusRequester(focusRequester),
                 textStyle = TextStyle(color = Color.Transparent),
                 cursorBrush = SolidColor(Color.Transparent),

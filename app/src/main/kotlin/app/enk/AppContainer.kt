@@ -1,8 +1,10 @@
 package app.enk
 
 import android.content.Context
+import androidx.datastore.core.DataStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
@@ -42,15 +44,7 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
 
     override val settingsStore: SettingsStore by lazy {
-        val settingsFile = context.applicationContext.preferencesDataStoreFile("settings")
-        val dataStore = PreferenceDataStoreFactory.create(
-            corruptionHandler = ReplaceFileCorruptionHandler {
-                try { settingsFile.delete() } catch (_: Throwable) {}
-                emptyPreferences()
-            },
-            produceFile = { settingsFile }
-        )
-        SettingsStore(dataStore)
+        SettingsStore(SettingsDataStoreHolder.get(context.applicationContext))
     }
 
     override val soundManifest: List<SoundSet> by lazy {
@@ -68,5 +62,28 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val haptics: Haptics by lazy {
         AndroidHaptics(context.applicationContext)
+    }
+}
+
+/**
+ * One DataStore per settings file for the whole process. DataStore throws when a second instance is
+ * opened on the same file while the first is still active, and a container is built again whenever
+ * the activity is finished and reopened (or the widget builds its own) while the process lives on.
+ */
+internal object SettingsDataStoreHolder {
+    private val stores = HashMap<String, DataStore<Preferences>>()
+
+    @Synchronized
+    fun get(appContext: Context): DataStore<Preferences> {
+        val settingsFile = appContext.preferencesDataStoreFile("settings")
+        return stores.getOrPut(settingsFile.absolutePath) {
+            PreferenceDataStoreFactory.create(
+                corruptionHandler = ReplaceFileCorruptionHandler {
+                    try { settingsFile.delete() } catch (_: Throwable) {}
+                    emptyPreferences()
+                },
+                produceFile = { settingsFile }
+            )
+        }
     }
 }
