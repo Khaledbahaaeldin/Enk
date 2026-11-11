@@ -41,12 +41,12 @@ If these secrets are absent, the workflow publishes the unsigned release APK alo
 
 ## Reproducible Builds
 
-Enk guarantees bit-for-bit reproducible builds on clean working trees:
-- R8 minification and resource shrinking are deterministic.
-- Version control info embedding is disabled (`vcsInfo.include = false`).
-- Dependency metadata blobs are disabled (`dependenciesInfo { includeInApk = false; includeInBundle = false }`).
-- Build timestamp injections are suppressed.
-- Gradle distribution is checksum-pinned via `distributionSha256Sum`.
+Two clean builds of one commit on one machine have produced identical unsigned release APKs. Settings that help:
+- Version control info is not embedded (`vcsInfo.include = false`).
+- Dependency metadata blobs are off (`dependenciesInfo { includeInApk = false; includeInBundle = false }`).
+- The Gradle distribution is checksum-pinned with `distributionSha256Sum`.
+
+This has not been compared across machines or JDK builds. Treat it as unproven until you have.
 
 To verify reproducibility locally:
 ```bash

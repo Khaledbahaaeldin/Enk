@@ -67,6 +67,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // Pure helpers shared by unit tests and instrumented tests; never packaged in the app.
+    sourceSets {
+        getByName("test").java.srcDir("src/sharedTest/kotlin")
+        getByName("androidTest").java.srcDir("src/sharedTest/kotlin")
+    }
+
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -111,6 +117,7 @@ dependencies {
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.espresso.core)
 }
 
 tasks.matching { it.name == "testDebugUnitTest" }.configureEach {

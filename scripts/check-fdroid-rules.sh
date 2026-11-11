@@ -36,7 +36,11 @@ else
     trap 'rm -f "$DEPS_TMP"' EXIT
 
     # Run gradle dependencies if needed or use gradle output
-    $GRADLE :app:dependencies --configuration releaseRuntimeClasspath --console=plain > "$DEPS_TMP" 2>&1 || true
+    if ! $GRADLE :app:dependencies --configuration releaseRuntimeClasspath --console=plain > "$DEPS_TMP" 2>&1; then
+        echo "VIOLATION (a): Gradle could not resolve releaseRuntimeClasspath, so dependencies were not checked:"
+        tail -n 15 "$DEPS_TMP"
+        exit 1
+    fi
 
     # Extract resolved coordinates (group:artifact:version)
     RESOLVED_DEPS=$(grep -E '^[| ]*[+\\]--- ' "$DEPS_TMP" | grep -v 'project :' | sed -E 's/\{[^}]*\}//g' | sed -E 's/^[| ]*[+\\]--- //' | sed -E 's/ \(\*\)//' | sed -E 's/ \(c\)//' | awk '{
@@ -54,6 +58,14 @@ else
             }
         }
     }' | grep -v '^:' | sort -u || true)
+
+    # A dependency list this short means the output was not parsed, not that the app has no dependencies.
+    RESOLVED_COUNT=$(printf '%s
+' "$RESOLVED_DEPS" | grep -c . || true)
+    if [ "$RESOLVED_COUNT" -lt 20 ]; then
+        echo "VIOLATION (a): Parsed only $RESOLVED_COUNT runtime dependencies; the Gradle output format may have changed."
+        FAILED=1
+    fi
 
     # Check prohibited tracking, ad, proprietary SDKs
     PROHIBITED_REGEX='(com\.google\.android\.gms|com\.google\.firebase|com\.crashlytics|com\.android\.billingclient|com\.facebook|AppLovin|Mixpanel|Sentry|Amplitude|play-services|firebase)'
@@ -118,29 +130,21 @@ if [ ! -f "$PROVENANCE_OTHER" ]; then
     FAILED=1
 fi
 
-MEDIA_FILES=$(find app/src/main design/src/main audio/src/main -type f \( \
-    -name "*.ogg" -o -name "*.wav" -o -name "*.mp3" -o -name "*.flac" -o \
-    -name "*.ttf" -o -name "*.otf" -o -name "*.woff" -o \
-    -name "*.png" -o -name "*.webp" -o -name "*.jpg" -o -name "*.svg" \
-\) 2>/dev/null || true)
+# Sound files are listed in provenance.csv by their path under assets/; everything else by repo path
+# in provenance-other.csv. Match the whole path in the first column, never just the file name.
+listed_in() { # csv, path
+    [ -f "$1" ] && cut -d, -f1 "$1" | grep -F -x -q -- "$2"
+}
 
-for f in $MEDIA_FILES; do
-    fname=$(basename "$f")
-    # Check if full path or relative path or filename exists in either CSV
-    MATCH_SOUNDS=0
-    MATCH_OTHER=0
-    if [ -f "$PROVENANCE_SOUNDS" ] && grep -F -q "$fname" "$PROVENANCE_SOUNDS"; then
-        MATCH_SOUNDS=1
+while IFS= read -r -d '' f; do
+    rel="${f#./}"
+    asset_rel="${rel#app/src/main/assets/}"
+    if listed_in "$PROVENANCE_SOUNDS" "$asset_rel" || listed_in "$PROVENANCE_OTHER" "$rel"; then
+        continue
     fi
-    if [ -f "$PROVENANCE_OTHER" ] && grep -F -q "$fname" "$PROVENANCE_OTHER"; then
-        MATCH_OTHER=1
-    fi
-
-    if [ "$MATCH_SOUNDS" -eq 0 ] && [ "$MATCH_OTHER" -eq 0 ]; then
-        echo "VIOLATION (c): Unlisted media or font file: $f"
-        FAILED=1
-    fi
-done
+    echo "VIOLATION (c): Unlisted media or font file: $rel"
+    FAILED=1
+done < <(find app/src/main design/src/main audio/src/main fastlane -type f \(     -iname "*.ogg" -o -iname "*.wav" -o -iname "*.mp3" -o -iname "*.flac" -o     -iname "*.ttf" -o -iname "*.otf" -o -iname "*.woff" -o     -iname "*.png" -o -iname "*.webp" -o -iname "*.jpg" -o -iname "*.svg" \) -print0 2>/dev/null)
 
 # -----------------------------------------------------------------------------
 # Rule (d): Dependency-info blob disabled in build file and release APK

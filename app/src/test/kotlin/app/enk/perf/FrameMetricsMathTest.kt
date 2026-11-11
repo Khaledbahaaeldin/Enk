@@ -58,6 +58,22 @@ class FrameMetricsMathTest {
     }
 
     @Test
+    fun orderDoesNotMatterAndPercentilesAreClamped() {
+        val shuffled = listOf(30.0, 10.0, 20.0, 40.0)
+        assertEquals(10.0, FrameMetricsMath.percentile(shuffled, 0.0), 0.001)
+        assertEquals(40.0, FrameMetricsMath.percentile(shuffled, 100.0), 0.001)
+        assertEquals(10.0, FrameMetricsMath.percentile(shuffled, -50.0), 0.001)
+        assertEquals(40.0, FrameMetricsMath.percentile(shuffled, 250.0), 0.001)
+        assertEquals(25.0, FrameMetricsMath.percentile(shuffled, 50.0), 0.001)
+    }
+
+    @Test
+    fun aFrameExactlyOnTheThresholdIsNotJanky() {
+        assertEquals(0.0, FrameMetricsMath.jankFraction(listOf(16.0, 16.0), 16.0), 0.0)
+        assertEquals(0.5, FrameMetricsMath.jankFraction(listOf(16.0, 16.01), 16.0), 0.0)
+    }
+
+    @Test
     fun computesExpectedPercentileAndJankOnNormalDataset() {
         // 100 frames: 95 frames at 10.0 ms, 5 frames at 25.0 ms
         val frames = (1..95).map { 10.0 } + (1..5).map { 25.0 }

@@ -8,7 +8,7 @@ Enk declares **zero anti-features**:
 - **No Tracking**: Zero analytics, zero telemetry, zero crash reporters.
 - **No Non-Free Network Services**: Zero network permissions declared in AndroidManifest (`scripts/check-no-network.sh` passes).
 - **No Non-Free Dependencies**: All dependencies are verified free software under Apache-2.0, SIL OFL 1.1, or CC0 (`scripts/check-fdroid-rules.sh` passes).
-- **No Known Vulnerabilities / Tracking SDKs**: No Google Play Services, Firebase, or proprietary SDKs included.
+- **No tracking or proprietary SDKs**: no Google Play Services, Firebase or other proprietary SDKs; `scripts/check-fdroid-rules.sh` rule (a) fails on them. This is not a vulnerability audit.
 
 ---
 
@@ -20,9 +20,9 @@ Categories:
   - Office
 License: Apache-2.0
 AuthorName: Enk Authors
-SourceCode: https://github.com/AhmedKaram50/enk
-IssueTracker: https://github.com/AhmedKaram50/enk/issues
-Changelog: https://github.com/AhmedKaram50/enk/releases
+SourceCode: https://github.com/Khaledbahaaeldin/Enk
+IssueTracker: https://github.com/Khaledbahaaeldin/Enk/issues
+Changelog: https://github.com/Khaledbahaaeldin/Enk/releases
 
 AutoName: Enk
 Summary: A private, offline typewriter notebook for focused writing.
@@ -33,13 +33,13 @@ Description: |-
 
   Features:
   * Mechanical typewriter writing experience with tactile acoustic feedback, moving carriage rail, margin return bell, and night lamp.
-  * Authentic struck-through revision model: backspace strikes through characters without erasing your thinking process, or clean-erase when preferred.
+  * Two ways to correct yourself: clean erase (the default) or strike-through, which keeps corrections on the page.
   * Physical note organization: file notes into Dividers in the Box, search by text match, and review trashed pages.
   * Completely offline: zero internet permission declared in the manifest, zero background tracking, and zero analytics.
   * Clean export and import: backup your notes as standard ZIP archives at any time.
 
 RepoType: git
-Repo: https://github.com/AhmedKaram50/enk.git
+Repo: https://github.com/Khaledbahaaeldin/Enk.git
 
 Builds:
   - versionName: 1.0.0
@@ -49,7 +49,6 @@ Builds:
     gradle:
       - yes
     output: build/outputs/apk/release/app-release-unsigned.apk
-    prebuild: sed -i -e '/dependenciesInfo/,/}/d' build.gradle.kts
     build:
       - $$GRADLE$$ :app:assembleRelease
 
@@ -61,9 +60,10 @@ CurrentVersionCode: 1
 
 ---
 
-## Reproducibility Verification
+## Reproducibility
 
-The release APK is 100% reproducible:
-- Build 1 SHA-256: `92a9bec89f6865a70783f4779729866c5796833fac13a643109350b11a42bd2d`
-- Build 2 SHA-256: `92a9bec89f6865a70783f4779729866c5796833fac13a643109350b11a42bd2d`
-- Status: **Match (Bit-for-bit identical)**
+Two clean builds of the same commit on the same machine and JDK produced byte-identical unsigned release APKs
+(checked at audit time; the hashes are recorded in `docs/audit/batch-10-handoff.md`, and the method is in
+`docs/release/RELEASING.md`). That has not been checked across different machines or JDK builds, so do not
+promise F-Droid's own build will match until it has been compared. Applications that want F-Droid to publish
+the upstream signature need a `Binaries:` entry and a matching reproducible build; this draft does not claim it.

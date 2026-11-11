@@ -1,6 +1,6 @@
 Initial 1.0.0 release of Enk:
 • Mechanical typewriter writing screen with carriage rail, acoustic feedback, and night lamp.
-• Realistic struck-through revision or clean-erase modes.
+• Clean erase or strike-through correction, your choice.
 • The Box notebook organizer with customizable dividers and search.
 • Home-screen responsive glance widget for quick capture.
 • Complete offline privacy with zero network permissions.

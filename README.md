@@ -52,7 +52,7 @@ To sideload the optimized release APK (`app-release-unsigned.apk`), refer to [do
 Enk is built strictly offline:
 - Zero network permissions: `android.permission.INTERNET`, `ACCESS_NETWORK_STATE`, and `ACCESS_WIFI_STATE` are stripped and forbidden.
 - Zero analytics, telemetry, crash reporting libraries, or third-party tracking SDKs.
-- Notes are stored solely on your local device in an encrypted/private SQLite database.
+- Notes are stored solely on your device, in the app's private storage (a SQLite database). They are not encrypted by Enk.
 - Data export and import utilize Android's Storage Access Framework without requiring external storage permissions.
 
 ## Documentation & Contributing
