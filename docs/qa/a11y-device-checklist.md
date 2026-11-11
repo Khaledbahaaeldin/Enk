@@ -7,6 +7,7 @@ Execute these manual checks on a reference device (or emulator) before release.
   - Focus carriage in the writer.
   - Verify TalkBack announces: `"Writing marker. Drag to scrub, long press to toggle lamp"`.
   - Verify state description announces `"Lamp on"` or `"Lamp off"`.
+  - Open the TalkBack actions menu and run `"Toggle lamp"`: the lamp turns on and the state announces `"Lamp on"`.
   - Verify touch target is at least 48 dp tall.
 - [ ] **Paper Text**:
   - Focus writing paper.
@@ -65,3 +66,10 @@ Execute these manual checks on a reference device (or emulator) before release.
   - Verify `textMuted` (#948F83) on `chassisBottom` (>= 4.5:1) and `panelBottom` (>= 4.5:1).
   - Verify `textOnChassis` on `panelBottom` (>= 4.5:1).
   - Verify `ink` on `paper` (>= 4.5:1).
+
+## 4. Landscape with the keyboard
+- [ ] Rotate to landscape, tap the paper so the keyboard opens: the paper shows the caret line and the line above it, the carriage sits above the keyboard, the hint is hidden, typing stays visible.
+- [ ] Long-press the carriage in this state: the lamp panel opens over the paper and can be closed.
+
+## 5. Credits
+- [ ] Setup > Credits and licenses: App license opens the full Apache text and scrolls; Courier Prime and Inter open their OFL text starting with the copyright line; Sounds shows one row per author, not per file.

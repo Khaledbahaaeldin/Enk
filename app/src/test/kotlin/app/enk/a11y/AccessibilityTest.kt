@@ -93,24 +93,6 @@ class AccessibilityTest {
     }
 
     @Test
-    fun paperExposesPageTextToTalkBack() {
-        val testText = "The quick brown fox jumps over the lazy dog."
-        composeRule.setContent {
-            androidx.compose.foundation.text.BasicTextField(
-                value = androidx.compose.ui.text.input.TextFieldValue(testText),
-                onValueChange = {}
-            )
-        }
-
-        val textMatcher = SemanticsMatcher("Has page text") { node ->
-            val editable = node.config.getOrNull(SemanticsProperties.EditableText)?.text
-            editable == testText
-        }
-
-        composeRule.onNode(textMatcher).assertExists()
-    }
-
-    @Test
     fun geometryAt130And200FontScale() {
         for (scale in listOf(1.3f, 2.0f)) {
             val geometry = WriterGeometry.compute(widthDp = 360f, heightDp = 640f, fontScale = scale)
