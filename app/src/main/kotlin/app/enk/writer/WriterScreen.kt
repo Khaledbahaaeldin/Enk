@@ -250,6 +250,16 @@ fun WriterScreen(
             }
         }
 
+        val toggleLamp: () -> Unit = {
+            viewModel.dispatch(WriterEvent.ToggleLamp)
+            playSound(SoundEvent.LampClick)
+            pulse(14)
+            hintPolicy = hintPolicy.onLongPress()
+            if (hintPolicy.isDismissed && !settings.hintDismissed) {
+                onSettingsChange { s -> s.copy(hintDismissed = true) }
+            }
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -266,19 +276,11 @@ fun WriterScreen(
                         if (motion == CarriageMotion.Dragging) {
                             hintPolicy = hintPolicy.onScrub()
                             if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                                onSettingsChange { s: Settings -> s.copy(hintDismissed = true) }
+                                onSettingsChange { s -> s.copy(hintDismissed = true) }
                             }
                         }
                     },
-                    onLongPress = {
-                        viewModel.dispatch(WriterEvent.ToggleLamp)
-                        playSound(SoundEvent.LampClick)
-                        pulse(14)
-                        hintPolicy = hintPolicy.onLongPress()
-                        if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                            onSettingsChange { s: Settings -> s.copy(hintDismissed = true) }
-                        }
-                    },
+                    onLongPress = toggleLamp,
                     currentCarriageXDp = { dragCarriageXDp ?: geometry.carriageCenterXDp(caretPos.col) }
                 )
         ) {
@@ -287,6 +289,8 @@ fun WriterScreen(
                 nightProgress = nightProgress,
                 reduceEffects = reduceMotion,
                 drawChassis = false,
+                paperTopDp = geometry.paperTopDp,
+                fadeHeightDp = if (WriterGeometry.isCompact(screenHeightDp)) 8f else 70f,
                 modifier = Modifier.fillMaxSize().introPaper(intro)
             ) {
                 Box(
@@ -369,6 +373,7 @@ fun WriterScreen(
                 reduceEffects = reduceMotion,
                 lampIntensity = settings.intensity / 100f,
                 lamp = lampRgb,
+                onToggleLamp = toggleLamp,
                 modifier = Modifier.introAlpha(intro?.ownPartsAlpha)
             )
 
@@ -376,7 +381,7 @@ fun WriterScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
+                    .height(if (WriterGeometry.isCompact(screenHeightDp)) WriterGeometry.COMPACT_TOP_BAR_DP.dp else 60.dp)
                     .introAlpha(intro?.topBarAlpha)
                     .padding(horizontal = 26.dp)
             ) {
@@ -427,7 +432,7 @@ fun WriterScreen(
                 lampColor = lampColor,
                 settings = lampSettings,
                 onChange = { lamp ->
-                    onSettingsChange { s: Settings ->
+                    onSettingsChange { s ->
                         s.copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
                     }
                 },
@@ -440,7 +445,7 @@ fun WriterScreen(
             )
 
             // Hint text (DS 6.9, Finding 5): hidden when paper is short (landscape keyboard, etc.)
-            val isShortPaper = screenHeightDp < 360f || (screenHeightDp - geometry.railYDp) < 100f
+            val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
             if (!isShortPaper && !hintPolicy.isDismissed && !settings.hintDismissed && !state.lampOn) {
                 Text(
                     text = stringResource(R.string.writer_hint),

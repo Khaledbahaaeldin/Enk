@@ -31,6 +31,10 @@ fun PaperSheet(
     reduceEffects: Boolean,
     modifier: Modifier = Modifier,
     drawChassis: Boolean = true,
+    /** Where the sheet starts below the top of the screen; the compact (short window) layout moves it up. */
+    paperTopDp: Float = WriterGeometry.PAPER_TOP_DP,
+    /** Height of the fade over the first lines; shorter on a short sheet so the text stays readable. */
+    fadeHeightDp: Float = 70f,
     content: @Composable BoxScope.() -> Unit = {}
 ) {
     val paperColor = paperColor(nightProgress)
@@ -53,7 +57,7 @@ fun PaperSheet(
                 .fillMaxSize()
                 .padding(
                     start = WriterGeometry.PAPER_SIDE_DP.dp,
-                    top = WriterGeometry.PAPER_TOP_DP.dp,
+                    top = paperTopDp.dp,
                     end = WriterGeometry.PAPER_SIDE_DP.dp,
                     bottom = WriterGeometry.PAPER_SIDE_DP.dp
                 )
@@ -70,7 +74,7 @@ fun PaperSheet(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(70.dp)
+                    .height(fadeHeightDp.dp)
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(paperColor, Color.Transparent)
