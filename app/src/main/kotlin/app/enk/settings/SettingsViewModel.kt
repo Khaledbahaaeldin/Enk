@@ -146,6 +146,12 @@ class SettingsViewModel(
         }
     }
 
+    fun setDarkPaper(d: DarkPaper) {
+        scope.launch(ioDispatcher) {
+            store.update { it.copy(darkPaper = d) }
+        }
+    }
+
     fun setReduceEffects(b: Boolean) {
         scope.launch(ioDispatcher) {
             store.update { it.copy(reduceEffects = b) }

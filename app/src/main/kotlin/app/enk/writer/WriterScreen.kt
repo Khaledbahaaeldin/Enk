@@ -76,7 +76,9 @@ import app.enk.design.LampLight
 import app.enk.design.LocalMonoFont
 import app.enk.design.lampTextMask
 import app.enk.design.logo.EnkWordmark
+import app.enk.settings.DarkPaper
 import app.enk.settings.Settings
+import androidx.compose.foundation.isSystemInDarkTheme
 import app.enk.text.GridLayout
 import app.enk.text.LineSpan
 import app.enk.text.StruckPage
@@ -191,6 +193,25 @@ fun WriterScreen(
         }
     }
     val isTyping = typingActive || carriageMotion == CarriageMotion.Dragging
+
+    // Dark mode: "Lamp on" lights the lamp itself and follows the phone both ways; the lamp can
+    // still be toggled by hand until the phone changes mode again.
+    val dark = DarkPaperPolicy.isDark(settings.themeMode, isSystemInDarkTheme())
+    val wantLamp = DarkPaperPolicy.autoLamp(settings.darkPaper, dark)
+    val ready = state.loaded && intro == null
+    LaunchedEffect(wantLamp, ready) {
+        if (ready && wantLamp != null && viewModel.state.value.lampOn != wantLamp) {
+            viewModel.dispatch(WriterEvent.ToggleLamp)
+        }
+    }
+    // The question is asked once: an answer is kept, and writing on without one means normal paper.
+    val showAsk = ready && DarkPaperPolicy.shouldAsk(settings.darkPaper, dark)
+    LaunchedEffect(showAsk, lastKeyMs) {
+        if (showAsk && lastKeyMs != 0L) {
+            delay(4000)
+            onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Normal) }
+        }
+    }
 
     val latestSettings by rememberUpdatedState(settings)
     fun playSound(event: SoundEvent, volume: Float = 1f) {
@@ -473,7 +494,17 @@ fun WriterScreen(
 
             // Hint text (DS 6.9, Finding 5): hidden when paper is short (landscape keyboard, etc.)
             val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
-            if (!isShortPaper && !hintPolicy.isDismissed && !settings.hintDismissed && !state.lampOn) {
+            if (showAsk) {
+                DarkPaperAsk(
+                    onLamp = { onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Lamp) } },
+                    onNormal = { onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Normal) } },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                )
+            }
+
+            if (!showAsk && !isShortPaper && !hintPolicy.isDismissed && !settings.hintDismissed && !state.lampOn) {
                 Text(
                     text = stringResource(R.string.writer_hint),
                     style = EnkType.hint.copy(fontFamily = LocalMonoFont.current),

@@ -40,6 +40,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
             prefs[Keys.INTENSITY] = updated.intensity
             prefs[Keys.BEAM] = updated.beam
             prefs[Keys.HINT_DISMISSED] = updated.hintDismissed
+            prefs[Keys.DARK_PAPER] = updated.darkPaper.name
         }
     }
 
@@ -57,6 +58,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val INTENSITY = intPreferencesKey("intensity")
         val BEAM = intPreferencesKey("beam")
         val HINT_DISMISSED = booleanPreferencesKey("hint_dismissed")
+        val DARK_PAPER = stringPreferencesKey("dark_paper")
     }
 
     companion object {
@@ -98,7 +100,8 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
                 warmth = sanitizeWarmth(prefs[Keys.WARMTH]),
                 intensity = sanitizeIntensity(prefs[Keys.INTENSITY]),
                 beam = sanitizeBeam(prefs[Keys.BEAM]),
-                hintDismissed = prefs[Keys.HINT_DISMISSED] ?: false
+                hintDismissed = prefs[Keys.HINT_DISMISSED] ?: false,
+                darkPaper = safeEnumValueOf(prefs[Keys.DARK_PAPER], DarkPaper.Ask)
             )
         }
     }

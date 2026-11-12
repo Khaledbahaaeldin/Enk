@@ -15,6 +15,14 @@ enum class SoundSetId {
     Keyboard
 }
 
+/** What the writer's paper does when the app is in dark mode. */
+enum class DarkPaper {
+    /** Not chosen yet: the writer offers the lamp once. */
+    Ask,
+    Normal,
+    Lamp
+}
+
 data class Settings(
     val correction: CorrectionMode = CorrectionMode.CleanErase,
     val autocorrect: Boolean = false,
@@ -28,5 +36,6 @@ data class Settings(
     val warmth: Int = 25,
     val intensity: Int = 80,
     val beam: Int = 55,
-    val hintDismissed: Boolean = false
+    val hintDismissed: Boolean = false,
+    val darkPaper: DarkPaper = DarkPaper.Ask
 )

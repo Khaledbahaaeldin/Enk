@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.enk.design.shell.GroupedDivider
+import app.enk.design.shell.GroupedRow
 import app.enk.design.shell.GroupedSection
 import app.enk.design.shell.ShellSegmented
 import app.enk.design.shell.ThemeTile
@@ -29,7 +30,9 @@ fun AppearanceGroup(
     onThemeSelect: (ThemeId) -> Unit,
     selectedMode: ThemeMode,
     onModeSelect: (ThemeMode) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    darkPaper: DarkPaper? = null,
+    onDarkPaperSelect: (DarkPaper) -> Unit = {}
 ) {
     GroupedSection(
         title = "Appearance",
@@ -86,5 +89,23 @@ fun AppearanceGroup(
                 onSelect = { onModeSelect(MODE_ORDER[it]) }
             )
         }
+
+        if (darkPaper != null) {
+            GroupedDivider()
+            GroupedRow(
+                title = "Paper in dark mode",
+                subtitle = "Lamp on turns the writer dark with the lamp lit. Ask offers it once."
+            )
+            Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp)) {
+                ShellSegmented(
+                    items = DARK_PAPER_LABELS,
+                    selected = DARK_PAPER_ORDER.indexOf(darkPaper).coerceAtLeast(0),
+                    onSelect = { onDarkPaperSelect(DARK_PAPER_ORDER[it]) }
+                )
+            }
+        }
     }
 }
+
+internal val DARK_PAPER_ORDER = listOf(DarkPaper.Ask, DarkPaper.Normal, DarkPaper.Lamp)
+internal val DARK_PAPER_LABELS = listOf("Ask", "Normal", "Lamp on")

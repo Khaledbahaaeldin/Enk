@@ -89,6 +89,8 @@ fun SettingsContent(
                     onThemeSelect = { theme -> onSettingsChange { it.copy(theme = theme) } },
                     selectedMode = settings.themeMode,
                     onModeSelect = { mode -> onSettingsChange { it.copy(themeMode = mode) } },
+                    darkPaper = settings.darkPaper,
+                    onDarkPaperSelect = { paper -> onSettingsChange { it.copy(darkPaper = paper) } },
                     modifier = Modifier.testTag("group_appearance")
                 )
             }
@@ -360,6 +362,7 @@ fun SettingsScreen(
                 if (updated.bellVolume != settings.bellVolume) viewModel.setBellVolume(updated.bellVolume)
                 if (updated.haptics != settings.haptics) viewModel.setHaptics(updated.haptics)
                 if (updated.reduceEffects != settings.reduceEffects) viewModel.setReduceEffects(updated.reduceEffects)
+                if (updated.darkPaper != settings.darkPaper) viewModel.setDarkPaper(updated.darkPaper)
             },
             onExport = { exportLauncher.launch(exportFileName(LocalDate.now())) },
             onImport = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
@@ -397,6 +400,6 @@ internal const val TRANSFER_MESSAGE_MS = 4_000L
 
 /** Design system 12.10 footers. */
 internal const val APPEARANCE_FOOTER =
-    "Themes colour menus and controls. The writing page always keeps its paper and steel. Dynamic follows your Android wallpaper."
+    "Themes colour menus and controls. The writing page keeps its paper and steel; the lamp is its night mode. Dynamic follows your Android wallpaper."
 internal const val WRITING_FOOTER = "Strike-through keeps deleted letters on the paper, as a typewriter would."
 internal const val DISPLAY_FOOTER = "Reduce effects turns off paper grain, glass blur, and extra motion."

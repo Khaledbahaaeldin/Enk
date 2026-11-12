@@ -55,6 +55,16 @@ class SettingsStoreTest {
     }
 
     @Test
+    fun darkPaperStartsOpenAndRoundTrips() = runBlocking {
+        val file = File(tempFolder.root, "dark_paper.preferences_pb")
+        val store = createStore(file)
+        assertEquals(DarkPaper.Ask, store.settings.first().darkPaper)
+
+        store.update { it.copy(darkPaper = DarkPaper.Lamp) }
+        assertEquals(DarkPaper.Lamp, store.settings.first().darkPaper)
+    }
+
+    @Test
     fun themeAndModeRoundTrip() = runBlocking {
         val store = createStore()
         store.update {
