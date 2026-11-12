@@ -195,6 +195,24 @@ fun SettingsContent(
                                 )
                             }
                         )
+
+                        GroupedDivider()
+
+                        // An app cannot switch another app's key click off; the keyboard owns it.
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                        GroupedRow(
+                            title = "Keyboard click",
+                            subtitle = "Your keyboard has its own sound. Turn it off in its settings.",
+                            onClick = {
+                                try {
+                                    context.startActivity(
+                                        android.content.Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS)
+                                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    )
+                                } catch (_: Exception) {
+                                }
+                            }
+                        )
                     }
                 }
             }

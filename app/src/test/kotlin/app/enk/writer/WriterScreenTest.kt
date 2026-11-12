@@ -206,6 +206,29 @@ class WriterScreenTest {
     }
 
     @Test
+    fun theBoxButtonIsVisibleAndOpensBox(): Unit = runBlocking {
+        var boxOpened = false
+        val note = repo.createNote(dividerId = null)
+        val viewModel = WriterViewModel(note.id, repo, settingsStore, testScope)
+
+        composeTestRule.setContent {
+            WriterScreen(
+                viewModel = viewModel,
+                settings = Settings(),
+                player = dummyPlayer,
+                haptics = dummyHaptics,
+                onOpenBox = { boxOpened = true }
+            )
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("box_button").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("box_button").performClick()
+        composeTestRule.waitForIdle()
+        assertTrue("the Box button must open the Box", boxOpened)
+    }
+
+    @Test
     fun rotationKeepsText(): Unit = runBlocking {
         val note = repo.createNote(dividerId = null)
         val sampleText = "Persisted typing across screen rotation"

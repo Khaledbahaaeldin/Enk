@@ -1,7 +1,14 @@
 package app.enk.writer
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import app.enk.design.logo.LogoSpec
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -167,6 +174,8 @@ fun WriterScreen(
     var strikeKey by remember { mutableStateOf(0) }
     var slugChar by remember { mutableStateOf<Char?>(null) }
     var lastKeyMs by remember { mutableStateOf(0L) }
+    // Length of the word the keyboard is composing; not state, nothing draws from it.
+    val composing = remember { ComposingLength() }
 
     // Carriage motion state
     var carriageMotion by remember { mutableStateOf(CarriageMotion.Rest) }
@@ -418,12 +427,30 @@ fun WriterScreen(
                     }
                 }
 
-                // Right: Meta line (Finding 11)
-                Text(
-                    text = TopBarFormatter.formatMeta(state.pageIndex, page.text.length),
-                    style = EnkType.meta.copy(fontFamily = LocalMonoFont.current),
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                )
+                // Right: Meta line (Finding 11) and the visible way into the Box
+                Row(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = TopBarFormatter.formatMeta(state.pageIndex, page.text.length),
+                        style = EnkType.meta.copy(fontFamily = LocalMonoFont.current)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .testTag("box_button")
+                            .semantics {
+                                role = Role.Button
+                                contentDescription = "Open the Box"
+                            }
+                            .clickable(onClick = onOpenBox),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        BoxGlyph(modifier = Modifier.size(26.dp))
+                    }
+                }
             }
 
             // ControlPanel
@@ -471,38 +498,32 @@ fun WriterScreen(
                     for (event in events) {
                         when (event) {
                             is WriterEvent.Insert -> {
-                                val codePoints = event.text.codePointCount(0, event.text.length)
-                                val isSingleCodePoint = !event.composing && codePoints == 1
-                                val isPaste = !event.composing && !wasComposing && codePoints > 1
-                                val isCommittedWord = !event.composing && wasComposing
+                                // Keyboards compose the word being typed, so the sound follows the
+                                // length of the composing text rather than waiting for the commit.
+                                val sound = InsertFeedback.soundFor(
+                                    text = event.text,
+                                    composing = event.composing,
+                                    previousComposingLength = composing.value,
+                                    wasComposing = wasComposing
+                                )
+                                composing.value = if (event.composing) event.text.length else 0
 
                                 viewModel.dispatch(event)
                                 lastKeyMs = System.currentTimeMillis()
-                                if (!event.composing) {
-                                    // One stamp per committed insert, never per composing update.
+                                if (InsertFeedback.strikes(sound)) {
                                     slugChar = event.text.lastCodePointOrNull()?.takeIf { it <= 0xFFFF }?.toChar()
                                     strikeKey++
                                 }
-
-                                if (event.composing || isPaste) {
-                                    // Silent while composing or pasting.
-                                } else if (isCommittedWord) {
-                                    playSound(SoundEvent.Key)
-                                    pulse(8)
-                                } else if (isSingleCodePoint) {
-                                    val (sound, pulseMs) = when (event.text) {
-                                        " " -> Pair(SoundEvent.Space, 14)
-                                        "\n" -> Pair(SoundEvent.Enter, 14)
-                                        else -> Pair(SoundEvent.Key, 8)
-                                    }
+                                if (sound != null) {
                                     playSound(sound)
-                                    pulse(pulseMs)
+                                    pulse(InsertFeedback.pulseMs(sound))
                                 }
 
                                 val live = viewModel.state.value
                                 ringBellAt(live.currentPage.text, live.caret)
                             }
                             is WriterEvent.Backspace -> {
+                                composing.value = 0
                                 val before = viewModel.state.value
                                 val canBackspace = !(before.pageIndex == 0 && before.caret == 0)
                                 viewModel.dispatch(event)
@@ -513,6 +534,7 @@ fun WriterScreen(
                                 }
                             }
                             is WriterEvent.MoveCaret -> {
+                                composing.value = 0
                                 viewModel.dispatch(event)
                                 ringBellAt(viewModel.state.value.currentPage.text, event.index)
                             }
@@ -535,6 +557,30 @@ fun WriterScreen(
                 )
             )
         }
+    }
+}
+
+private class ComposingLength { var value: Int = 0 }
+
+/** A tray of notes: the Box. Drawn, so it needs no icon library. */
+@Composable
+private fun BoxGlyph(modifier: Modifier = Modifier) {
+    val ink = LogoSpec.CREAM
+    Canvas(modifier = modifier) {
+        val stroke = Stroke(width = size.minDimension * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val w = size.width
+        val h = size.height
+        // Two cards sticking out of the tray, then the tray itself.
+        drawLine(ink.copy(alpha = 0.55f), Offset(w * 0.28f, h * 0.12f), Offset(w * 0.72f, h * 0.12f), stroke.width, StrokeCap.Round)
+        drawLine(ink.copy(alpha = 0.8f), Offset(w * 0.18f, h * 0.30f), Offset(w * 0.82f, h * 0.30f), stroke.width, StrokeCap.Round)
+        val tray = Path().apply {
+            moveTo(w * 0.08f, h * 0.46f)
+            lineTo(w * 0.92f, h * 0.46f)
+            lineTo(w * 0.82f, h * 0.90f)
+            lineTo(w * 0.18f, h * 0.90f)
+            close()
+        }
+        drawPath(tray, ink, style = stroke)
     }
 }
 
