@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enk round 2 mockups</title>
+<style>
+  :root { --bg:#16140f; --ink:#f3eee3; --dim:#a39c8d; --line:#34302a; --accent:#ff5a1f; --cream:#ebe6dd; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:1180px; margin:0 auto; padding:28px 16px 80px; }
+  h1 { font-size:28px; letter-spacing:-.02em; margin:0 0 4px; }
+  h2 { font-size:20px; letter-spacing:-.01em; margin:44px 0 6px; }
+  p.lead { color:var(--dim); margin:0 0 18px; max-width:70ch; }
+  .note { color:var(--dim); font-size:13px; max-width:70ch; }
+  .stage { display:flex; flex-wrap:wrap; gap:28px; align-items:flex-start; }
+  .side { flex:1 1 300px; min-width:260px; }
+  .seg { display:inline-flex; background:#26221c; border:1px solid var(--line); border-radius:14px; padding:3px; gap:2px; flex-wrap:wrap; }
+  .seg button { border:0; background:transparent; color:var(--dim); font:600 13px system-ui; padding:9px 13px; border-radius:11px; cursor:pointer; }
+  .seg button.on { background:var(--ink); color:#1b1a18; }
+  .lbl { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin:18px 0 6px; }
+  ul.tips { margin:8px 0; padding-left:18px; color:var(--dim); font-size:14px; }
+  ul.tips b { color:var(--ink); font-weight:600; }
+
+  .phone { width:360px; height:720px; border-radius:38px; position:relative; overflow:hidden; flex:0 0 auto;
+           box-shadow:0 0 0 2px #3a352d, 0 30px 80px rgba(0,0,0,.6); user-select:none; touch-action:none; }
+  /* ---------- writer ---------- */
+  #writer { background:linear-gradient(#2f2d29,#1d1b18); }
+  #writer.night { background:linear-gradient(#141311,#0b0a09); }
+  .topbar { position:absolute; left:0; right:0; top:14px; height:56px; display:flex; align-items:center; padding:0 14px 0 22px; z-index:5; }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--accent); margin-right:8px; }
+  .wm { font:800 21px system-ui; letter-spacing:-.04em; color:var(--ink); }
+  .wm i { font-style:normal; color:var(--accent); }
+  .meta { margin-left:auto; font:11px "Courier New",monospace; color:#8d877a; letter-spacing:.08em; margin-right:6px; }
+  .gbtn { width:44px; height:44px; border-radius:22px; display:grid; place-items:center; cursor:pointer; margin-left:4px;
+          background:rgba(243,238,227,.08); border:.5px solid rgba(243,238,227,.22);
+          box-shadow:inset 0 1px 0 rgba(255,255,255,.18); backdrop-filter:blur(14px) saturate(150%); will-change:transform; }
+  .gbtn svg { width:22px; height:22px; stroke:var(--ink); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+  #lampBtn.lit svg { stroke:var(--lamp,#ffc98a); filter:drop-shadow(0 0 6px var(--lamp,#ffc98a)); }
+  #paper { position:absolute; left:12px; top:78px; width:336px; height:560px; border-radius:10px 10px 26px 26px; display:block; }
+  .kb { position:absolute; left:0; right:0; bottom:0; height:70px; background:#101013; display:grid; place-items:center; color:#55535c; font-size:12px; }
+
+  .pop { position:absolute; right:14px; top:74px; width:300px; border-radius:28px; padding:16px 18px 18px; z-index:9;
+         background:linear-gradient(rgba(58,52,46,.55),rgba(30,27,24,.6)); border:.5px solid rgba(243,238,227,.2);
+         box-shadow:inset 0 1px 0 rgba(255,255,255,.22), inset 0 -1px 0 rgba(0,0,0,.3), 0 30px 60px -12px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.4);
+         backdrop-filter:blur(26px) saturate(170%); transform-origin:calc(100% - 70px) 0; display:none; }
+  .pop.solid { backdrop-filter:none; background:#2a2622; }
+  .prow { display:flex; align-items:center; justify-content:space-between; font-weight:600; margin-bottom:6px; }
+  .tog { width:52px; height:32px; border-radius:16px; background:rgba(243,238,227,.16); position:relative; cursor:pointer; transition:background .2s; }
+  .tog.on { background:var(--accent); }
+  .tog b { position:absolute; top:3px; left:3px; width:26px; height:26px; border-radius:13px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.4); will-change:transform; }
+  .sl { margin-top:14px; }
+  .sl .cap { display:flex; justify-content:space-between; font-size:12px; letter-spacing:.06em; color:#cfc7b8; text-transform:uppercase; }
+  .sl .cap span:last-child { font-family:"Courier New",monospace; }
+  .track { position:relative; height:48px; cursor:pointer; }
+  .track .bar { position:absolute; left:0; right:0; top:21px; height:6px; border-radius:3px; background:rgba(243,238,227,.14); overflow:hidden; }
+  .track .fill { position:absolute; left:0; top:0; bottom:0; background:var(--lamp,#ffc98a); border-radius:3px; }
+  .thumb { position:absolute; top:8px; width:56px; height:32px; margin-left:-28px; border-radius:16px; will-change:transform;
+           background:linear-gradient(rgba(255,255,255,.34),rgba(255,255,255,.12)); border:.5px solid rgba(255,255,255,.5);
+           box-shadow:inset 0 1px 0 rgba(255,255,255,.7), inset 0 -6px 10px -6px rgba(255,255,255,.35), inset 0 0 0 1px rgba(255,255,255,.06), 0 6px 14px rgba(0,0,0,.35);
+           backdrop-filter:blur(1.5px) saturate(190%) brightness(1.12); }
+  .thumb.down { background:linear-gradient(rgba(255,255,255,.16),rgba(255,255,255,.04)); }
+  .pop.solid .thumb { backdrop-filter:none; background:#f3eee3; }
+
+  /* ---------- shell ---------- */
+  #shell { background:radial-gradient(120% 60% at 90% 0%, #f1dccb 0%, #ebe6dd 45%, #e6e1d8 100%); color:#22201c; }
+  .pane { position:absolute; inset:0; padding:74px 20px 120px; will-change:transform,opacity; }
+  .title { font:800 36px system-ui; letter-spacing:-.03em; margin:0 0 14px; }
+  .card { background:#e4dccd; border-radius:20px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 2px rgba(0,0,0,.08), 0 10px 22px -12px rgba(0,0,0,.25);
+          font-family:"Courier New",monospace; cursor:pointer; will-change:transform; overflow:hidden; }
+  .card b { display:block; font-size:16px; } .card span { font-size:13px; color:#6d665a; }
+  .ghost { border:1.5px solid #cfc8ba; background:transparent; box-shadow:none; text-align:center; font:600 15px system-ui; color:#6d665a; }
+  .row { background:#f5f2eb; border-radius:16px; padding:15px 16px; margin-bottom:10px; display:flex; justify-content:space-between; font-weight:500; cursor:pointer; will-change:transform; }
+  .nav { position:absolute; left:20px; right:20px; bottom:26px; height:64px; border-radius:32px; z-index:6;
+         background:linear-gradient(rgba(255,255,255,.55),rgba(255,255,255,.3)); border:.5px solid rgba(255,255,255,.8);
+         box-shadow:inset 0 1px 0 #fff, 0 14px 30px -8px rgba(60,40,20,.35), 0 1px 2px rgba(0,0,0,.1); backdrop-filter:blur(18px) saturate(160%); display:flex; }
+  .nav .lens { position:absolute; top:5px; height:54px; border-radius:27px; background:linear-gradient(#fff,rgba(255,255,255,.75));
+               box-shadow:inset 0 1px 0 #fff, 0 4px 12px rgba(60,40,20,.18); will-change:transform; }
+  .nav button { flex:1; border:0; background:transparent; font:600 13px system-ui; color:#7b7468; position:relative; cursor:pointer; }
+  .nav button.on { color:#1b1a18; }
+  .scrim { position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; z-index:10; }
+  .menu { position:absolute; width:210px; border-radius:22px; padding:6px; z-index:12; display:none; transform-origin:0 0;
+          background:linear-gradient(rgba(255,255,255,.78),rgba(250,246,240,.66)); border:.5px solid rgba(255,255,255,.9);
+          box-shadow:inset 0 1px 0 #fff, 0 30px 60px -12px rgba(40,25,10,.45); backdrop-filter:blur(30px) saturate(170%); }
+  .menu div { padding:13px 14px; border-radius:16px; font-weight:500; cursor:pointer; }
+  .menu div.danger { color:#c2331c; }
+  .sheet { position:absolute; left:8px; right:8px; bottom:8px; height:300px; border-radius:34px; z-index:12; display:none; padding:10px 22px;
+           background:linear-gradient(rgba(255,255,255,.82),rgba(248,244,238,.7)); border:.5px solid rgba(255,255,255,.9);
+           box-shadow:inset 0 1px 0 #fff, 0 -20px 60px -10px rgba(40,25,10,.35); backdrop-filter:blur(34px) saturate(170%); will-change:transform; }
+  .grab { width:40px; height:5px; border-radius:3px; background:#c9c2b4; margin:4px auto 16px; }
+  .alert { position:absolute; left:40px; right:40px; top:270px; border-radius:28px; padding:22px 20px 14px; z-index:13; display:none; text-align:center;
+           background:linear-gradient(rgba(255,255,255,.86),rgba(248,244,238,.74)); border:.5px solid rgba(255,255,255,.9);
+           box-shadow:inset 0 1px 0 #fff, 0 30px 60px -12px rgba(40,25,10,.45); backdrop-filter:blur(34px) saturate(170%); }
+  .alert .btns { display:flex; gap:8px; margin-top:16px; }
+  .pill { flex:1; padding:13px; border-radius:16px; background:rgba(0,0,0,.06); font-weight:600; cursor:pointer; will-change:transform; }
+  .pill.danger { background:#c2331c; color:#fff; }
+  .sheetpaper { position:absolute; z-index:8; background:#e4dccd; display:none; overflow:hidden; will-change:transform; font-family:"Courier New",monospace; }
+  .sheetpaper .in { padding:60px 22px; font-size:16px; line-height:1.8; }
+  .back { position:absolute; left:16px; top:18px; font:600 14px system-ui; padding:9px 14px; border-radius:18px; background:rgba(0,0,0,.07); cursor:pointer; z-index:9; }
+  .solid .nav, .solid .menu, .solid .sheet, .solid .alert { backdrop-filter:none; background:#f5f2eb; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Enk round 2 mockups</h1>
+  <p class="lead">Two interactive mockups for the decisions in the round 2 spec: the lamp with its glass pop-up, and the motion set for the shell. A browser cannot bend light through glass the way the app will, so the glass here shows blur, tint, highlights and movement, not true refraction.</p>
+
+  <h2>1. Lamp, pop-up and glass sliders</h2>
+  <div class="stage">
+    <div class="phone" id="writer">
+      <div class="topbar">
+        <div class="dot"></div><div class="wm">enk<i>_</i></div>
+        <div class="meta">p.1 · 214 / 3000</div>
+        <div class="gbtn" id="lampBtn" title="Lamp"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M8.5 14.5A6 6 0 1 1 15.5 14.5c-.6.5-1 1.2-1 2h-5c0-.8-.4-1.5-1-2z"/></svg></div>
+        <div class="gbtn" title="Box"><svg viewBox="0 0 24 24"><path d="M7 4h10M5 8h14M3.5 12h17l-2 8h-13z"/></svg></div>
+      </div>
+      <canvas id="paper" width="336" height="560"></canvas>
+      <div class="pop" id="pop">
+        <div class="prow"><span>Lamp</span><div class="tog" id="tog"><b></b></div></div>
+        <div class="sl"><div class="cap"><span>Warmth</span><span id="vW"></span></div><div class="track" data-k="warmth"><div class="bar"><div class="fill"></div></div><div class="thumb"></div></div></div>
+        <div class="sl"><div class="cap"><span>Intensity</span><span id="vI"></span></div><div class="track" data-k="intensity"><div class="bar"><div class="fill"></div></div><div class="thumb"></div></div></div>
+        <div class="sl"><div class="cap"><span>Beam</span><span id="vB"></span></div><div class="track" data-k="beam"><div class="bar"><div class="fill"></div></div><div class="thumb"></div></div></div>
+      </div>
+      <div class="kb">keyboard</div>
+    </div>
+    <div class="side">
+      <div class="lbl">Lamp look (decision D1)</div>
+      <div class="seg" id="lookSeg">
+        <button data-v="A" class="on">A · Lit paper, dark ink</button>
+        <button data-v="B">B · Glowing ink</button>
+        <button data-v="T">Today</button>
+      </div>
+      <div class="lbl">Effects level</div>
+      <div class="seg" id="lampFx">
+        <button data-v="full" class="on">Full</button><button data-v="bal">Balanced</button><button data-v="light">Light</button>
+      </div>
+      <ul class="tips">
+        <li><b>Tap the bulb</b> in the top bar to open the pop-up. Tap outside to close it.</li>
+        <li><b>Drag a slider.</b> The thumb grows on touch, stretches with speed, and the page changes under your finger.</li>
+        <li><b>Drag the marker</b> along the rail. The pool of light moves with it.</li>
+        <li><b>Switch the lamp on and off</b> to see the filament warm up and cool down.</li>
+      </ul>
+      <p class="note">A and B use the same light: one source on the carriage, brightness falling with distance, a cone set by Beam, colour set by temperature. They differ only in what the ink does. "Today" is the current build: a blurred trapezoid, a circle, and an oval mask on the text.</p>
+    </div>
+  </div>
+
+  <h2>2. Motion in the shell</h2>
+  <div class="stage">
+    <div class="phone" id="shell">
+      <div class="pane" id="p0">
+        <div class="title">The Box</div>
+        <div class="card ghost press" id="newNote">New note</div>
+        <div class="card press note" data-t="Monday letter"><b>Monday letter</b><span>Dear Sam, the rain has not stopped…</span></div>
+        <div class="card press note" data-t="Shopping"><b>Shopping</b><span>ribbon, ink, two reams</span></div>
+        <div class="card press note" data-t="Chapter four"><b>Chapter four</b><span>The station was empty when…</span></div>
+      </div>
+      <div class="pane" id="p1" style="opacity:0;pointer-events:none"><div class="title">Find</div><div class="row press">Type to search your notes</div></div>
+      <div class="pane" id="p2" style="opacity:0;pointer-events:none"><div class="title">Setup</div>
+        <div class="row press">Appearance<span>Graphite</span></div><div class="row press">Sound<span>Classic</span></div><div class="row press" id="openSheet">New divider<span>+</span></div></div>
+      <div class="sheetpaper" id="sp"><div class="back press" id="back">‹ Box</div><div class="in" id="spIn"></div></div>
+      <div class="nav" id="nav"><div class="lens" id="lens"></div><button class="on">Box</button><button>Find</button><button>Setup</button></div>
+      <div class="scrim" id="scrim"></div>
+      <div class="menu" id="menu"><div class="press">Move to divider</div><div class="press">Share as text</div><div class="press danger" id="del">Move to Trash</div></div>
+      <div class="sheet" id="sheet"><div class="grab"></div><div class="title" style="font-size:24px">New divider</div><div class="row" style="background:rgba(0,0,0,.05)">Name</div><p style="color:#6d665a;font-size:13px">Drag me down to dismiss. A flick is enough.</p></div>
+      <div class="alert" id="alert"><b>Move to Trash?</b><div style="color:#6d665a;font-size:14px;margin-top:4px">You can restore it for 30 days.</div><div class="btns"><div class="pill press" id="keep">Keep</div><div class="pill danger press" id="yes">Move</div></div></div>
+    </div>
+    <div class="side">
+      <div class="lbl">Level</div>
+      <div class="seg" id="fxSeg">
+        <button data-v="today">Today</button><button data-v="light">Light</button><button data-v="bal">Balanced</button><button data-v="full" class="on">Full</button>
+      </div>
+      <ul class="tips">
+        <li><b>Press anything.</b> It reacts when the finger lands, not when it lifts.</li>
+        <li><b>Tap or drag the nav bar.</b> The lens follows the finger, stretches with speed, and a flick carries it.</li>
+        <li><b>Tap a note.</b> The card grows into the paper. "Box" sends it back.</li>
+        <li><b>Hold a note</b> (or right-click). The menu grows from your finger. "Move to Trash" shows the alert, and the card folds away.</li>
+        <li><b>Setup &gt; New divider.</b> The sheet rises; drag or flick it down.</li>
+        <li><b>Switch to Today</b> and do the same things. That is the current build.</li>
+      </ul>
+      <p class="note">Every movement is a spring that can be grabbed or redirected mid-way. Tap two tabs quickly, or grab the sheet while it is still rising.</p>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ---------- springs ---------- */
+const live = new Set();
+class Spring {
+  constructor(x, resp = .35, damp = 1, on = () => {}) { this.x = x; this.v = 0; this.t = x; this.on = on; this.tune(resp, damp); }
+  tune(resp, damp) { this.k = (2 * Math.PI / resp) ** 2; this.c = 2 * damp * Math.sqrt(this.k); return this; }
+  to(t, v) { this.t = t; if (v !== undefined) this.v = v; live.add(this); return this; }
+  snap(t) { this.x = this.t = t; this.v = 0; this.on(this.x, 0); return this; }
+  step(dt) {
+    let n = Math.max(1, Math.round(dt / .004)); const h = dt / n;
+    while (n--) { this.v += (-this.k * (this.x - this.t) - this.c * this.v) * h; this.x += this.v * h; }
+    if (Math.abs(this.x - this.t) < .0005 * (1 + Math.abs(this.t)) && Math.abs(this.v) < .01) { this.x = this.t; this.v = 0; live.delete(this); }
+    this.on(this.x, this.v);
+  }
+}
+let lastT = performance.now();
+(function loop(now) { const dt = Math.min(.05, (now - lastT) / 1000); lastT = now; live.forEach(s => s.step(dt)); requestAnimationFrame(loop); })(lastT);
+const lerp = (a, b, t) => a + (b - a) * t, clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const project = v => (v / 1000) * .998 / (1 - .998);
+const rubber = (o, d, c = .55) => o * d * c / (d + c * Math.abs(o));
+function seg(el, cb) { el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; el.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); cb(b.dataset.v); }); }
+
+/* ================= 1. LAMP ================= */
+const cv = document.getElementById('paper'), ctx = cv.getContext('2d', { willReadFrequently: true });
+const W = cv.width, H = cv.height, RAIL = 372, SRC_Y = RAIL + 36;
+const L = { look: 'A', fx: 'full', on: 0, lit: false, warmth: 25, intensity: 80, beam: 55, cx: 150 };
+const text = ["Dear Sam,", "", "the rain has not stopped", "since Monday and the roof", "keeps its own time now.", "I type by the lamp and", "the page is the only", "bright thing in the room", "tonight"];
+const LH = 30, FS = 17, TX = 26;
+// text mask
+const mc = document.createElement('canvas'); mc.width = W; mc.height = H; const mx = mc.getContext('2d');
+mx.font = `${FS}px "Courier New", monospace`; mx.fillStyle = '#000'; mx.textBaseline = 'alphabetic';
+text.forEach((t, i) => mx.fillText(t, TX, RAIL - 30 - (text.length - 1 - i) * LH));
+const mask = mx.getImageData(0, 0, W, H).data;
+// grain
+const grain = new Float32Array(W * H); { let s = 7; for (let i = 0; i < W * H; i++) { s = (s * 1664525 + 1013904223) >>> 0; grain[i] = (s / 4294967296) - .5; } }
+function kelvin(K) { const t = K / 100; let r, g, b;
+  r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -.1332047592);
+  g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -.0755148492);
+  b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307;
+  return [clamp(r, 0, 255) / 255, clamp(g, 0, 255) / 255, clamp(b, 0, 255) / 255]; }
+const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const img = ctx.createImageData(W, H);
+let dirty = true;
+function drawLamp() {
+  dirty = false;
+  const n = L.on, full = L.fx === 'full', light = L.fx === 'light';
+  const K = lerp(4000, 1900, L.warmth / 100), Kw = lerp(1500, K, sm(0, 1, n));
+  const lamp = kelvin(Kw); const I = Math.pow(L.intensity / 100, 1.6) * n;
+  document.getElementById('writer').style.setProperty('--lamp', `rgb(${lamp.map(c => Math.round(c * 255)).join(',')})`);
+  const half = lerp(34, 74, (L.beam - 30) / 70) * Math.PI / 180, cosIn = Math.cos(half * .35), cosOut = Math.cos(half);
+  const hgt = 100, ax = 0, ay = -.78, az = -.63;
+  // normalise so the brightest point on the axis is 1
+  let peak = 0; for (let dy = -4; dy > -500; dy -= 4) { const len = Math.hypot(dy, hgt); peak = Math.max(peak, (hgt / len) / (len * len) * sm(cosOut, cosIn, (dy * ay - hgt * az) / len)); }
+  const norm = 1 / peak, d = img.data, cx = L.cx;
+  const day = [.925, .895, .835], amb = [.075, .08, .10];
+  const bw = 70 + L.beam * 2.6;
+  for (let y = 0, i = 0, p = 0; y < H; y++) for (let x = 0; x < W; x++, i++, p += 4) {
+    const g = grain[i], m = mask[p + 3] / 255, dx = x - cx, dy = y - SRC_Y;
+    let r, gg, b;
+    if (L.look === 'T') {
+      // current build: flat night paper, trapezoid beam, halo, oval text mask
+      let pr = .085, pg = .08, pb = .075; const up = -dy / 360;
+      if (up > 0 && up < 1) { const hw = lerp(.06, .5, up) * bw; const e = sm(hw + 6, hw - 6, Math.abs(dx)); const a = .55 * (L.intensity / 100) * n * Math.max(0, 1 - up / .92) * e; pr = 1 - (1 - pr) * (1 - lamp[0] * a); pg = 1 - (1 - pg) * (1 - lamp[1] * a); pb = 1 - (1 - pb) * (1 - lamp[2] * a); }
+      const hd = Math.hypot(dx, y - (RAIL - 26)) / 80; if (hd < .65) { const a = (L.intensity / 100) * .55 * n * (1 - hd / .65); pr = 1 - (1 - pr) * (1 - lamp[0] * a); pg = 1 - (1 - pg) * (1 - lamp[1] * a); pb = 1 - (1 - pb) * (1 - lamp[2] * a); }
+      const ex = (x - (cx - 12)) / (.8 * bw), ey = (y - (RAIL - 116)) / 250, ma = lerp(1, .1 + .1 * L.intensity / 100, clamp(Math.hypot(ex, ey), 0, 1));
+      r = lerp(pr, lamp[0], m * ma); gg = lerp(pg, lamp[1], m * ma); b = lerp(pb, lamp[2], m * ma);
+      r = lerp(day[0] * (1 + g * .08), r, n); gg = lerp(day[1] * (1 + g * .08), gg, n); b = lerp(day[2] * (1 + g * .08), b, n);
+      if (n < 1) { const ink = .12; r = lerp(lerp(day[0], ink, m), r, n); gg = lerp(lerp(day[1], ink, m), gg, n); b = lerp(lerp(day[2], ink, m), b, n); }
+    } else {
+      const len = Math.hypot(dx, dy, hgt), cosA = (dx * ax + dy * ay - hgt * az) / len;
+      let E = I * norm * (hgt / len) / (len * len) * sm(cosOut, cosIn, cosA);
+      E += I * .09 * hgt * hgt / (len * len);                         // spill round the lamp
+      if (full) E *= 1 + .12 * (grain[i] - grain[Math.min(W * H - 1, i + W)]);  // grain relief, lit from below
+      const tex = 1 + g * (light ? 0 : .07);
+      let lr = amb[0] + lamp[0] * E * 3.4, lg = amb[1] + lamp[1] * E * 3.4, lb = amb[2] + lamp[2] * E * 3.4;
+      if (L.look === 'A') {
+        r = day[0] * tex * lr; gg = day[1] * tex * lg; b = day[2] * tex * lb;
+        const k = 1 - m * .9; r *= k; gg *= k; b *= k;                // ink absorbs
+      } else {
+        r = .10 * tex + lamp[0] * E * .10; gg = .094 * tex + lamp[1] * E * .10; b = .088 * tex + lamp[2] * E * .10;
+        const glow = .14 + .86 * Math.min(1, E * 1.5);
+        r = lerp(r, lamp[0] * glow, m); gg = lerp(gg, lamp[1] * glow, m); b = lerp(b, lamp[2] * glow, m);
+      }
+      if (full && dy < 0) { const a2 = Math.atan2(Math.abs(dx), -dy); const sc = .04 * I * sm(half, half * .4, a2) * Math.exp(dy / 260); r += lamp[0] * sc; gg += lamp[1] * sc; b += lamp[2] * sc; }
+      r = 1 - Math.exp(-r * 1.55); gg = 1 - Math.exp(-gg * 1.55); b = 1 - Math.exp(-b * 1.55);   // tone map
+      const dr = day[0] * (1 + g * .08), dg = day[1] * (1 + g * .08), db = day[2] * (1 + g * .08), ik = 1 - m * .88;
+      r = lerp(dr * ik, r, n); gg = lerp(dg * ik, gg, n); b = lerp(db * ik, b, n);
+    }
+    const dth = g * (1.2 / 255);                                       // dither against banding
+    d[p] = clamp((r + dth) * 255, 0, 255); d[p + 1] = clamp((gg + dth) * 255, 0, 255); d[p + 2] = clamp((b + dth) * 255, 0, 255); d[p + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  // top fade of the sheet
+  const tf = ctx.createLinearGradient(0, 0, 0, 60); tf.addColorStop(0, `rgba(0,0,0,${lerp(.16, .5, n)})`); tf.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = tf; ctx.fillRect(0, 0, W, 60);
+  // caret
+  ctx.fillStyle = '#ff5a1f'; ctx.fillRect(cx - 5, RAIL - 25, 10, 2);
+  // rail
+  const rg = ctx.createLinearGradient(0, RAIL - 8, 0, RAIL + 8); const dim = lerp(1, .3, n);
+  rg.addColorStop(0, `rgb(${210 * dim},${208 * dim},${200 * dim})`); rg.addColorStop(.45, `rgb(${150 * dim},${148 * dim},${142 * dim})`); rg.addColorStop(1, `rgb(${95 * dim},${93 * dim},${88 * dim})`);
+  ctx.fillStyle = rg; ctx.fillRect(0, RAIL - 8, W, 16);
+  if (n > 0 && L.look !== 'T') { const hl = ctx.createRadialGradient(cx, RAIL - 5, 0, cx, RAIL - 5, 150); const c = lamp.map(v => Math.round(v * 255)).join(','); hl.addColorStop(0, `rgba(${c},${.8 * I})`); hl.addColorStop(1, `rgba(${c},0)`); ctx.fillStyle = hl; ctx.fillRect(0, RAIL - 8, W, 5); }
+  // carriage
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 8;
+  ctx.fillStyle = '#2b2925'; rr(cx - 23, RAIL - 15, 46, 32, 7); ctx.fill(); ctx.restore();
+  ctx.fillStyle = `rgb(${lerp(200, 90, n)},${lerp(198, 88, n)},${lerp(190, 82, n)})`; rr(cx - 23, RAIL + 13, 46, 4, 2); ctx.fill();
+  ctx.fillStyle = '#ff5a1f'; rr(cx - 7, RAIL - 6, 14, 2.5, 1); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.28)'; for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(cx + k * 4, RAIL + 2); ctx.lineTo(cx + k * 4, RAIL + 9); ctx.stroke(); }
+  // lamp slot
+  ctx.save(); const c = lamp.map(v => Math.round(v * 255)).join(',');
+  if (n > 0) { ctx.shadowColor = `rgba(${c},${I})`; ctx.shadowBlur = full ? 18 : 8; }
+  ctx.fillStyle = n > 0 ? `rgb(${lamp.map(v => Math.round(lerp(20, 255, Math.min(1, I * 1.3)) * lerp(1, v, .5))).join(',')})` : '#0c0b0a';
+  rr(cx - 8, RAIL - 21, 16, 7, 3); ctx.fill(); ctx.restore();
+}
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+(function paint() { if (dirty) drawLamp(); requestAnimationFrame(paint); })();
+const onSpring = new Spring(0, .42, .9, x => { L.on = clamp(x, 0, 1); dirty = true; });
+function setLamp(v) { L.lit = v; onSpring.tune(v ? .42 : .25, 1).to(v ? 1 : 0);
+  document.getElementById('writer').classList.toggle('night', v); document.getElementById('lampBtn').classList.toggle('lit', v);
+  tog.classList.toggle('on', v); togS.to(v ? 20 : 0); }
+// marker drag
+let dragM = null;
+cv.addEventListener('pointerdown', e => { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; if (Math.abs(x - L.cx) < 34 && Math.abs(y - RAIL) < 30) { dragM = x - L.cx; cv.setPointerCapture(e.pointerId); } });
+cv.addEventListener('pointermove', e => { if (dragM === null) return; const r = cv.getBoundingClientRect(); L.cx = clamp(e.clientX - r.left - dragM, 30, W - 30); dirty = true; });
+cv.addEventListener('pointerup', () => dragM = null);
+// pop-up
+const pop = document.getElementById('pop'), tog = document.getElementById('tog');
+const togS = new Spring(0, .28, 1, (x, v) => { const k = Math.min(.14, Math.abs(v) / 400); tog.firstElementChild.style.transform = `translateX(${x}px) scale(${1 + k},${1 - k / 2})`; });
+let popOpen = false;
+const popS = new Spring(0, .38, .82, x => { const p = clamp(x, 0, 1.2); pop.style.transform = `scale(${lerp(.6, 1, p)})`; pop.style.opacity = clamp(x * 1.6, 0, 1); pop.style.filter = L.fx === 'full' ? `blur(${(1 - clamp(x, 0, 1)) * 10}px)` : 'none'; if (x <= .001 && !popOpen) pop.style.display = 'none'; });
+function openPop(v) { popOpen = v; if (v) pop.style.display = 'block'; if (L.fx === 'light') { popS.snap(v ? 1 : 0); } else popS.to(v ? 1 : 0); }
+document.getElementById('lampBtn').addEventListener('click', e => { e.stopPropagation(); openPop(!popOpen); });
+document.getElementById('writer').addEventListener('pointerdown', e => { if (popOpen && !e.target.closest('#pop') && !e.target.closest('#lampBtn')) openPop(false); });
+tog.addEventListener('click', () => setLamp(!L.lit));
+// glass sliders
+const ranges = { warmth: [0, 100], intensity: [20, 100], beam: [30, 100] }, labels = { warmth: 'vW', intensity: 'vI', beam: 'vB' };
+document.querySelectorAll('.track').forEach(tr => {
+  const k = tr.dataset.k, [lo, hi] = ranges[k], th = tr.querySelector('.thumb'), fill = tr.querySelector('.fill');
+  let scale = 1, stretch = 0; const width = () => tr.clientWidth || 264;
+  const paint = x => { const px = 28 + (width() - 56) * (x - lo) / (hi - lo); th.style.left = px + 'px'; fill.style.width = px + 'px'; th.style.transform = `scale(${scale * (1 + stretch)},${scale * (1 - stretch / 2)})`; document.getElementById(labels[k]).textContent = Math.round(x); };
+  const pos = new Spring(L[k], .35, 1, (x, v) => { L[k] = clamp(x, lo, hi); stretch = L.fx === 'full' ? Math.min(.14, Math.abs(v) / 900) : 0; paint(L[k]); dirty = true; });
+  const pr = new Spring(1, .2, 1, x => { scale = x; paint(L[k]); });
+  let grab = null, lx = 0, lt = 0, vel = 0;
+  const val = cx => lo + (hi - lo) * clamp((cx - tr.getBoundingClientRect().left - 28) / (width() - 56), 0, 1);
+  tr.addEventListener('pointerdown', e => { tr.setPointerCapture(e.pointerId); pr.to(L.fx === 'light' ? 1 : 1.12); th.classList.add('down');
+    const onThumb = e.target === th; grab = onThumb ? val(e.clientX) - L[k] : 0; if (!onThumb) pos.to(val(e.clientX)); lx = e.clientX; lt = performance.now(); vel = 0; });
+  tr.addEventListener('pointermove', e => { if (grab === null) return; const now = performance.now(), dt = Math.max(1, now - lt); vel = .6 * vel + .4 * (e.clientX - lx) / dt * 1000 * (hi - lo) / (width() - 56); lx = e.clientX; lt = now;
+    const x = clamp(val(e.clientX) - grab, lo, hi); live.delete(pos); pos.x = pos.t = x; pos.v = vel; pos.on(x, vel); });
+  const up = () => { if (grab === null) return; grab = null; pr.to(1); th.classList.remove('down'); pos.tune(.35, Math.abs(vel) > 60 ? .8 : 1).to(clamp(pos.x + vel * .04, lo, hi), vel); };
+  tr.addEventListener('pointerup', up); tr.addEventListener('pointercancel', up);
+  requestAnimationFrame(() => paint(L[k]));
+  new ResizeObserver(() => paint(L[k])).observe(tr);
+});
+seg(document.getElementById('lookSeg'), v => { L.look = v; dirty = true; });
+seg(document.getElementById('lampFx'), v => { L.fx = v; pop.classList.toggle('solid', v === 'light'); dirty = true; });
+setTimeout(() => setLamp(true), 500);
+
+/* ================= 2. SHELL MOTION ================= */
+let fx = 'full'; const shell = document.getElementById('shell');
+const anim = () => fx !== 'today' && fx !== 'light';
+function go(s, t, v) { if (fx === 'today') s.snap(t); else if (fx === 'light') fade(s, t); else s.to(t, v); }
+function fade(s, t) { const from = s.x, t0 = performance.now(); (function f(now) { const p = clamp((now - t0) / 100, 0, 1); s.x = s.t = lerp(from, t, p); s.on(s.x, 0); if (p < 1) requestAnimationFrame(f); })(t0); }
+seg(document.getElementById('fxSeg'), v => { fx = v; shell.classList.toggle('solid', v === 'light' || v === 'today'); });
+// press feedback on touch-down
+shell.querySelectorAll('.press').forEach(el => {
+  const depth = el.classList.contains('card') ? .975 : el.classList.contains('pill') ? .95 : .96;
+  const s = new Spring(1, .2, 1, x => { el.style.scale = x; }); el._press = s;
+  el.addEventListener('pointerdown', () => { if (anim()) s.tune(.2, 1).to(depth); });
+  const up = () => { if (anim()) s.tune(.35, .8).to(1); else s.snap(1); };
+  el.addEventListener('pointerup', up); el.addEventListener('pointerleave', up); el.addEventListener('pointercancel', up);
+});
+// tabs and lens
+const nav = document.getElementById('nav'), lens = document.getElementById('lens'), tabs = [...nav.querySelectorAll('button')], panes = [0, 1, 2].map(i => document.getElementById('p' + i));
+const TW = () => (nav.clientWidth - 10) / 3; let cur = 0;
+const lensS = new Spring(0, .35, 1, (x, v) => { const k = fx === 'full' ? Math.min(.14, Math.abs(v) / 6000) : 0; lens.style.width = TW() + 'px'; lens.style.transform = `translateX(${5 + x}px) scale(${1 + k},${1 - k / 2})`;
+  const near = clamp(Math.round(x / TW()), 0, 2); tabs.forEach((b, i) => b.classList.toggle('on', i === near)); });
+const paneS = panes.map((p, i) => new Spring(i === 0 ? 1 : 0, .4, 1, x => { p.style.opacity = clamp(x, 0, 1); p.style.transform = `translateX(${(1 - x) * 14 * (p._dir || 1)}px)`; p.style.pointerEvents = x > .5 ? 'auto' : 'none'; }));
+function setTab(i, v) { if (i !== cur) { const dir = i > cur ? 1 : -1; panes[i]._dir = dir; panes[cur]._dir = -dir; go(paneS[cur], 0); go(paneS[i], 1); cur = i; }
+  lensS.tune(.35, v !== undefined && Math.abs(v) > 350 ? .8 : 1); go(lensS, i * TW(), v); }
+let nd = null;
+nav.addEventListener('pointerdown', e => { nav.setPointerCapture(e.pointerId); const x = e.clientX - nav.getBoundingClientRect().left - 5; nd = { sx: e.clientX, moved: false, off: (x >= lensS.x && x <= lensS.x + TW()) ? x - lensS.x : TW() / 2, lx: e.clientX, lt: performance.now(), v: 0, tap: clamp(Math.floor(x / TW()), 0, 2) }; });
+nav.addEventListener('pointermove', e => { if (!nd) return; if (!nd.moved && Math.abs(e.clientX - nd.sx) < 8) return; if (!anim()) return; nd.moved = true;
+  const now = performance.now(); nd.v = .6 * nd.v + .4 * (e.clientX - nd.lx) / Math.max(1, now - nd.lt) * 1000; nd.lx = e.clientX; nd.lt = now;
+  let x = e.clientX - nav.getBoundingClientRect().left - 5 - nd.off; const max = 2 * TW(); if (x < 0) x = rubber(x, TW()); else if (x > max) x = max + rubber(x - max, TW());
+  live.delete(lensS); lensS.x = lensS.t = x; lensS.v = nd.v; lensS.on(x, nd.v); });
+nav.addEventListener('pointerup', () => { if (!nd) return; const n = nd; nd = null; if (!n.moved) return setTab(n.tap); setTab(clamp(Math.round((lensS.x + project(n.v)) / TW()), 0, 2), n.v); });
+requestAnimationFrame(() => lensS.snap(0));
+// note card grows into the paper
+const sp = document.getElementById('sp'), spIn = document.getElementById('spIn'); let fromRect = null, fromCard = null;
+const openS = new Spring(0, .4, 1, x => { if (!fromRect) return; const p = x, R = shell.getBoundingClientRect();
+  const l = lerp(fromRect.left - R.left, 0, p), t = lerp(fromRect.top - R.top, 0, p), w = lerp(fromRect.width, 360, p), h = lerp(fromRect.height, 720, p);
+  Object.assign(sp.style, { left: l + 'px', top: t + 'px', width: w + 'px', height: h + 'px', borderRadius: lerp(20, 38, clamp(p, 0, 1)) + 'px', opacity: clamp(p * 6, 0, 1) });
+  spIn.style.opacity = clamp((p - .35) / .5, 0, 1); document.getElementById('back').style.opacity = clamp((p - .6) / .4, 0, 1);
+  panes[0].style.scale = lerp(1, .96, clamp(p, 0, 1)); nav.style.opacity = 1 - clamp(p * 2, 0, 1); if (fromCard) fromCard.style.visibility = p > .02 ? 'hidden' : '';
+  if (p <= .001 && openS.t === 0) { sp.style.display = 'none'; nav.style.pointerEvents = ''; } });
+function openNote(card, title) { fromCard = card; fromRect = card.getBoundingClientRect(); spIn.innerHTML = `<b>${title}</b><br><br>Dear Sam, the rain has not stopped since Monday and the roof keeps its own time now.`; sp.style.display = 'block'; nav.style.pointerEvents = 'none'; go(openS, 1); }
+document.getElementById('back').addEventListener('click', () => go(openS, 0));
+document.getElementById('newNote').addEventListener('click', e => openNote(e.currentTarget, 'New note'));
+// context menu, alert, delete
+const scrim = document.getElementById('scrim'), menu = document.getElementById('menu'), alertEl = document.getElementById('alert'); let target = null, layer = 0;
+const scrimS = new Spring(0, .3, 1, x => { scrim.style.opacity = clamp(x, 0, 1) * .32; scrim.style.pointerEvents = x > .05 ? 'auto' : 'none'; });
+const menuS = new Spring(0, .38, .82, x => { menu.style.transform = `scale(${lerp(.6, 1, x)})`; menu.style.opacity = clamp(x * 1.8, 0, 1); menu.style.filter = fx === 'full' ? `blur(${(1 - clamp(x, 0, 1)) * 8}px)` : 'none';
+  if (target) target.style.scale = lerp(1, 1.03, clamp(x, 0, 1)); if (x <= .001 && menuS.t === 0) menu.style.display = 'none'; });
+const alertS = new Spring(0, .38, .82, x => { alertEl.style.transform = `scale(${lerp(1.08, 1, x)})`; alertEl.style.opacity = clamp(x * 1.8, 0, 1); if (x <= .001 && alertS.t === 0) alertEl.style.display = 'none'; });
+function showMenu(card, cx, cy) { target = card; const R = shell.getBoundingClientRect(); const x = clamp(cx - R.left, 14, 360 - 224), y = clamp(cy - R.top, 80, 720 - 260);
+  Object.assign(menu.style, { display: 'block', left: x + 'px', top: y + 'px' }); card.style.position = 'relative'; card.style.zIndex = 11; go(menuS, 1); go(scrimS, 1); }
+function hideMenu(keepScrim) { go(menuS, 0); if (!keepScrim) { go(scrimS, 0); if (target) target.style.zIndex = ''; } }
+shell.querySelectorAll('.note').forEach(card => { let timer = null, held = false, sx = 0, sy = 0;
+  card.addEventListener('pointerdown', e => { held = false; sx = e.clientX; sy = e.clientY; timer = setTimeout(() => { held = true; card._press.to(1); showMenu(card, sx, sy); }, 420); });
+  const cancel = () => clearTimeout(timer); card.addEventListener('pointerleave', cancel); card.addEventListener('pointercancel', cancel);
+  card.addEventListener('pointerup', () => { cancel(); if (!held) openNote(card, card.dataset.t); });
+  card.addEventListener('contextmenu', e => { e.preventDefault(); cancel(); held = true; showMenu(card, e.clientX, e.clientY); }); });
+scrim.addEventListener('click', () => { hideMenu(); go(alertS, 0); go(sheetS, 320); });
+document.getElementById('del').addEventListener('click', () => { hideMenu(true); alertEl.style.display = 'block'; go(alertS, 1); });
+document.getElementById('keep').addEventListener('click', () => { go(alertS, 0); go(scrimS, 0); if (target) target.style.zIndex = ''; });
+document.getElementById('yes').addEventListener('click', () => { go(alertS, 0); go(scrimS, 0); const c = target; if (!c) return; const h0 = c.offsetHeight;
+  const s = new Spring(1, .4, 1, x => { const p = clamp(x, 0, 1); c.style.height = h0 * p + 'px'; c.style.opacity = p; c.style.marginBottom = 12 * p + 'px'; c.style.paddingTop = c.style.paddingBottom = 14 * p + 'px';
+    if (x <= .001) { c.style.display = 'none'; setTimeout(() => { c.style.cssText = ''; }, 2500); } }); c.style.zIndex = ''; go(s, 0); });
+// sheet
+const sheet = document.getElementById('sheet');
+const sheetS = new Spring(320, .38, .82, x => { sheet.style.transform = `translateY(${x}px)`; if (x >= 319 && sheetS.t === 320) sheet.style.display = 'none'; });
+document.getElementById('openSheet').addEventListener('click', () => { sheet.style.display = 'block'; go(sheetS, 0); go(scrimS, 1); });
+let sd = null;
+sheet.addEventListener('pointerdown', e => { sheet.setPointerCapture(e.pointerId); live.delete(sheetS); sd = { y0: e.clientY - sheetS.x, ly: e.clientY, lt: performance.now(), v: 0 }; });
+sheet.addEventListener('pointermove', e => { if (!sd) return; const now = performance.now(); sd.v = .6 * sd.v + .4 * (e.clientY - sd.ly) / Math.max(1, now - sd.lt) * 1000; sd.ly = e.clientY; sd.lt = now;
+  let y = e.clientY - sd.y0; if (y < 0) y = rubber(y, 320); sheetS.x = sheetS.t = y; sheetS.on(y, sd.v); scrim.style.opacity = .32 * (1 - clamp(y / 320, 0, 1)); });
+sheet.addEventListener('pointerup', () => { if (!sd) return; const v = sd.v, away = sheetS.x + project(v) > 160; sd = null; go(sheetS, away ? 320 : 0, v); go(scrimS, away ? 0 : 1); });
+</script>
+</body>
+</html>
