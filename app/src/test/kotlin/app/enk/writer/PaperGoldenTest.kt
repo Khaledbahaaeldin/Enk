@@ -1,7 +1,6 @@
 package app.enk.writer
 
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
+import app.enk.EnkSnapshots
 import androidx.compose.runtime.CompositionLocalProvider
 import app.enk.design.LocalMonoFont
 import app.enk.text.StruckPage
@@ -10,20 +9,19 @@ import androidx.compose.ui.text.font.FontFamily
 import java.io.File
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class PaperGoldenTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.NEXUS_5.copy(
-            screenWidth = 1200,
-            screenHeight = 2460
-        ),
-        maxPercentDifference = 2.0
-    )
+    val snapshots = EnkSnapshots(PaperGoldenTest::class.java)
 
-    // Paparazzi cannot load res/font fonts, so the goldens load the real Courier Prime file directly
-    // (built on access: it needs layoutlib, which exists only after the rule has started).
+    // The goldens load the real Courier Prime file directly for consistent font rasterization
+    // across host environments.
     private val courier: FontFamily get() = FontFamily(Font(File("../design/src/main/res/font/courier_prime_regular.ttf")))
 
     private val referenceGeometry = WriterGeometry.compute(
@@ -41,7 +39,7 @@ class PaperGoldenTest {
             caret = 12,
             loaded = true
         )
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 PaperSheet(
                 state = state,
@@ -61,7 +59,7 @@ class PaperGoldenTest {
             caret = 12,
             loaded = true
         )
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 PaperSheet(
                 state = state,
@@ -81,7 +79,7 @@ class PaperGoldenTest {
             caret = 43,
             loaded = true
         )
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 PaperSheet(
                 state = state,
@@ -102,7 +100,7 @@ class PaperGoldenTest {
             caret = 28,
             loaded = true
         )
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 PaperSheet(
                 state = state,
@@ -122,7 +120,7 @@ class PaperGoldenTest {
             caret = 0,
             loaded = true
         )
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 PaperSheet(
                 state = state,
@@ -147,7 +145,7 @@ class PaperGoldenTest {
             caret = 24,
             loaded = true
         )
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 PaperSheet(
                 state = state,
@@ -167,7 +165,7 @@ class PaperGoldenTest {
             caret = 11,
             loaded = true
         )
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 PaperSheet(
                 state = state,
@@ -187,7 +185,7 @@ class PaperGoldenTest {
             caret = 11,
             loaded = true
         )
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 PaperSheet(
                 state = state,
@@ -208,7 +206,7 @@ class PaperGoldenTest {
             lastTypedIndex = 4,
             loaded = true
         )
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 PaperSheet(
                 state = state,

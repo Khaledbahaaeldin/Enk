@@ -6,8 +6,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
+import app.enk.EnkSnapshots
 import app.enk.design.LocalMonoFont
 import app.enk.design.theme.DynamicShellColors
 import app.enk.design.theme.EnkShellTheme
@@ -18,18 +17,17 @@ import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class SetupGoldenTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.NEXUS_5.copy(
-            screenWidth = 1200,
-            screenHeight = 2460
-        ),
-        maxPercentDifference = 2.0
-    )
+    val snapshots = EnkSnapshots(SetupGoldenTest::class.java)
 
     private val courier: FontFamily
         get() = FontFamily(Font(File("../design/src/main/res/font/courier_prime_regular.ttf")))
@@ -51,21 +49,21 @@ class SetupGoldenTest {
 
     @Test
     fun setupGraphiteDark() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             SetupScene(ThemeId.Graphite, ThemeMode.Dark)
         }
     }
 
     @Test
     fun setupSlateLight() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             SetupScene(ThemeId.Slate, ThemeMode.Light)
         }
     }
 
     @Test
     fun setupApricotDark() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             SetupScene(ThemeId.Apricot, ThemeMode.Dark)
         }
     }
@@ -77,7 +75,7 @@ class SetupGoldenTest {
         val colors = DynamicShellColors.from(colorScheme, dark = true)
         val material = ShellPalettes.material(dark = true)
 
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(
                 LocalMonoFont provides courier,
                 LocalShellColors provides colors,

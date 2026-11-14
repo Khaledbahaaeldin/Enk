@@ -69,11 +69,17 @@ class WidgetModelTest {
         val model = buildWidgetModel(container.repo, englishLocale, fixedZone)
         assertEquals("First line of the note\nSecond line of the note", model.excerpt)
 
+        // Trash previous note to avoid same-millisecond ordering ties
+        container.repo.trash(note.id)
+
         // Note with no text
         val emptyNote = container.repo.createNote(dividerId = null)
         container.repo.savePages(emptyNote.id, listOf(StruckPage("   \n\n   ")))
         val emptyModel = buildWidgetModel(container.repo, englishLocale, fixedZone)
         assertEquals("Empty note", emptyModel.excerpt)
+
+        // Trash previous note to avoid same-millisecond ordering ties
+        container.repo.trash(emptyNote.id)
 
         // Text exceeding 120 chars with surrogate pairs / emoji
         val longLine1 = "A".repeat(80)

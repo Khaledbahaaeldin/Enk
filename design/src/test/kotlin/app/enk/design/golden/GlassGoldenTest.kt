@@ -23,8 +23,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
 import app.enk.design.EnkColors
 import app.enk.design.ShadowLayer
 import app.enk.design.enkShadow
@@ -44,21 +42,20 @@ import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class GlassGoldenTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.NEXUS_5.copy(
-            screenWidth = 1200,
-            screenHeight = 2460
-        ),
-        maxPercentDifference = 2.0
-    )
+    val snapshots = EnkSnapshots(GlassGoldenTest::class.java)
 
     @Test
     fun graphiteDark() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
                 GlassSampleScene()
             }
@@ -67,7 +64,7 @@ class GlassGoldenTest {
 
     @Test
     fun graphiteLight() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Light) {
                 GlassSampleScene()
             }
@@ -76,7 +73,7 @@ class GlassGoldenTest {
 
     @Test
     fun slateDark() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             EnkShellTheme(theme = ThemeId.Slate, mode = ThemeMode.Dark) {
                 GlassSampleScene()
             }
@@ -85,7 +82,7 @@ class GlassGoldenTest {
 
     @Test
     fun slateLight() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             EnkShellTheme(theme = ThemeId.Slate, mode = ThemeMode.Light) {
                 GlassSampleScene()
             }
@@ -94,7 +91,7 @@ class GlassGoldenTest {
 
     @Test
     fun scrollEdgeBars() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Light) {
                 ScrollEdgeScene()
             }
@@ -103,7 +100,7 @@ class GlassGoldenTest {
 
     @Test
     fun solidBackendReduceEffects() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(LocalReduceEffects provides true) {
                 EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
                     GlassSampleScene()

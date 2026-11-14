@@ -24,8 +24,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
+import app.enk.EnkSnapshots
 import app.enk.design.EnkColors
 import app.enk.design.EnkMaterials
 import app.enk.design.EnkType
@@ -48,29 +47,30 @@ import app.enk.writer.textColor
 import java.io.File
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * Frames of the whole start animation: backdrop, the writer's own parts (held back through the real
  * [introPaper] and [introAlpha] modifiers) and the overlay, frozen with [SplashHost]'s `progressMs`.
  *
- * Paparazzi cannot run [app.enk.writer.WriterScreen] (it needs Room and an IME), so the writer here is
- * a stand-in built from the same PaperSheet, PaperText, Caret, Rail and Carriage composables and the
- * same intro modifiers. It cannot render the system splash either: t = 0 shows the overlay's first
+ * Roborazzi captures [app.enk.writer.WriterScreen] frames frozen with [SplashHost]'s `progressMs`.
+ * It cannot render the system splash either: t = 0 shows the overlay's first
  * frame, which is what must match the splash.
  */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class StartGoldenTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.NEXUS_5.copy(screenWidth = 1200, screenHeight = 2460),
-        maxPercentDifference = 2.0
-    )
+    val snapshots = EnkSnapshots(StartGoldenTest::class.java)
 
     private val courier: FontFamily get() = FontFamily(Font(File("../design/src/main/res/font/courier_prime_regular.ttf")))
     private val note = "Dear diary, the rail has\nbecome the writer."
 
     private fun frame(timeMs: Float, light: Boolean) {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 SplashHost(
                     firstPageText = note,

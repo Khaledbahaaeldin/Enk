@@ -4,8 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
+import app.enk.EnkSnapshots
 import app.enk.data.SearchHit
 import app.enk.design.LocalMonoFont
 import app.enk.design.theme.EnkShellTheme
@@ -13,18 +12,17 @@ import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class SearchGoldenTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.NEXUS_5.copy(
-            screenWidth = 1200,
-            screenHeight = 2460
-        ),
-        maxPercentDifference = 2.0
-    )
+    val snapshots = EnkSnapshots(SearchGoldenTest::class.java)
 
     private val courier: FontFamily
         get() = FontFamily(Font(File("../design/src/main/res/font/courier_prime_regular.ttf")))
@@ -51,28 +49,28 @@ class SearchGoldenTest {
 
     @Test
     fun searchGraphiteDarkResults() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             SearchScene(ThemeId.Graphite, ThemeMode.Dark, "rain", sampleHits)
         }
     }
 
     @Test
     fun searchApricotLightResults() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             SearchScene(ThemeId.Apricot, ThemeMode.Light, "rain", sampleHits)
         }
     }
 
     @Test
     fun searchGraphiteDarkEmpty() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             SearchScene(ThemeId.Graphite, ThemeMode.Dark, "", emptyList())
         }
     }
 
     @Test
     fun searchGraphiteDarkNoResults() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             SearchScene(ThemeId.Graphite, ThemeMode.Dark, "thunder", emptyList())
         }
     }

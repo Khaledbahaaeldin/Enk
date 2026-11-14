@@ -5,28 +5,25 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
 import app.enk.design.EnkColors
 import app.enk.design.LampLight
 import app.enk.design.LampSettings
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class LampGoldenTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.NEXUS_5.copy(
-            screenWidth = 1200,
-            screenHeight = 2460
-        ),
-        maxPercentDifference = 2.0
-    )
+    val snapshots = EnkSnapshots(LampGoldenTest::class.java)
 
     @Test
     fun lampDefaultSettingsCol12() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Box(
                 modifier = Modifier
                     .size(400.dp, 820.dp)
@@ -45,7 +42,7 @@ class LampGoldenTest {
 
     @Test
     fun lampMaxBeamCol12() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Box(
                 modifier = Modifier
                     .size(400.dp, 820.dp)
@@ -64,7 +61,7 @@ class LampGoldenTest {
 
     @Test
     fun lampReduceEffectsCol12() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Box(
                 modifier = Modifier
                     .size(400.dp, 820.dp)

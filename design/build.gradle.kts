@@ -1,13 +1,12 @@
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.paparazzi)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
     namespace = "app.enk.design"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 31
@@ -23,6 +22,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -37,4 +42,13 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEach {
+    exclude("**/*GoldenTest*")
 }

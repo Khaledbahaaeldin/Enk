@@ -6,8 +6,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import java.net.URI
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
 /** Reads the real repository files (tests run in `app/`), so a stale or incomplete credit fails here. */
+@RunWith(RobolectricTestRunner::class)
 class CreditsLoaderTest {
 
     private fun repoFile(path: String): File =

@@ -2,14 +2,13 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.paparazzi)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
     namespace = "app.enk"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "app.enk.notes"
@@ -69,8 +68,8 @@ android {
 
     // Pure helpers shared by unit tests and instrumented tests; never packaged in the app.
     sourceSets {
-        getByName("test").java.srcDir("src/sharedTest/kotlin")
-        getByName("androidTest").java.srcDir("src/sharedTest/kotlin")
+        getByName("test").java.directories.add("src/sharedTest/kotlin")
+        getByName("androidTest").java.directories.add("src/sharedTest/kotlin")
     }
 
     testOptions {
@@ -83,6 +82,12 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    if (name == "compileDebugUnitTestKotlin" || name == "compileDebugAndroidTestKotlin") {
+        source(file("src/sharedTest/kotlin"))
     }
 }
 
@@ -108,6 +113,9 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.room.runtime)
     testImplementation(libs.androidx.compose.ui.test.junit4)
@@ -143,19 +151,9 @@ tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEa
     exclude("**/WriterAccessibilityTest*")
     exclude("**/LargeTextLayoutTest*")
     exclude("**/WriterCompactLayoutTest*")
+    exclude("**/*GoldenTest*")
 }
 
-tasks.matching { it.name.contains("preparePaparazzi") }.configureEach {
-    doLast {
-        val paparazziDir = layout.buildDirectory.dir("intermediates/paparazzi").orNull?.asFile
-        paparazziDir?.walk()?.filter { it.name == "resources.json" }?.forEach { file ->
-            val content = file.readText()
-            if (content.contains("\"targetSdkVersion\": \"35\"")) {
-                file.writeText(content.replace("\"targetSdkVersion\": \"35\"", "\"targetSdkVersion\": \"34\""))
-            }
-        }
-    }
-}
 
 // credits.json, libraries.csv and the Apache licence text are generated from their sources so the
 // Credits screen cannot drift from docs/provenance.csv, docs/libraries.csv and LICENSE.

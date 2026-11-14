@@ -1,12 +1,11 @@
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "app.enk.data"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 31

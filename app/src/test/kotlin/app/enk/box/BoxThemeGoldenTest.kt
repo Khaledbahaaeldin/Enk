@@ -7,8 +7,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
+import app.enk.EnkSnapshots
 import app.enk.data.DividerEntity
 import app.enk.data.NoteSummary
 import app.enk.data.TrashedSummary
@@ -22,18 +21,17 @@ import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class BoxThemeGoldenTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.NEXUS_5.copy(
-            screenWidth = 1200,
-            screenHeight = 2460
-        ),
-        maxPercentDifference = 2.0
-    )
+    val snapshots = EnkSnapshots(BoxThemeGoldenTest::class.java)
 
     private val courier: FontFamily
         get() = FontFamily(Font(File("../design/src/main/res/font/courier_prime_regular.ttf")))
@@ -136,58 +134,58 @@ class BoxThemeGoldenTest {
     // 10 static theme/mode combinations
     @Test
     fun boxGraphiteDark() {
-        paparazzi.snapshot { BoxScene(ThemeId.Graphite, ThemeMode.Dark) }
+        snapshots.snapshot { BoxScene(ThemeId.Graphite, ThemeMode.Dark) }
     }
 
     @Test
     fun boxGraphiteLight() {
-        paparazzi.snapshot { BoxScene(ThemeId.Graphite, ThemeMode.Light) }
+        snapshots.snapshot { BoxScene(ThemeId.Graphite, ThemeMode.Light) }
     }
 
     @Test
     fun boxApricotDark() {
-        paparazzi.snapshot { BoxScene(ThemeId.Apricot, ThemeMode.Dark) }
+        snapshots.snapshot { BoxScene(ThemeId.Apricot, ThemeMode.Dark) }
     }
 
     @Test
     fun boxApricotLight() {
-        paparazzi.snapshot { BoxScene(ThemeId.Apricot, ThemeMode.Light) }
+        snapshots.snapshot { BoxScene(ThemeId.Apricot, ThemeMode.Light) }
     }
 
     @Test
     fun boxSkyDark() {
-        paparazzi.snapshot { BoxScene(ThemeId.Sky, ThemeMode.Dark) }
+        snapshots.snapshot { BoxScene(ThemeId.Sky, ThemeMode.Dark) }
     }
 
     @Test
     fun boxSkyLight() {
-        paparazzi.snapshot { BoxScene(ThemeId.Sky, ThemeMode.Light) }
+        snapshots.snapshot { BoxScene(ThemeId.Sky, ThemeMode.Light) }
     }
 
     @Test
     fun boxSlateDark() {
-        paparazzi.snapshot { BoxScene(ThemeId.Slate, ThemeMode.Dark) }
+        snapshots.snapshot { BoxScene(ThemeId.Slate, ThemeMode.Dark) }
     }
 
     @Test
     fun boxSlateLight() {
-        paparazzi.snapshot { BoxScene(ThemeId.Slate, ThemeMode.Light) }
+        snapshots.snapshot { BoxScene(ThemeId.Slate, ThemeMode.Light) }
     }
 
     @Test
     fun boxMonoDark() {
-        paparazzi.snapshot { BoxScene(ThemeId.Mono, ThemeMode.Dark) }
+        snapshots.snapshot { BoxScene(ThemeId.Mono, ThemeMode.Dark) }
     }
 
     @Test
     fun boxMonoLight() {
-        paparazzi.snapshot { BoxScene(ThemeId.Mono, ThemeMode.Light) }
+        snapshots.snapshot { BoxScene(ThemeId.Mono, ThemeMode.Light) }
     }
 
     // Dynamic with 2 seed schemes
     @Test
     fun boxDynamicLightSeed1() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             // Seed 1: Blue scheme
             DynamicBoxScene(isDark = false, seedColor = Color(0xFF1976D2))
         }
@@ -195,7 +193,7 @@ class BoxThemeGoldenTest {
 
     @Test
     fun boxDynamicDarkSeed2() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             // Seed 2: Amber scheme
             DynamicBoxScene(isDark = true, seedColor = Color(0xFFFFB74D))
         }
@@ -204,11 +202,11 @@ class BoxThemeGoldenTest {
     // TrashContent golden
     @Test
     fun trashGraphiteDark() {
-        paparazzi.snapshot { TrashScene(ThemeId.Graphite, ThemeMode.Dark) }
+        snapshots.snapshot { TrashScene(ThemeId.Graphite, ThemeMode.Dark) }
     }
 
     @Test
     fun trashApricotLight() {
-        paparazzi.snapshot { TrashScene(ThemeId.Apricot, ThemeMode.Light) }
+        snapshots.snapshot { TrashScene(ThemeId.Apricot, ThemeMode.Light) }
     }
 }

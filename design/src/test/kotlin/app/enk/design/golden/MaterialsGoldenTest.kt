@@ -12,28 +12,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
 import app.enk.design.EnkMaterials
 import app.enk.design.EnkShadows
 import app.enk.design.enkShadow
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MaterialsGoldenTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.NEXUS_5.copy(
-            screenWidth = 1200,
-            screenHeight = 2460
-        ),
-        maxPercentDifference = 2.0
-    )
+    val snapshots = EnkSnapshots(MaterialsGoldenTest::class.java)
 
     @Test
     fun materialsSnapshot() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             MaterialsSample()
         }
     }
