@@ -464,4 +464,32 @@ class WriterReducerTest {
             }
         }
     }
+
+    @Test
+    fun replaceSwapsTheSpanAndPutsTheCaretAfterIt() {
+        val state = WriterState(noteId = "n", pages = listOf(StruckPage("teh cat")), pageIndex = 0, caret = 7, loaded = true)
+        val next = reduce(state, WriterEvent.Replace(0, 3, "the"), CorrectionMode.CleanErase)
+        assertEquals("the cat", next.pages[0].text)
+        assertEquals(3, next.caret)
+        assertEquals(null, next.composingRange)
+    }
+
+    @Test
+    fun replaceShiftsAndTrimsStruckRanges() {
+        val page = StruckPage("abcdef", listOf(0..0, 2..4, 5..5))
+        val state = WriterState(noteId = "n", pages = listOf(page), pageIndex = 0, caret = 6, loaded = true)
+        val next = reduce(state, WriterEvent.Replace(2, 4, "XYZ"), CorrectionMode.CleanErase)
+        assertEquals("abXYZef", next.pages[0].text)
+        // 0..0 stays; 2..4 is cut by the edit so only its tail (4..4) survives, moved past the new text; 5..5 shifts by +1.
+        assertEquals(listOf(0..0, 5..5, 6..6), next.pages[0].struck)
+    }
+
+    @Test
+    fun replaceClampsOutOfRangeSpansAndHandlesAnEmptyPage() {
+        val empty = WriterState(noteId = "n", pages = listOf(StruckPage("")), pageIndex = 0, caret = 0, loaded = true)
+        assertEquals("x", reduce(empty, WriterEvent.Replace(-5, 99, "x"), CorrectionMode.CleanErase).pages[0].text)
+        val text = WriterState(noteId = "n", pages = listOf(StruckPage("abc")), pageIndex = 0, caret = 3, loaded = true)
+        assertEquals("abcz", reduce(text, WriterEvent.Replace(99, 120, "z"), CorrectionMode.CleanErase).pages[0].text)
+        assertEquals("abc", reduce(text, WriterEvent.Replace(1, 1, ""), CorrectionMode.CleanErase).pages[0].text)
+    }
 }

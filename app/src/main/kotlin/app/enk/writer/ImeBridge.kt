@@ -2,72 +2,24 @@ package app.enk.writer
 
 import androidx.compose.ui.text.input.TextFieldValue
 
+/**
+ * Turns what a keyboard did to the hidden text field into writer events, from the text alone.
+ *
+ * The keyboard's composing region is deliberately not used. A keyboard may mark a word it already
+ * committed as composing again (SwiftKey does it on every space and Enter) or correct a committed word
+ * (autocorrect); read as "this text was typed", that inserts the word a second time, and the
+ * rewrite of the field that follows makes the keyboard do it again. Only a change of the text is an edit.
+ */
 class ImeBridge {
-    private var wasComposing: Boolean = false
-    private var lastComposedText: String = ""
     private var lastSelectionStart: Int? = null
-    private var composingStart: Int = 0
-    private var composingEnd: Int = 0
 
+    /** [composingNow] is accepted for the callers and ignored on purpose, see the class comment. */
+    @Suppress("UNUSED_PARAMETER")
     fun onTextChanged(old: String, new: TextFieldValue, composingNow: Boolean): List<WriterEvent> {
-        val events = mutableListOf<WriterEvent>()
+        val newText = new.text
 
-        val isComposing = composingNow || new.composition != null
-
-        if (isComposing) {
-            val compText = if (new.composition != null) {
-                val start = minOf(new.composition!!.start, new.composition!!.end).coerceIn(0, new.text.length)
-                val end = maxOf(new.composition!!.start, new.composition!!.end).coerceIn(0, new.text.length)
-                new.text.substring(start, end)
-            } else {
-                val prefix = commonPrefix(old, new.text)
-                val suffix = commonSuffix(old, new.text, prefix)
-                new.text.substring(prefix, new.text.length - suffix)
-            }
-            val normalized = compText.replace("\r\n", "\n").replace("\r", "\n")
-            if (new.composition != null) {
-                composingStart = minOf(new.composition!!.start, new.composition!!.end).coerceIn(0, new.text.length)
-                composingEnd = maxOf(new.composition!!.start, new.composition!!.end).coerceIn(0, new.text.length)
-            } else {
-                composingStart = commonPrefix(old, new.text)
-                composingEnd = composingStart + compText.length
-            }
-            wasComposing = true
-            lastComposedText = normalized
-            lastSelectionStart = new.selection.start
-            return listOf(WriterEvent.Insert(text = normalized, composing = true))
-        }
-
-        if (wasComposing) {
-            wasComposing = false
-            val composed = lastComposedText
-            lastComposedText = ""
-            lastSelectionStart = new.selection.start
-            // `old` still holds the composing text, so whatever sits between the untouched head and
-            // tail of it is what the IME actually committed (a word plus a space, a suggestion...).
-            val tail = old.length - composingEnd
-            val tailStart = new.text.length - tail
-            val committedText = if (composingEnd <= old.length && composingStart <= tailStart && tailStart <= new.text.length &&
-                old.regionMatches(0, new.text, 0, composingStart) &&
-                old.regionMatches(composingEnd, new.text, tailStart, tail)
-            ) {
-                new.text.substring(composingStart, tailStart)
-            } else if (composed.isNotEmpty()) {
-                composed
-            } else {
-                val prefix = commonPrefix(old, new.text)
-                val suffix = commonSuffix(old, new.text, prefix)
-                new.text.substring(prefix, new.text.length - suffix)
-            }
-            return listOf(
-                WriterEvent.Insert(
-                    text = committedText.replace("\r\n", "\n").replace("\r", "\n"),
-                    composing = false
-                )
-            )
-        }
-
-        if (new.text == old) {
+        if (newText == old) {
+            // Same text: at most the cursor moved. A changed composing range is not an edit.
             val prevCaret = lastSelectionStart
             lastSelectionStart = new.selection.start
             if (prevCaret != null) {
@@ -84,63 +36,76 @@ class ImeBridge {
         }
 
         val prevCaret = lastSelectionStart ?: old.length
+        val prefix = commonPrefix(old, newText)
+        val suffix = commonSuffix(old, newText, prefix)
+        val removedEnd = old.length - suffix
+        val insertedEnd = newText.length - suffix
+        val removedAny = removedEnd > prefix
+        val insertedAny = insertedEnd > prefix
 
-        // Text grew
-        if (new.text.length > old.length) {
-            val insertLen = new.text.length - old.length
+        // Characters were replaced by others: an autocorrect, a suggestion, a typed character over a selection.
+        if (removedAny && insertedAny) {
+            lastSelectionStart = new.selection.start
+            val replaced = newText.substring(prefix, insertedEnd).normalizeNewlines()
+            val replaceEvents = mutableListOf<WriterEvent>(WriterEvent.Replace(prefix, removedEnd, replaced))
+            // The writer's caret lands after the new text; follow the keyboard if it put its cursor elsewhere.
+            if (replaced.length == newText.length - suffix - prefix && new.selection.start != prefix + replaced.length) {
+                replaceEvents.add(WriterEvent.MoveCaret(new.selection.start))
+            }
+            return replaceEvents
+        }
+
+        val events = mutableListOf<WriterEvent>()
+
+        if (newText.length > old.length) {
+            // Text grew. The selection tells where, which matters when the same character repeats.
+            val insertLen = newText.length - old.length
             val selEnd = new.selection.start
             val selStart = selEnd - insertLen
 
             val canUseSelection = selStart in 0..old.length &&
-                old.regionMatches(0, new.text, 0, selStart) &&
-                old.regionMatches(selStart, new.text, selEnd, old.length - selStart)
+                old.regionMatches(0, newText, 0, selStart) &&
+                old.regionMatches(selStart, newText, selEnd, old.length - selStart)
 
             val (insertAt, insertedRaw) = if (canUseSelection) {
-                Pair(selStart, new.text.substring(selStart, selEnd))
+                Pair(selStart, newText.substring(selStart, selEnd))
             } else {
-                val prefix = commonPrefix(old, new.text)
-                val suffix = commonSuffix(old, new.text, prefix)
-                Pair(prefix, new.text.substring(prefix, new.text.length - suffix))
+                Pair(prefix, newText.substring(prefix, newText.length - suffix))
             }
 
             if (prevCaret != insertAt) {
                 events.add(WriterEvent.MoveCaret(insertAt))
             }
-
-            val inserted = insertedRaw.replace("\r\n", "\n").replace("\r", "\n")
+            val inserted = insertedRaw.normalizeNewlines()
             events.add(WriterEvent.Insert(text = inserted, composing = false))
-
+            // Follow the keyboard's cursor when it is not right after the inserted text (a double space
+            // that becomes ". " puts it one further on).
+            if (inserted.length == insertedRaw.length && new.selection.start != insertAt + inserted.length) {
+                events.add(WriterEvent.MoveCaret(new.selection.start))
+            }
             lastSelectionStart = new.selection.start
             return events
         }
 
-        // Text shrank
-        val deleteLen = old.length - new.text.length
+        // Text shrank.
+        val deleteLen = old.length - newText.length
         val isBackspaceAtCaret = new.selection.start == prevCaret - deleteLen &&
             prevCaret in deleteLen..old.length &&
-            old.regionMatches(0, new.text, 0, new.selection.start) &&
-            old.regionMatches(prevCaret, new.text, new.selection.start, old.length - prevCaret)
+            old.regionMatches(0, newText, 0, new.selection.start) &&
+            old.regionMatches(prevCaret, newText, new.selection.start, old.length - prevCaret)
 
         if (isBackspaceAtCaret) {
             val deletedCodePoints = old.codePointCount(new.selection.start, prevCaret)
-            repeat(deletedCodePoints) {
-                events.add(WriterEvent.Backspace)
-            }
+            repeat(deletedCodePoints) { events.add(WriterEvent.Backspace) }
         } else {
-            val prefix = commonPrefix(old, new.text)
-            val suffix = commonSuffix(old, new.text, prefix)
-            val deletedCodePoints = old.codePointCount(prefix, old.length - suffix)
-            val caretAtDeletion = old.length - suffix
+            val deletedCodePoints = old.codePointCount(prefix, removedEnd)
+            val caretAtDeletion = removedEnd
 
             val isAtCaret = prevCaret in prefix..caretAtDeletion
             if (!isAtCaret) {
                 events.add(WriterEvent.MoveCaret(caretAtDeletion))
             }
-
-            repeat(deletedCodePoints) {
-                events.add(WriterEvent.Backspace)
-            }
-
+            repeat(deletedCodePoints) { events.add(WriterEvent.Backspace) }
             if (!isAtCaret && new.selection.start != prefix) {
                 events.add(WriterEvent.MoveCaret(new.selection.start))
             }
@@ -149,6 +114,8 @@ class ImeBridge {
         lastSelectionStart = new.selection.start
         return events
     }
+
+    private fun String.normalizeNewlines(): String = replace("\r\n", "\n").replace("\r", "\n")
 
     private fun commonPrefix(a: String, b: String): Int {
         var prefix = 0
@@ -172,7 +139,7 @@ class ImeBridge {
             suffix++
         }
         val aSuffixStart = a.length - suffix
-        if (suffix > 0 && aSuffixStart < a.length &&
+        if (suffix > 0 && aSuffixStart > 0 && aSuffixStart < a.length &&
             Character.isHighSurrogate(a[aSuffixStart - 1]) &&
             Character.isLowSurrogate(a[aSuffixStart])
         ) {

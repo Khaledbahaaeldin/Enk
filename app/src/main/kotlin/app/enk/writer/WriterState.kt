@@ -18,6 +18,13 @@ sealed interface WriterEvent {
     data class Insert(val text: String, val composing: Boolean = false) : WriterEvent
     object Backspace : WriterEvent
     data class MoveCaret(val index: Int) : WriterEvent
+
+    /**
+     * The keyboard replaced characters [start] until [end] of the page with [text] in one go: an
+     * autocorrect, a suggestion, a typed character over a selection. Applied as a real replacement
+     * (nothing is struck), the caret lands after [text], and it makes no key sound.
+     */
+    data class Replace(val start: Int, val end: Int, val text: String) : WriterEvent
     data class GoToPage(val index: Int) : WriterEvent
     object ToggleLamp : WriterEvent
 }

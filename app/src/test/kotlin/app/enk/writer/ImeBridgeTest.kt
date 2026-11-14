@@ -20,19 +20,6 @@ class ImeBridgeTest {
     }
 
     @Test
-    fun swipeCommitsWholeWordOnce() {
-        val bridge = ImeBridge()
-        val old = "hello "
-        val composingNew = TextFieldValue("hello world", selection = TextRange(11))
-        val composingEvents = bridge.onTextChanged(old, composingNew, composingNow = true)
-        assertEquals(listOf(WriterEvent.Insert("world", composing = true)), composingEvents)
-
-        val committedNew = TextFieldValue("hello world", selection = TextRange(11))
-        val committedEvents = bridge.onTextChanged(old, committedNew, composingNow = false)
-        assertEquals(listOf(WriterEvent.Insert("world", composing = false)), committedEvents)
-    }
-
-    @Test
     fun deletionIsBackspace() {
         val bridge = ImeBridge()
         // Single character deletion
@@ -125,102 +112,151 @@ class ImeBridgeTest {
         assertEquals(listOf(WriterEvent.Insert("world", composing = false)), events)
     }
 
-    @Test
-    fun multiWordSwipeCommit() {
+    // ---- K0: the keyboard's composing region is not an edit ----
+
+    private fun run(
+        start: String,
+        vararg steps: TextFieldValue,
+        correction: CorrectionMode = CorrectionMode.CleanErase
+    ): WriterState {
         val bridge = ImeBridge()
-        val old = "hello "
-        val composingNew = TextFieldValue(
-            "hello beautiful world",
-            composition = TextRange(6, 21),
-            selection = TextRange(21)
+        var state = WriterState(
+            noteId = "n",
+            pages = listOf(app.enk.text.StruckPage(start)),
+            pageIndex = 0,
+            caret = start.length,
+            loaded = true
         )
-        val composingEvents = bridge.onTextChanged(old, composingNew, composingNow = true)
-        assertEquals(listOf(WriterEvent.Insert("beautiful world", composing = true)), composingEvents)
-
-        val committedNew = TextFieldValue(
-            "hello beautiful world",
-            composition = null,
-            selection = TextRange(21)
-        )
-        val committedEvents = bridge.onTextChanged(old, committedNew, composingNow = false)
-        assertEquals(listOf(WriterEvent.Insert("beautiful world", composing = false)), committedEvents)
-    }
-
-    @Test
-    fun composingReplacedByDifferentWord() {
-        val bridge = ImeBridge()
-        val old = "hello "
-        val newFoo = TextFieldValue("hello foo", composition = TextRange(6, 9), selection = TextRange(9))
-        val eventsFoo = bridge.onTextChanged(old, newFoo, composingNow = true)
-        assertEquals(listOf(WriterEvent.Insert("foo", composing = true)), eventsFoo)
-
-        val newBar = TextFieldValue("hello bar", composition = TextRange(6, 9), selection = TextRange(9))
-        val eventsBar = bridge.onTextChanged(old, newBar, composingNow = true)
-        assertEquals(listOf(WriterEvent.Insert("bar", composing = true)), eventsBar)
-
-        val commitBar = TextFieldValue("hello bar", composition = null, selection = TextRange(9))
-        val eventsCommit = bridge.onTextChanged(old, commitBar, composingNow = false)
-        assertEquals(listOf(WriterEvent.Insert("bar", composing = false)), eventsCommit)
-    }
-
-    @Test
-    fun commitWithTrailingSpaceKeepsTheSpace() {
-        val bridge = ImeBridge()
-        val composing = "hello world"
-        bridge.onTextChanged(
-            "hello ",
-            TextFieldValue(composing, composition = TextRange(6, 11), selection = TextRange(11)),
-            composingNow = true
-        )
-        // Space typed straight after a composed word: the IME commits "world " in one change.
-        val events = bridge.onTextChanged(
-            composing,
-            TextFieldValue("hello world ", selection = TextRange(12)),
-            composingNow = false
-        )
-        assertEquals(listOf(WriterEvent.Insert("world ", composing = false)), events)
-    }
-
-    @Test
-    fun suggestionReplacesComposedWord() {
-        val bridge = ImeBridge()
-        bridge.onTextChanged(
-            "hi ",
-            TextFieldValue("hi tehre", composition = TextRange(3, 8), selection = TextRange(8)),
-            composingNow = true
-        )
-        val events = bridge.onTextChanged(
-            "hi tehre",
-            TextFieldValue("hi there ", selection = TextRange(9)),
-            composingNow = false
-        )
-        assertEquals(listOf(WriterEvent.Insert("there ", composing = false)), events)
-    }
-
-    @Test
-    fun commitReplacesComposingRangeInTheReducer() {
-        val bridge = ImeBridge()
-        var state = WriterState(noteId = "n", pages = listOf(app.enk.text.StruckPage("hello ")), pageIndex = 0, caret = 6)
-        fun apply(events: List<WriterEvent>) {
-            for (e in events) state = reduce(state, e, CorrectionMode.CleanErase)
+        var field = start
+        for (step in steps) {
+            for (e in bridge.onTextChanged(field, step, step.composition != null)) {
+                state = reduce(state, e, correction)
+            }
+            field = step.text
         }
-        apply(
-            bridge.onTextChanged(
-                "hello ",
-                TextFieldValue("hello wor", composition = TextRange(6, 9), selection = TextRange(9)),
-                composingNow = true
-            )
+        return state
+    }
+
+    @Test
+    fun aComposingWordIsInsertedFromTheTextAloneAndTheCommitAddsNothing() {
+        val bridge = ImeBridge()
+        val composing = TextFieldValue("hello world", composition = TextRange(6, 11), selection = TextRange(11))
+        assertEquals(listOf(WriterEvent.Insert("world", composing = false)), bridge.onTextChanged("hello ", composing, true))
+        val committed = TextFieldValue("hello world", selection = TextRange(11))
+        assertEquals(emptyList<WriterEvent>(), bridge.onTextChanged("hello world", committed, false))
+    }
+
+    @Test
+    fun markingAnExistingWordAsComposingIsNotAnEdit() {
+        // SwiftKey does this on every space and Enter: same text, the word is composing again.
+        val bridge = ImeBridge()
+        bridge.onTextChanged("hello", TextFieldValue("hello", selection = TextRange(5)), false)
+        val events = bridge.onTextChanged(
+            "hello",
+            TextFieldValue("hello", composition = TextRange(0, 5), selection = TextRange(5)),
+            true
         )
-        apply(
-            bridge.onTextChanged(
-                "hello wor",
-                TextFieldValue("hello world ", selection = TextRange(12)),
-                composingNow = false
-            )
+        assertEquals(emptyList<WriterEvent>(), events)
+    }
+
+    @Test
+    fun theSwiftKeyRepeatDoesNotRepeat() {
+        // A keyboard that re-marks the last word after every write the app makes: the page must not change.
+        val remark = TextFieldValue("hello", composition = TextRange(0, 5), selection = TextRange(5))
+        val state = run("hello", remark, remark, remark, remark, remark)
+        assertEquals("hello", state.pages[0].text)
+        assertEquals(5, state.caret)
+    }
+
+    @Test
+    fun spaceAfterASwiftKeyRemarkAddsOneSpace() {
+        val state = run(
+            "hello",
+            TextFieldValue("hello", composition = TextRange(0, 5), selection = TextRange(5)),
+            TextFieldValue("hello ", selection = TextRange(6))
         )
-        assertEquals("hello world ", state.pages[0].text)
-        assertEquals(12, state.caret)
-        assertEquals(null, state.composingRange)
+        assertEquals("hello ", state.pages[0].text)
+        assertEquals(6, state.caret)
+    }
+
+    @Test
+    fun autocorrectReplacesTheCommittedWordInsteadOfAddingBoth() {
+        val state = run(
+            "teh ",
+            TextFieldValue("teh ", composition = TextRange(0, 3), selection = TextRange(4)),
+            TextFieldValue("the ", composition = TextRange(0, 3), selection = TextRange(4)),
+            TextFieldValue("the ", selection = TextRange(4))
+        )
+        assertEquals("the ", state.pages[0].text)
+        assertEquals(4, state.caret)
+    }
+
+    @Test
+    fun autocorrectInStrikeThroughModeStrikesNothing() {
+        val state = run(
+            "teh ",
+            TextFieldValue("the ", composition = TextRange(0, 3), selection = TextRange(4)),
+            correction = CorrectionMode.StrikeThrough
+        )
+        assertEquals("the ", state.pages[0].text)
+        assertEquals(emptyList<IntRange>(), state.pages[0].struck)
+    }
+
+    @Test
+    fun aSuggestionReplacesTheTypedWord() {
+        val state = run("hi tehre", TextFieldValue("hi there ", selection = TextRange(9)))
+        assertEquals("hi there ", state.pages[0].text)
+        assertEquals(9, state.caret)
+    }
+
+    @Test
+    fun aCommitWithTrailingSpaceInsertsTheSpace() {
+        val bridge = ImeBridge()
+        val events = bridge.onTextChanged("hello world", TextFieldValue("hello world ", selection = TextRange(12)), false)
+        assertEquals(listOf(WriterEvent.Insert(" ", composing = false)), events)
+    }
+
+    @Test
+    fun aGlideTypedWordArrivesAsOneInsert() {
+        val bridge = ImeBridge()
+        val events = bridge.onTextChanged(
+            "hello ",
+            TextFieldValue("hello beautiful ", selection = TextRange(16)),
+            false
+        )
+        assertEquals(listOf(WriterEvent.Insert("beautiful ", composing = false)), events)
+    }
+
+    @Test
+    fun doubleSpaceBecomingAFullStopKeepsTheCaretWhereTheKeyboardPutIt() {
+        val state = run("hello ", TextFieldValue("hello. ", selection = TextRange(7)))
+        assertEquals("hello. ", state.pages[0].text)
+        assertEquals(7, state.caret)
+    }
+
+    @Test
+    fun aCharacterTypedOverASelectionReplacesIt() {
+        val state = run("hello world", TextFieldValue("hello x", selection = TextRange(7)))
+        assertEquals("hello x", state.pages[0].text)
+        assertEquals(7, state.caret)
+    }
+
+    @Test
+    fun aReplacementThatTouchesASurrogatePairKeepsThePairWhole() {
+        val state = run("a😀b", TextFieldValue("a😁b", selection = TextRange(4)))
+        assertEquals("a😁b", state.pages[0].text)
+    }
+
+    @Test
+    fun backspaceIntoACommittedWordWhileTheKeyboardRecomposesIt() {
+        // The keyboard re-marks "hello" (no edit), then deletes the last letter.
+        val state = run(
+            "hello",
+            TextFieldValue("hello", composition = TextRange(0, 5), selection = TextRange(5)),
+            TextFieldValue("hell", composition = TextRange(0, 4), selection = TextRange(4))
+        )
+        assertEquals("hell", state.pages[0].text)
+        assertEquals(4, state.caret)
     }
 
     @Test
@@ -308,7 +344,7 @@ class ImeBridgeTest {
                     val composingText = modelText.substring(0, modelCaret) + word + modelText.substring(modelCaret)
                     val compEvents = bridge.onTextChanged(
                         modelText,
-                        TextFieldValue(composingText, composition = TextRange(modelCaret, modelCaret + word.length)),
+                        TextFieldValue(composingText, composition = TextRange(modelCaret, modelCaret + word.length), selection = TextRange(modelCaret + word.length)),
                         composingNow = true
                     )
                     for (e in compEvents) {
@@ -317,7 +353,7 @@ class ImeBridgeTest {
                     // The field still holds the composing text when the IME commits it.
                     val commitEvents = bridge.onTextChanged(
                         composingText,
-                        TextFieldValue(composingText, composition = null),
+                        TextFieldValue(composingText, composition = null, selection = TextRange(modelCaret + word.length)),
                         composingNow = false
                     )
                     for (e in commitEvents) {

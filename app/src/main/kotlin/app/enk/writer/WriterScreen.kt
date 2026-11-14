@@ -176,8 +176,6 @@ fun WriterScreen(
     var strikeKey by remember { mutableStateOf(0) }
     var slugChar by remember { mutableStateOf<Char?>(null) }
     var lastKeyMs by remember { mutableStateOf(0L) }
-    // Length of the word the keyboard is composing; not state, nothing draws from it.
-    val composing = remember { ComposingLength() }
 
     // Carriage motion state
     var carriageMotion by remember { mutableStateOf(CarriageMotion.Rest) }
@@ -520,7 +518,6 @@ fun WriterScreen(
                 value = textFieldValue,
                 onValueChange = { newValue ->
                     val oldText = textFieldValue.text
-                    val wasComposing = viewModel.state.value.composingRange != null
                     val events = imeBridge.onTextChanged(
                         old = oldText,
                         new = newValue,
@@ -529,15 +526,14 @@ fun WriterScreen(
                     for (event in events) {
                         when (event) {
                             is WriterEvent.Insert -> {
-                                // Keyboards compose the word being typed, so the sound follows the
-                                // length of the composing text rather than waiting for the commit.
+                                // The bridge reports every typed character as its own insert, so the sound
+                                // follows the text, never a commit.
                                 val sound = InsertFeedback.soundFor(
                                     text = event.text,
-                                    composing = event.composing,
-                                    previousComposingLength = composing.value,
-                                    wasComposing = wasComposing
+                                    composing = false,
+                                    previousComposingLength = 0,
+                                    wasComposing = false
                                 )
-                                composing.value = if (event.composing) event.text.length else 0
 
                                 viewModel.dispatch(event)
                                 lastKeyMs = System.currentTimeMillis()
@@ -554,7 +550,6 @@ fun WriterScreen(
                                 ringBellAt(live.currentPage.text, live.caret)
                             }
                             is WriterEvent.Backspace -> {
-                                composing.value = 0
                                 val before = viewModel.state.value
                                 val canBackspace = !(before.pageIndex == 0 && before.caret == 0)
                                 viewModel.dispatch(event)
@@ -565,7 +560,6 @@ fun WriterScreen(
                                 }
                             }
                             is WriterEvent.MoveCaret -> {
-                                composing.value = 0
                                 viewModel.dispatch(event)
                                 ringBellAt(viewModel.state.value.currentPage.text, event.index)
                             }
@@ -590,8 +584,6 @@ fun WriterScreen(
         }
     }
 }
-
-private class ComposingLength { var value: Int = 0 }
 
 /** A tray of notes: the Box. Drawn, so it needs no icon library. */
 @Composable

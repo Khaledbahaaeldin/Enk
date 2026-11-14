@@ -26,6 +26,7 @@ fun reduce(state: WriterState, event: WriterEvent, correction: CorrectionMode): 
         }
         is WriterEvent.Backspace -> reduceBackspace(committedState, correction)
         is WriterEvent.Insert -> reduceInsert(state, event)
+        is WriterEvent.Replace -> reduceReplace(committedState, event)
     }
 }
 
@@ -135,6 +136,48 @@ private fun reduceBackspace(state: WriterState, correction: CorrectionMode): Wri
     }
 }
 
+/**
+ * Moves the struck ranges of a page after [removeLen] characters from [at] were replaced by [insertLen]
+ * characters. A range wholly before the edit stays; one after it shifts; one the edit cuts keeps its
+ * outside parts.
+ */
+internal fun shiftStruck(struck: List<IntRange>, at: Int, removeLen: Int, insertLen: Int): List<IntRange> {
+    val delta = insertLen - removeLen
+    val result = mutableListOf<IntRange>()
+    for (r in struck) {
+        if (r.last < at) {
+            result.add(r)
+        } else if (r.first >= at + removeLen) {
+            result.add((r.first + delta)..(r.last + delta))
+        } else {
+            if (r.first < at) {
+                result.add(r.first until at)
+            }
+            if (r.last >= at + removeLen) {
+                result.add((at + insertLen)..(r.last + delta))
+            }
+        }
+    }
+    return result
+}
+
+private fun reduceReplace(state: WriterState, event: WriterEvent.Replace): WriterState {
+    val currentPage = state.pages.getOrElse(state.pageIndex) { StruckPage("") }
+    val text = currentPage.text
+    val start = event.start.coerceIn(0, text.length)
+    val end = event.end.coerceIn(start, text.length)
+    val newText = text.substring(0, start) + event.text + text.substring(end)
+    val newStruck = shiftStruck(currentPage.struck, start, end - start, event.text.length)
+    val newPages = state.pages.toMutableList().apply { set(state.pageIndex, StruckPage(newText, newStruck)) }
+    val caret = start + event.text.length
+    return paginateIfNeeded(
+        state = state.copy(pages = newPages, caret = caret, lastTypedIndex = null, composingRange = null),
+        candidateCaret = caret,
+        candidateLastTyped = null,
+        composingRange = null
+    )
+}
+
 private fun reduceInsert(state: WriterState, event: WriterEvent.Insert): WriterState {
     val currentPage = state.pages.getOrElse(state.pageIndex) { StruckPage("") }
     val (insertAt, replaceLen) = if (state.composingRange != null) {
@@ -152,23 +195,8 @@ private fun reduceInsert(state: WriterState, event: WriterEvent.Insert): WriterS
     val newText = prefix + event.text + suffix
 
     val insertedLen = event.text.length
-    val delta = insertedLen - replaceLen
 
-    val newStruck = mutableListOf<IntRange>()
-    for (r in currentPage.struck) {
-        if (r.last < safeInsertAt) {
-            newStruck.add(r)
-        } else if (r.first >= safeInsertAt + replaceLen) {
-            newStruck.add((r.first + delta)..(r.last + delta))
-        } else {
-            if (r.first < safeInsertAt) {
-                newStruck.add(r.first until safeInsertAt)
-            }
-            if (r.last >= safeInsertAt + replaceLen) {
-                newStruck.add((safeInsertAt + insertedLen)..(r.last + delta))
-            }
-        }
-    }
+    val newStruck = shiftStruck(currentPage.struck, safeInsertAt, replaceLen, insertedLen)
 
     val newComposingRange = if (event.composing) {
         safeInsertAt until (safeInsertAt + insertedLen)
