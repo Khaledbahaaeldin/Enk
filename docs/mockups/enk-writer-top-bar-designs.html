@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enk writer top bar designs</title>
+<style>
+  :root { --bg:#16140f; --ink:#f3eee3; --dim:#a39c8d; --line:#34302a; --accent:#ff5a1f; --cream:#f3eee3; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:1500px; margin:0 auto; padding:26px 16px 90px; }
+  h1 { font-size:28px; letter-spacing:-.02em; margin:0 0 4px; }
+  p.lead { color:var(--dim); margin:0 0 14px; max-width:78ch; }
+  .bar { display:flex; flex-wrap:wrap; gap:10px 22px; align-items:center; margin:12px 0 22px; }
+  .seg { display:inline-flex; background:#26221c; border:1px solid var(--line); border-radius:14px; padding:3px; gap:2px; }
+  .seg button { border:0; background:transparent; color:var(--dim); font:600 13px system-ui; padding:9px 13px; border-radius:11px; cursor:pointer; }
+  .seg button.on { background:var(--ink); color:#1b1a18; }
+  button.act { background:#2a261f; color:var(--ink); border:1px solid var(--line); border-radius:12px; padding:9px 14px; font:600 13px system-ui; cursor:pointer; }
+  .lbl { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+  .grid { display:flex; flex-wrap:wrap; gap:34px; align-items:flex-start; }
+  .col { width:360px; }
+  .col h2 { font-size:19px; margin:0 0 2px; letter-spacing:-.01em; }
+  .col p { color:var(--dim); font-size:13px; margin:0 0 10px; min-height:58px; }
+  .col .row { margin:10px 0 0; display:flex; gap:8px; flex-wrap:wrap; }
+  .pros { margin:10px 0 0; padding-left:18px; font-size:13px; color:var(--dim); }
+  .pros b { color:var(--ink); font-weight:600; }
+
+  .phone { width:360px; height:720px; border-radius:38px; position:relative; overflow:hidden; box-shadow:0 0 0 2px #3a352d, 0 30px 80px rgba(0,0,0,.6); user-select:none; touch-action:none;
+           background:linear-gradient(#32302b,#1c1a17); }
+  .status { position:absolute; left:0; right:0; top:0; height:30px; display:flex; justify-content:space-between; align-items:center; padding:0 22px; font:600 12px system-ui; color:#d9d3c6; z-index:30; pointer-events:none; }
+  .band { position:absolute; left:0; right:0; top:30px; height:58px; z-index:4; }
+  .paper { position:absolute; left:12px; width:336px; overflow:hidden; border-radius:10px 10px 26px 26px; background:linear-gradient(#e6dfd0,#e8e1d3); box-shadow:inset 0 0 30px rgba(120,100,70,.18); z-index:2; }
+  .paper .ln { position:absolute; left:0; font:17px "Courier New",monospace; color:#2b261e; white-space:pre; letter-spacing:0; }
+  .paper .fadeTop { position:absolute; left:0; right:0; top:0; height:64px; background:linear-gradient(rgba(0,0,0,.20),rgba(0,0,0,0)); pointer-events:none; }
+  .paper .shade { position:absolute; inset:0; background:#0b0a09; opacity:0; pointer-events:none; }
+  .paper .warm { position:absolute; inset:0; mix-blend-mode:multiply; opacity:0; pointer-events:none; }
+  .paper .meta { position:absolute; right:16px; bottom:14px; font:10.5px "Courier New",monospace; color:#8d8676; letter-spacing:.08em; }
+  .caret { position:absolute; height:2px; background:var(--accent); z-index:3; }
+  .rail { position:absolute; left:0; right:0; height:16px; background:linear-gradient(#d3d0c8,#96948e 45%,#5f5d58); z-index:3; }
+  .carriage { position:absolute; width:54px; height:34px; border-radius:8px; background:#2b2925; box-shadow:0 8px 14px rgba(0,0,0,.5); z-index:4; }
+  .carriage::before { content:""; position:absolute; left:0; right:0; bottom:0; height:4px; background:#d0cec6; border-radius:0 0 8px 8px; }
+  .carriage i { position:absolute; left:19px; top:11px; width:16px; height:3px; border-radius:2px; background:var(--accent); }
+  .kbd { position:absolute; left:0; right:0; bottom:0; height:232px; background:linear-gradient(#17171b,#101013); border-radius:22px 22px 0 0; z-index:3; padding:12px 6px; display:flex; flex-direction:column; gap:10px; }
+  .kbd div { display:flex; gap:6px; justify-content:center; } .kbd span { flex:1; max-width:31px; height:44px; background:#3a3a40; border-radius:7px; }
+  .kbd div.b span { max-width:none; }
+  .glass { position:absolute; z-index:12; will-change:transform; background:linear-gradient(rgba(40,37,32,.46),rgba(20,18,15,.52)); -webkit-backdrop-filter:var(--bf,none); backdrop-filter:var(--bf,none);
+           box-shadow:inset 0 1px 0 rgba(255,255,255,.55), inset 0 0 0 .5px rgba(255,255,255,.35), inset 0 -8px 14px -10px rgba(255,255,255,.35), 0 12px 28px -10px rgba(0,0,0,.55); }
+  .glass.balanced { background:linear-gradient(rgba(40,37,32,.50),rgba(20,18,15,.56)); } .glass.light { background:rgba(46,43,38,.96); box-shadow:inset 0 0 0 .5px rgba(255,255,255,.18); }
+  .gc { position:absolute; inset:0; display:flex; align-items:center; pointer-events:none; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.4); }
+  .ico { position:absolute; width:40px; height:40px; display:grid; place-items:center; cursor:pointer; z-index:14; }
+  .ico svg { width:21px; height:21px; stroke:var(--cream); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+  .ico.lit svg { stroke:#ffc98a; filter:drop-shadow(0 0 6px #ffc98a); }
+  .wm { font:800 17px system-ui; letter-spacing:-.04em; color:var(--cream); } .wm i { font-style:normal; color:var(--accent); }
+  .dot { width:9px; height:9px; border-radius:50%; background:var(--accent); flex:0 0 auto; }
+  .mono { font:11px "Courier New",monospace; color:#e6e0d2; letter-spacing:.06em; }
+  .toast { position:absolute; z-index:40; left:50%; transform:translateX(-50%); padding:10px 16px; border-radius:20px; font:600 13px system-ui; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.4); opacity:0; pointer-events:none; white-space:nowrap; }
+  .pop { position:absolute; z-index:20; overflow:hidden; border-radius:28px; transform-origin:0 0; }
+  .pop .in { position:absolute; left:0; top:0; width:300px; padding:16px 18px; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); }
+  .prow { display:flex; align-items:center; justify-content:space-between; font-weight:600; height:44px; }
+  .tog { width:52px; height:32px; border-radius:16px; background:rgba(255,255,255,.2); position:relative; cursor:pointer; transition:background .2s; } .tog.on { background:var(--accent); } .tog b { position:absolute; top:3px; left:3px; width:26px; height:26px; border-radius:13px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.4); transition:transform .25s cubic-bezier(.3,1.4,.5,1); } .tog.on b { transform:translateX(20px); }
+  .sl { height:76px; } .sl .cap { display:flex; justify-content:space-between; font-size:12px; letter-spacing:.06em; color:#e8e1d3; text-transform:uppercase; } .sl .cap span:last-child { font-family:"Courier New",monospace; }
+  .trk { position:relative; height:48px; cursor:pointer; touch-action:none; } .trk .bar { position:absolute; left:0; right:0; top:21px; height:6px; border-radius:3px; background:rgba(255,255,255,.2); overflow:hidden; } .trk .fill { position:absolute; left:0; top:0; bottom:0; background:#ffb36b; }
+  .thumb { position:absolute; top:8px; width:56px; height:32px; margin-left:-28px; border-radius:16px; background:linear-gradient(rgba(255,255,255,.38),rgba(255,255,255,.14)); border:.5px solid rgba(255,255,255,.55); box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 6px 14px rgba(0,0,0,.35); backdrop-filter:blur(1.5px) saturate(190%) brightness(1.2); }
+  .lens { position:absolute; z-index:13; pointer-events:none; border-radius:20px; will-change:transform; -webkit-backdrop-filter:var(--bf,none); backdrop-filter:var(--bf,none); background:rgba(255,255,255,.12); box-shadow:inset 0 1px 0 rgba(255,255,255,.7), inset 0 0 0 .5px rgba(255,255,255,.5), 0 6px 14px rgba(0,0,0,.3); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Enk writer: three top bar designs</h1>
+  <p class="lead">The area above the paper (the wordmark, the page counter and the Box, lamp and keyboard buttons) redesigned three ways, next to today's for comparison. Everything is live: type on your keyboard, tap the buttons, open the lamp, replay the entrance. The glass bends the paper behind it (Chromium browsers).</p>
+  <div class="bar">
+    <span class="lbl">Effects</span>
+    <div class="seg" id="lvl"><button data-v="full" class="on">Full</button><button data-v="balanced">Balanced</button><button data-v="light">Light</button></div>
+    <button class="act" id="typeAll">Type a sentence in all</button>
+    <button class="act" id="clearAll">Clear all</button>
+    <button class="act" id="replayAll">Replay all entrances</button>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<script>
+/* ---------- shared ---------- */
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x)), lerp = (a, b, t) => a + (b - a) * t;
+const live = new Set();
+class Spring {
+  constructor(x, resp = .35, damp = 1, on = () => {}) { this.x = x; this.v = 0; this.t = x; this.on = on; this.tune(resp, damp); }
+  tune(r, d) { this.k = (2 * Math.PI / r) ** 2; this.c = 2 * d * Math.sqrt(this.k); return this; }
+  to(t, v) { this.t = t; if (v !== undefined) this.v = v; live.add(this); return this; }
+  snap(t) { this.x = this.t = t; this.v = 0; this.on(this.x, 0); live.delete(this); return this; }
+  step(dt) { let n = Math.max(1, Math.round(dt / .004)); const h = dt / n; while (n--) { this.v += (-this.k * (this.x - this.t) - this.c * this.v) * h; this.x += this.v * h; }
+    if (Math.abs(this.x - this.t) < .0004 * (1 + Math.abs(this.t)) && Math.abs(this.v) < .02) { this.x = this.t; this.v = 0; live.delete(this); } this.on(this.x, this.v); }
+}
+let lastT = performance.now();
+(function loop(now) { requestAnimationFrame(loop); const dt = Math.min(.05, (now - lastT) / 1000); lastT = now; try { live.forEach(s => s.step(dt)); } catch (e) { showError(e); } })(lastT);
+function showError(e) { let b = document.getElementById('errbar'); if (!b) { b = document.createElement('div'); b.id = 'errbar'; b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:#7a1f12;color:#fff;font:12px monospace;padding:8px 12px;z-index:99'; document.body.appendChild(b); } b.textContent = 'Mockup error: ' + (e && e.stack ? e.stack.split('\n').slice(0, 2).join(' | ') : e); }
+window.addEventListener('error', ev => showError(ev.error || ev.message));
+const ICON = {
+  box: '<svg viewBox="0 0 24 24"><path d="M7 4h10M5 8h14M3.5 12h17l-2 8h-13z"/></svg>',
+  lamp: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M8.5 14.5A6 6 0 1 1 15.5 14.5c-.6.5-1 1.2-1 2h-5c0-.8-.4-1.5-1-2z"/></svg>',
+  kb: '<svg viewBox="0 0 24 24"><rect x="2.5" y="6.5" width="19" height="11" rx="2.5"/><path d="M6.5 10.5h.01M10 10.5h.01M13.5 10.5h.01M17 10.5h.01M7.5 14.5h9"/></svg>'
+};
+
+/* ---------- refraction (SVG displacement map inside backdrop-filter) ---------- */
+const svgNS = 'http://www.w3.org/2000/svg', defs = document.createElementNS(svgNS, 'svg'); defs.setAttribute('width', 0); defs.setAttribute('height', 0); defs.style.position = 'absolute'; document.body.appendChild(defs);
+let LEVEL = 'full', fid = 0; const allGlass = [];
+function makeMap(w, h, r, bezel, power = 2) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'), img = x.createImageData(w, h), d = img.data;
+  const cx = w / 2, cy = h / 2, hw = w / 2 - r, hh = h / 2 - r;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const px = i + .5 - cx, py = j + .5 - cy, qx = Math.abs(px) - hw, qy = Math.abs(py) - hh, ox = Math.max(qx, 0), oy = Math.max(qy, 0), outside = Math.hypot(ox, oy), inside = Math.min(Math.max(qx, qy), 0), sd = outside + inside - r;
+    let dx = 0, dy = 0;
+    if (sd < 0 && -sd < bezel) { const m = Math.pow(1 - (-sd) / bezel, power); let nx, ny; if (outside > 0) { nx = Math.sign(px) * ox / outside; ny = Math.sign(py) * oy / outside; } else if (qx > qy) { nx = Math.sign(px); ny = 0; } else { nx = 0; ny = Math.sign(py); } dx = nx * m; dy = ny * m; }
+    const k = (j * w + i) * 4; d[k] = 128 + dx * 127; d[k + 1] = 128 + dy * 127; d[k + 2] = 128; d[k + 3] = 255;
+  }
+  x.putImageData(img, 0, 0); return c.toDataURL();
+}
+function glassEl(parent, cfg) {
+  const el = document.createElement('div'); el.className = 'glass'; parent.appendChild(el);
+  const id = 'g' + (++fid), f = document.createElementNS(svgNS, 'filter'); f.setAttribute('id', id); f.setAttribute('color-interpolation-filters', 'sRGB'); f.setAttribute('x', 0); f.setAttribute('y', 0); f.setAttribute('width', '100%'); f.setAttribute('height', '100%'); defs.appendChild(f);
+  el._f = f; el._id = id; el._cfg = cfg; el.setBox = (x, y, w, h, r) => { Object.assign(el.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', borderRadius: r + 'px' }); el._cfg.w = w; el._cfg.h = h; el._cfg.r = r; };
+  el.setBox(cfg.x, cfg.y, cfg.w, cfg.h, cfg.r); el.refresh = () => build(el); allGlass.push(el); build(el); return el;
+}
+function build(el) {
+  const c = el._cfg, f = el._f; f.innerHTML = '';
+  el.classList.remove('balanced', 'light'); if (el.dataset.lens) el.classList.add('lens-on');
+  if (LEVEL !== 'full') { el.classList.add(LEVEL); el.style.setProperty('--bf', LEVEL === 'balanced' ? `blur(${c.blur || 14}px) saturate(1.6)` : 'none'); return; }
+  const w = Math.max(8, Math.round(c.w)), h = Math.max(8, Math.round(c.h)), url = makeMap(w, h, Math.min(c.r, w / 2, h / 2), c.bezel || 16);
+  const mk = (t, a) => { const n = document.createElementNS(svgNS, t); for (const k in a) n.setAttribute(k, a[k]); return n; };
+  f.appendChild(mk('feImage', { href: url, x: 0, y: 0, width: w, height: h, result: 'map', preserveAspectRatio: 'none' }));
+  const S = c.strength || 30;
+  [['R', 1, 'r', '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'], ['G', .94, 'g', '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0'], ['B', .88, 'b', '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0']].forEach(([ch, k, n, mtx]) => {
+    f.appendChild(mk('feDisplacementMap', { in: 'SourceGraphic', in2: 'map', scale: S * k, xChannelSelector: 'R', yChannelSelector: 'G', result: 'd' + n }));
+    f.appendChild(mk('feColorMatrix', { in: 'd' + n, type: 'matrix', values: mtx, result: 'c' + n }));
+  });
+  f.appendChild(mk('feBlend', { in: 'cr', in2: 'cg', mode: 'screen', result: 'rg' })); f.appendChild(mk('feBlend', { in: 'rg', in2: 'cb', mode: 'screen' }));
+  el.style.setProperty('--bf', `url(#${el._id}) blur(${c.blur != null ? c.blur : 2}px) saturate(1.45) brightness(1.06)`);
+}
+function setLevel(v) { LEVEL = v; allGlass.forEach(e => e.refresh()); }
+document.getElementById('lvl').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; document.querySelectorAll('#lvl button').forEach(x => x.classList.toggle('on', x === b)); setLevel(b.dataset.v); });
+
+/* ---------- the writer inside a phone ---------- */
+const W = 360, H = 720, KB = 232, COLS = 28, CW = 10.2, LH = 30, TX = 25;
+const START = 'Dear Sam,\n\nthe rain has not stopped\nsince Monday and the roof\nkeeps its own time now.';
+function wrap(text) { const lines = []; let line = ''; for (let i = 0; i < text.length; i++) { const ch = text[i]; if (ch === '\n') { lines.push(line); line = ''; continue; } line += ch; if (line.length === COLS && i + 1 < text.length && text[i + 1] !== '\n') { const sp = line.lastIndexOf(' '); if (sp > 0) { lines.push(line.slice(0, sp + 1)); line = line.slice(sp + 1); } else { lines.push(line); line = ''; } } } lines.push(line); return lines; }
+
+function makePhone(opts) {
+  const col = document.createElement('div'); col.className = 'col';
+  col.innerHTML = `<h2>${opts.title}</h2><p>${opts.blurb}</p>`;
+  const phone = document.createElement('div'); phone.className = 'phone'; col.appendChild(phone);
+  phone.insertAdjacentHTML('beforeend', `<div class="status"><span>9:41</span><span>◖◗ ▲ ▮</span></div>`);
+  const paperTop = opts.paperTop, paperBottom = opts.paperBottom, paperH = paperBottom - paperTop, railY = paperTop + Math.round(.62 * paperH);
+  const paper = document.createElement('div'); paper.className = 'paper'; paper.style.cssText = `top:${paperTop}px;height:${paperH}px`; phone.appendChild(paper);
+  const meta = document.createElement('div'); meta.className = 'meta'; if (opts.metaOnPaper) paper.appendChild(meta);
+  paper.insertAdjacentHTML('beforeend', '<div class="fadeTop"></div><div class="shade"></div><div class="warm"></div>');
+  const shade = paper.querySelector('.shade'), warm = paper.querySelector('.warm');
+  const caret = document.createElement('div'); caret.className = 'caret'; phone.appendChild(caret);
+  const rail = document.createElement('div'); rail.className = 'rail'; rail.style.top = (railY - 8) + 'px'; phone.appendChild(rail);
+  const car = document.createElement('div'); car.className = 'carriage'; car.innerHTML = '<i></i>'; car.style.top = (railY - 15) + 'px'; phone.appendChild(car);
+  const kb = document.createElement('div'); kb.className = 'kbd'; kb.innerHTML = '<div>' + '<span></span>'.repeat(10) + '</div><div>' + '<span></span>'.repeat(9) + '</div><div>' + '<span></span>'.repeat(9) + '</div><div class="b"><span style="flex:1.5"></span><span style="flex:1"></span><span style="flex:4"></span><span style="flex:1.6"></span></div>'; phone.appendChild(kb);
+  const toast = document.createElement('div'); toast.className = 'toast'; phone.appendChild(toast);
+  const S = { text: START, lamp: false, warmth: 25, intensity: 80, beam: 55, kbMode: 'Enk', lines: [] };
+  const colX = new Spring(0, .1, .55, x => { car.style.left = (12 + x - 27) + 'px'; caret.style.left = (12 + x - CW / 2) + 'px'; });
+  const api = { phone, S, railY, paperTop, paperBottom, glass: [], toast: msg => { toast.textContent = msg; toast.style.top = (railY + 56) + 'px'; toast.dataset.extra = ''; toast.style.opacity = 1; toast.style.transform = 'translateX(-50%) translateY(0)'; clearTimeout(toast._t); toast._t = setTimeout(() => { toast.style.opacity = 0; }, 1300); }, relayout, typeText, setLamp, lampPos: () => ({ cx: 12 + colX.t, cy: railY }), onTyped: null, el: { paper, kb } };
+  toast.className = 'toast glass'; toast.style.setProperty('--bf', 'blur(14px) saturate(1.6)'); toast.style.background = 'rgba(40,36,30,.55)'; toast.style.transition = 'opacity .25s';
+  function relayout() {
+    const lines = wrap(S.text); S.lines = lines;
+    paper.querySelectorAll('.ln').forEach(n => n.remove());
+    lines.forEach((t, i) => { const d = document.createElement('div'); d.className = 'ln'; d.textContent = t; d.style.left = (TX - 12 + 0) + 'px'; d.style.top = (railY - paperTop - 30 - 17 - (lines.length - 1 - i) * LH + 0) + 'px'; paper.insertBefore(d, paper.querySelector('.fadeTop')); });
+    const last = lines[lines.length - 1]; colX.to(TX + last.length * CW + CW / 2 - 0, undefined);
+    caret.style.top = (railY - 29) + 'px'; caret.style.width = CW + 'px';
+    meta.textContent = `p.1 · ${S.text.length} / 3000`; if (api.onTyped) api.onTyped(S.text.length);
+    lamp();
+  }
+  function lamp() {
+    const on = S.lamp, cx = TX + (S.lines.length ? S.lines[S.lines.length - 1].length : 0) * CW, cy = railY - paperTop, I = S.intensity / 100, beamW = 70 + S.beam * 2.6, r = beamW * 1.15;
+    shade.style.opacity = on ? .94 : 0; shade.style.background = `radial-gradient(ellipse ${r}px ${r * 1.5}px at ${cx}px ${cy - 80}px, rgba(0,0,0,${1 - I * .98}) 0%, rgba(0,0,0,${.3 * (1 - I)}) 38%, #0b0a09 100%)`;
+    const hue = lerp(38, 22, S.warmth / 100); warm.style.opacity = on ? 1 : 0; warm.style.background = `radial-gradient(ellipse ${r}px ${r * 1.5}px at ${cx}px ${cy - 80}px, hsl(${hue} 70% 86%) 0%, hsl(${hue} 55% 68%) 45%, hsl(${hue} 30% 38%) 100%)`;
+    shade.style.transition = warm.style.transition = 'opacity .45s';
+    phone.querySelectorAll('.ico.lampico').forEach(i => i.classList.toggle('lit', on));
+  }
+  function setLamp(v) { S.lamp = v; lamp(); }
+  function typeText(s, gap = 80) { let i = 0; const id = setInterval(() => { if (i >= s.length) return clearInterval(id); S.text += s[i++]; relayout(); }, gap); }
+  api.key = ch => { if (ch === 'Backspace') S.text = S.text.slice(0, -1); else if (ch === 'Enter') S.text += '\n'; else S.text += ch; relayout(); };
+  api.refreshMeta = lamp;
+  api.railMeta = meta;
+  relayout(); colX.snap(colX.t);
+  api.col = col; api.colX = colX;
+  return api;
+}
+
+/* helper: a glass popover that morphs out of a button (grows left/right, down or up) */
+function lampPopover(P, anchor /*{x,y,w,h}*/, dir /*'down'|'up'*/, edge, side = 'right') {
+  const FW = 300, FH = 270, EX = side === 'right' ? edge - FW : edge, EY = dir === 'down' ? anchor.y + anchor.h + 6 : anchor.y - FH - 6;
+  const g = glassEl(P.phone, { x: anchor.x, y: anchor.y, w: anchor.w, h: anchor.h, r: anchor.h / 2, bezel: 20, strength: 34, blur: 12 }); g.classList.add('pop'); g.style.zIndex = 20; g.style.opacity = 0; g.style.pointerEvents = 'none';
+  const inner = document.createElement('div'); inner.className = 'in'; inner.style.opacity = 0; g.appendChild(inner);
+  inner.innerHTML = `<div class="prow"><span>Lamp</span><div class="tog"><b></b></div></div>` + ['Warmth', 'Intensity', 'Beam'].map((n, i) => `<div class="sl"><div class="cap"><span>${n}</span><span class="v">0</span></div><div class="trk" data-k="${['warmth', 'intensity', 'beam'][i]}"><div class="bar"><div class="fill"></div></div><div class="thumb"></div></div></div>`).join('');
+  const ranges = { warmth: [0, 100], intensity: [20, 100], beam: [30, 100] };
+  inner.querySelectorAll('.trk').forEach(tr => { const k = tr.dataset.k, [lo, hi] = ranges[k], th = tr.querySelector('.thumb'), fill = tr.querySelector('.fill'), v = tr.parentNode.querySelector('.v');
+    const paint = () => { const f = (P.S[k] - lo) / (hi - lo), w = tr.clientWidth || 264; th.style.left = (28 + (w - 56) * f) + 'px'; fill.style.width = (28 + (w - 56) * f) + 'px'; v.textContent = Math.round(P.S[k]); };
+    const set = e => { const r = tr.getBoundingClientRect(), w = r.width, f = clamp((e.clientX - r.left - 28) / (w - 56), 0, 1); P.S[k] = lo + (hi - lo) * f; paint(); P.relayout(); };
+    tr.addEventListener('pointerdown', e => { tr.setPointerCapture(e.pointerId); tr._d = true; set(e); th.style.transform = 'scale(1.14)'; }); tr.addEventListener('pointermove', e => { if (tr._d) set(e); }); tr.addEventListener('pointerup', () => { tr._d = false; th.style.transform = ''; }); g._paint = g._paint || []; g._paint.push(paint); });
+  const tog = inner.querySelector('.tog'); tog.onclick = () => { P.setLamp(!P.S.lamp); tog.classList.toggle('on', P.S.lamp); };
+  let open = false;
+  const p = new Spring(0, .38, .82, t => { const w = lerp(anchor.w, FW, t), h = lerp(anchor.h, FH, t), x = lerp(anchor.x, EX, t), y = lerp(anchor.y, EY, t); g.setBox(x, y, w, h, lerp(anchor.h / 2, 28, clamp(t, 0, 1)));
+    g.style.opacity = clamp(t * 6, 0, 1); inner.style.opacity = clamp((t - .35) * 3, 0, 1); inner.style.transform = `translateY(${(1 - clamp((t - .25) * 2, 0, 1)) * 8}px)`; g.style.pointerEvents = t > .5 ? 'auto' : 'none'; if (t <= .002 && !open) g.style.opacity = 0; if (t > .97 || t < .02) g.refresh(); });
+  const api = { toggle() { open = !open; tog.classList.toggle('on', P.S.lamp); (g._paint || []).forEach(f => f()); p.to(open ? 1 : 0); }, close() { if (open) { open = false; p.to(0); } }, get open() { return open; }, el: g };
+  P.phone.addEventListener('pointerdown', e => { if (open && !e.target.closest('.in') && !e.target.closest('.ico')) api.close(); });
+  return api;
+}
+
+/* an icon on a glass capsule with a lens that appears under the pressed icon */
+function iconCluster(P, x, y, names, opts = {}) {
+  const w = names.length * 40 + 8, h = 44, cap = glassEl(P.phone, { x, y, w, h, r: 22, bezel: 12, strength: 18, blur: 12 });
+  const lens = document.createElement('div'); lens.className = 'lens'; lens.style.cssText = `left:${x + 4}px;top:${y + 4}px;width:40px;height:36px;border-radius:18px;opacity:0;transform:scale(.8)`; P.phone.appendChild(lens);
+  const icons = {};
+  names.forEach((n, i) => { const b = document.createElement('div'); b.className = 'ico' + (n === 'lamp' ? ' lampico' : ''); b.style.cssText = `left:${x + 4 + i * 40}px;top:${y + 2}px`; b.innerHTML = ICON[n]; b.dataset.n = n; P.phone.appendChild(b); icons[n] = b;
+    const ls = new Spring(0, .2, 1, t => { if (b._cur) { lens.style.opacity = clamp(t * 1.5, 0, 1); lens.style.transform = `scale(${lerp(.8, 1.12, t)})`; } });
+    b.addEventListener('pointerdown', () => { b._cur = true; lens.style.left = (x + 4 + i * 40) + 'px'; lens.style.setProperty('--bf', cap.style.getPropertyValue('--bf')); ls.snap(0); ls.to(1); }); const up = () => { if (!b._cur) return; ls.to(0); setTimeout(() => { b._cur = false; lens.style.opacity = 0; }, 160); };
+    b.addEventListener('pointerup', () => { up(); if (opts.onTap) opts.onTap(n, b); }); b.addEventListener('pointerleave', up); });
+  cap.refresh = (orig => () => { orig(); lens.style.setProperty('--bf', LEVEL === 'full' ? 'blur(1px) saturate(1.5) brightness(1.1)' : LEVEL === 'balanced' ? 'blur(6px)' : 'none'); })(cap.refresh); cap.refresh();
+  return { cap, lens, icons, w, h };
+}
+const rect = (el, phone) => { const a = el.getBoundingClientRect(), b = phone.getBoundingClientRect(); return { x: a.left - b.left, y: a.top - b.top, w: a.width, h: a.height }; };
+
+/* ---------- the four designs ---------- */
+const phones = [];
+
+/* 0. Today */
+(function () {
+  const P = makePhone({ title: 'Today', blurb: 'The dark band above the paper: dot, wordmark, page counter and three round buttons. For comparison.', paperTop: 92, paperBottom: 480 });
+  P.phone.querySelector('.status').style.zIndex = 30;
+  const band = document.createElement('div'); band.className = 'band'; P.phone.appendChild(band);
+  band.innerHTML = `<div style="position:absolute;left:22px;top:20px;display:flex;align-items:center;gap:8px"><div class="dot"></div><div class="wm" style="font-size:21px">enk<i>_</i></div></div>`;
+  P.railMeta.remove(); const m = document.createElement('div'); m.className = 'mono'; m.style.cssText = 'position:absolute;right:140px;top:36px;font-size:11px;color:#8d877a'; band.appendChild(m); P.onTyped = n => { m.textContent = `p.1 · ${n} / 3000`; }; P.onTyped(P.S.text.length);
+  const pop = lampPopover(P, { x: 264, y: 36, w: 40, h: 40 }, 'down', 346);
+  [['kb', 238], ['lamp', 284], ['box', 330 - 4]].forEach(([n, x]) => { const g = glassEl(P.phone, { x: x - 22 + 2, y: 36, w: 40, h: 40, r: 20, bezel: 10, strength: 14, blur: 14 }); const b = document.createElement('div'); b.className = 'ico' + (n === 'lamp' ? ' lampico' : ''); b.style.cssText = `left:${x - 22 + 2}px;top:36px`; b.innerHTML = ICON[n]; P.phone.appendChild(b); b.onclick = () => { if (n === 'lamp') pop.toggle(); else P.toast(n === 'box' ? 'Opens the Box' : 'System keyboard'); }; });
+  P.enter = () => { band.style.transition = 'none'; band.style.opacity = 0; P.phone.querySelectorAll('.glass:not(.toast), .ico').forEach(e => { if (e.closest('.pop')) return; e.style.transition = 'none'; e.style.opacity = 0; }); void band.offsetWidth; setTimeout(() => { band.style.transition = 'opacity .35s'; band.style.opacity = 1; P.phone.querySelectorAll('.glass:not(.toast), .ico').forEach(e => { if (e === pop.el) return; e.style.transition = 'opacity .35s'; e.style.opacity = 1; }); }, 450); };
+  P.pop = pop; phones.push(P); grid.appendChild(P.col);
+})();
+
+/* A. Floating glass pills over the paper */
+(function () {
+  const P = makePhone({ title: 'A · Floating glass', blurb: 'No band. The paper runs to the top of the screen and two glass capsules float over it: the wordmark on the left, the three buttons on the right. The page counter is printed on the paper, bottom right, like a page number.', paperTop: 44, paperBottom: 480, metaOnPaper: true });
+  const left = glassEl(P.phone, { x: 22, y: 50, w: 104, h: 44, r: 22, bezel: 12, strength: 18, blur: 12 });
+  const lc = document.createElement('div'); lc.className = 'gc'; lc.style.cssText = 'padding-left:16px;gap:8px;display:flex;align-items:center'; lc.innerHTML = '<div class="dot"></div><div class="wm">enk<i>_</i></div>'; left.appendChild(lc);
+  const cl = iconCluster(P, 360 - 22 - 128, 50, ['kb', 'lamp', 'box'], { onTap: (n, b) => { if (n === 'lamp') pop.toggle(); else P.toast(n === 'box' ? 'Opens the Box' : 'System keyboard'); } });
+  const pop = lampPopover(P, { x: 254, y: 50, w: 40, h: 44 }, 'down', 338); P.pop = pop;
+  left.addEventListener('pointerup', () => P.toast('Opens the Box'));
+  P.enter = () => { const els = [left, cl.cap, ...Object.values(cl.icons), lc]; els.forEach((e, i) => { e.style.transition = 'none'; e.style.opacity = 0; e.style.transform = 'scale(.82) translateY(-10px)'; e.style.filter = 'blur(8px)'; }); void left.offsetWidth; els.forEach((e, i) => { const d = 480 + (i === 0 || i === els.length - 1 ? 0 : 90) ; setTimeout(() => { e.style.transition = 'opacity .42s, transform .55s cubic-bezier(.2,1.3,.4,1), filter .42s'; e.style.opacity = 1; e.style.transform = ''; e.style.filter = ''; }, d); }); };
+  phones.push(P); grid.appendChild(P.col);
+})();
+
+/* B. Island */
+(function () {
+  const P = makePhone({ title: 'B · One glass island', blurb: 'One glass capsule at the top. At rest it is a small badge: dot, wordmark, page. Tap it and the same piece of glass grows into the three actions; tap the lamp and it grows again into the lamp controls. It folds back when you type.', paperTop: 44, paperBottom: 480, metaOnPaper: false });
+  const sizes = { rest: { w: 150, h: 40 }, actions: { w: 320, h: 110 }, lamp: { w: 320, h: 270 } };
+  let state = 'rest', timer = null;
+  const isl = glassEl(P.phone, { x: 105, y: 50, w: 150, h: 40, r: 20, bezel: 14, strength: 26, blur: 12 }); isl.style.zIndex = 20; isl.style.overflow = 'hidden'; P.isl = isl;
+  const badge = document.createElement('div'); badge.className = 'gc'; badge.style.cssText = 'justify-content:center;gap:8px;display:flex;align-items:center'; badge.innerHTML = '<div class="dot"></div><div class="wm" style="font-size:16px">enk<i>_</i></div><span class="mono" id="bm" style="margin-left:4px">p.1</span>'; isl.appendChild(badge);
+  const acts = document.createElement('div'); acts.style.cssText = 'position:absolute;inset:0;opacity:0;pointer-events:none'; acts.innerHTML = `<div style="position:absolute;left:0;right:0;top:12px;text-align:center" class="mono" id="am"></div>` + ['kb:Keyboard', 'lamp:Lamp', 'box:Box'].map((s, i) => { const [n, l] = s.split(':'); return `<div class="ico big ${n === 'lamp' ? 'lampico' : ''}" data-n="${n}" style="left:${24 + i * 100}px;top:34px;width:92px;height:64px;flex-direction:column;gap:3px;display:flex;align-items:center;justify-content:center;color:#fff;font:600 12px system-ui;text-shadow:0 1px 2px rgba(0,0,0,.4)">${ICON[n]}<span>${l}</span></div>`; }).join(''); isl.appendChild(acts);
+  const lampv = document.createElement('div'); lampv.style.cssText = 'position:absolute;left:0;top:14px;width:320px;opacity:0;pointer-events:none;padding:0 20px;color:#fff'; lampv.innerHTML = `<div class="prow" style="height:38px"><span>Lamp</span><div class="tog" id="btog"><b></b></div></div>` + ['Warmth', 'Intensity', 'Beam'].map((n, i) => `<div class="sl" style="height:62px"><div class="cap"><span>${n}</span><span class="v">0</span></div><div class="trk" data-k="${['warmth', 'intensity', 'beam'][i]}" style="height:38px"><div class="bar" style="top:16px"><div class="fill"></div></div><div class="thumb" style="top:3px"></div></div></div>`).join(''); isl.appendChild(lampv);
+  const ranges = { warmth: [0, 100], intensity: [20, 100], beam: [30, 100] }; const paints = [];
+  lampv.querySelectorAll('.trk').forEach(tr => { const k = tr.dataset.k, [lo, hi] = ranges[k], th = tr.querySelector('.thumb'), fill = tr.querySelector('.fill'), v = tr.parentNode.querySelector('.v');
+    const paint = () => { const f = (P.S[k] - lo) / (hi - lo), w = tr.clientWidth || 280; th.style.left = (28 + (w - 56) * f) + 'px'; fill.style.width = (28 + (w - 56) * f) + 'px'; v.textContent = Math.round(P.S[k]); }; paints.push(paint);
+    const set = e => { const r = tr.getBoundingClientRect(), f = clamp((e.clientX - r.left - 28) / (r.width - 56), 0, 1); P.S[k] = lo + (hi - lo) * f; paint(); P.relayout(); };
+    tr.addEventListener('pointerdown', e => { e.stopPropagation(); tr.setPointerCapture(e.pointerId); tr._d = true; set(e); th.style.transform = 'scale(1.14)'; }); tr.addEventListener('pointermove', e => { if (tr._d) set(e); }); tr.addEventListener('pointerup', () => { tr._d = false; th.style.transform = ''; }); });
+  isl.querySelector('#btog').onclick = e => { e.stopPropagation(); P.setLamp(!P.S.lamp); e.currentTarget.classList.toggle('on', P.S.lamp); };
+  const sp = new Spring(0, .38, .82, 0); const dim = { w: 150, h: 40 }; let from = { ...sizes.rest }, to = { ...sizes.rest };
+  const spr = new Spring(1, .38, .82, t => { const w = lerp(from.w, to.w, t), h = lerp(from.h, to.h, t), r = h >= 100 ? lerp(20, 28, clamp((h - 40) / 60, 0, 1)) : h / 2; isl.setBox((360 - w) / 2, 50, w, h, Math.min(r, h / 2, 28));
+    badge.style.opacity = clamp(1 - (w - 150) / 40, 0, 1) * (state === 'rest' ? 1 : 0.0 + (t < .3 ? 1 - t * 3 : 0)); acts.style.opacity = state === 'actions' ? clamp((t - .3) * 3, 0, 1) : state === 'lamp' ? clamp(1 - (h - 110) / 50, 0, 1) * clamp((w - 200) / 80, 0, 1) : 0; lampv.style.opacity = state === 'lamp' ? clamp((t - .35) * 3, 0, 1) : 0;
+    acts.style.pointerEvents = state === 'actions' && t > .6 ? 'auto' : 'none'; lampv.style.pointerEvents = state === 'lamp' && t > .6 ? 'auto' : 'none'; if (t > .97 || t < .03) isl.refresh(); });
+  function go(s) { if (s === state) return; from = { w: isl.offsetWidth, h: isl.offsetHeight }; to = { ...sizes[s] }; state = s; spr.snap(0); spr.to(1); clearTimeout(timer); if (s !== 'rest') timer = setTimeout(() => { if (state !== 'lamp') go('rest'); }, 4500); if (s === 'lamp') paints.forEach(f => setTimeout(f, 50)); }
+  isl.addEventListener('pointerup', e => { if (state === 'rest') go('actions'); });
+  acts.querySelectorAll('.ico').forEach(b => b.addEventListener('pointerup', e => { e.stopPropagation(); const n = b.dataset.n; if (n === 'lamp') go('lamp'); else { P.toast(n === 'box' ? 'Opens the Box' : 'System keyboard'); go('rest'); } }));
+  P.phone.addEventListener('pointerdown', e => { if (state !== 'rest' && !e.target.closest('.glass')) go('rest'); });
+  P.onTyped = n => { const bm = isl.querySelector('#bm'), am = isl.querySelector('#am'); if (bm) bm.textContent = `p.1 · ${n}`; if (am) am.textContent = `p.1 · ${n} / 3000`; if (state !== 'rest') go('rest'); }; P.onTyped(P.S.text.length);
+  P.enter = () => { isl.style.transition = 'none'; isl.style.opacity = 0; isl.style.filter = 'blur(10px)'; from = { w: 40, h: 40 }; to = { ...sizes.rest }; state = 'rest'; spr.snap(0); void isl.offsetWidth; setTimeout(() => { isl.style.transition = 'opacity .3s, filter .4s'; isl.style.opacity = 1; isl.style.filter = ''; spr.to(1); }, 500); };
+  P.railMeta.remove(); phones.push(P); grid.appendChild(P.col); spr.snap(1);
+})();
+
+/* C. Accessory bar above the keyboard */
+(function () {
+  const P = makePhone({ title: 'C · Bar above the keyboard', blurb: 'The top is gone: paper to the very top. The buttons live in a slim glass bar sitting on the keyboard, where your thumbs already are. Box and lamp on the left, the page and the keyboard switch on the right.', paperTop: 44, paperBottom: 480 - 56, metaOnPaper: false });
+  const barY = 480 - 48 + 8 - 8 - 0, bar = glassEl(P.phone, { x: 12, y: 480 - 48 + 4, w: 336, h: 48, r: 24, bezel: 14, strength: 22, blur: 12 }); bar.style.zIndex = 12;
+  const cl = iconCluster(P, 16, 480 - 48 + 4 + 2, ['box', 'lamp'], { onTap: (n, b) => { if (n === 'lamp') pop.toggle(); else P.toast('Opens the Box'); } });
+  cl.cap.style.opacity = 0.0001; cl.cap.style.pointerEvents = 'none';
+  const mid = document.createElement('div'); mid.style.cssText = 'position:absolute;left:110px;top:' + (480 - 48 + 4) + 'px;height:48px;display:flex;align-items:center;gap:8px;z-index:13;pointer-events:none'; mid.innerHTML = '<div class="dot"></div><div class="wm" style="font-size:15px">enk<i>_</i></div><span class="mono" id="cm" style="margin-left:6px"></span>'; P.phone.appendChild(mid);
+  const kbb = document.createElement('div'); kbb.className = 'ico'; kbb.style.cssText = `left:${348 - 44}px;top:${480 - 48 + 4 + 4}px`; kbb.innerHTML = ICON.kb; P.phone.appendChild(kbb); kbb.onclick = () => P.toast('System keyboard');
+  const pop = lampPopover(P, { x: 60, y: 480 - 48 + 4 + 4, w: 40, h: 40 }, 'up', 12, 'left'); P.pop = pop;
+  P.onTyped = n => { const cm = mid.querySelector('#cm'); if (cm) cm.textContent = `p.1 · ${n}`; }; P.onTyped(P.S.text.length); P.railMeta.remove();
+  P.enter = () => { const els = [bar, mid, kbb, ...Object.values(cl.icons)]; els.forEach(e => { e.style.transition = 'none'; e.style.opacity = 0; e.style.transform = 'translateY(30px)'; e.style.filter = 'blur(8px)'; }); void bar.offsetWidth; els.forEach((e, i) => setTimeout(() => { e.style.transition = 'opacity .4s, transform .55s cubic-bezier(.2,1.15,.4,1), filter .4s'; e.style.opacity = 1; e.style.transform = ''; e.style.filter = ''; }, 480 + i * 40)); };
+  phones.push(P); grid.appendChild(P.col);
+})();
+
+/* Add shared controls per column */
+phones.forEach(P => { const row = document.createElement('div'); row.className = 'row'; row.innerHTML = '<button class="act">Replay entrance</button><button class="act">Type</button>'; row.children[0].onclick = () => P.enter && P.enter(); row.children[1].onclick = () => P.typeText(' Notes, kept offline.', 70); P.col.appendChild(row); });
+const notes = [
+  '<ul class="pros"><b>Keeps</b> the brand band and the familiar layout.<br><b>Costs</b> a dead dark strip above the paper; the buttons are all on the far side of the screen from the thumbs.</ul>',
+  '<ul class="pros"><b>Wins</b> the most paper, the most glass, and the clearest liquid glass look. Everything stays visible.<br><b>Costs</b> the capsules sit over the first line of the paper on short pages.</ul>',
+  '<ul class="pros"><b>Wins</b> the calmest page: one small badge, nothing else until you ask. The growing glass is the best showcase of the morph.<br><b>Costs</b> one extra tap to reach Box or lamp.</ul>',
+  '<ul class="pros"><b>Wins</b> thumb reach and a clean top. The bar is the lamp pop-up\'s home too.<br><b>Costs</b> the paper is shorter by the bar and the wordmark is small.</ul>'
+];
+phones.forEach((P, i) => P.col.insertAdjacentHTML('beforeend', notes[i]));
+document.getElementById('typeAll').onclick = () => phones.forEach(P => P.typeText(' Notes, kept offline.', 70));
+document.getElementById('clearAll').onclick = () => phones.forEach(P => { P.S.text = ''; P.relayout(); });
+document.getElementById('replayAll').onclick = () => phones.forEach(P => P.enter && P.enter());
+document.addEventListener('keydown', e => { if (e.metaKey || e.ctrlKey || e.altKey) return; if (e.key === 'Backspace' || e.key === 'Enter' || e.key.length === 1) { e.preventDefault(); phones.forEach(P => P.key(e.key)); } });
+</script>
+</body>
+</html>
