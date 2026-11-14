@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enk typing and glass</title>
+<style>
+  :root { --bg:#16140f; --ink:#f3eee3; --dim:#a39c8d; --line:#34302a; --accent:#ff5a1f; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:1200px; margin:0 auto; padding:28px 16px 90px; }
+  h1 { font-size:28px; letter-spacing:-.02em; margin:0 0 4px; }
+  h2 { font-size:21px; letter-spacing:-.01em; margin:46px 0 6px; }
+  p.lead { color:var(--dim); margin:0 0 16px; max-width:72ch; }
+  .note { color:var(--dim); font-size:13px; max-width:72ch; }
+  .stage { display:flex; flex-wrap:wrap; gap:28px; align-items:flex-start; }
+  .side { flex:1 1 320px; min-width:270px; }
+  .seg { display:inline-flex; background:#26221c; border:1px solid var(--line); border-radius:14px; padding:3px; gap:2px; flex-wrap:wrap; }
+  .seg button { border:0; background:transparent; color:var(--dim); font:600 13px system-ui; padding:9px 13px; border-radius:11px; cursor:pointer; }
+  .seg button.on { background:var(--ink); color:#1b1a18; }
+  .lbl { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin:16px 0 6px; }
+  ul.tips { margin:8px 0; padding-left:18px; color:var(--dim); font-size:14px; }
+  ul.tips b { color:var(--ink); font-weight:600; }
+  .chk { display:flex; flex-wrap:wrap; gap:6px 14px; margin:6px 0; font-size:14px; }
+  .chk label { display:flex; gap:6px; align-items:center; cursor:pointer; color:var(--dim); }
+  button.act { background:#2a261f; color:var(--ink); border:1px solid var(--line); border-radius:12px; padding:9px 14px; font:600 13px system-ui; cursor:pointer; margin:4px 6px 0 0; }
+  .phone { width:360px; height:720px; border-radius:38px; position:relative; overflow:hidden; flex:0 0 auto; box-shadow:0 0 0 2px #3a352d, 0 30px 80px rgba(0,0,0,.6); user-select:none; touch-action:none; }
+  /* ---------- typing ---------- */
+  #tw { background:linear-gradient(#2f2d29,#1d1b18); }
+  #twc { position:absolute; left:12px; top:78px; width:336px; height:520px; border-radius:10px 10px 26px 26px; }
+  .tb { position:absolute; left:22px; right:16px; top:20px; display:flex; align-items:center; }
+  .tb .dot { width:10px; height:10px; border-radius:50%; background:var(--accent); margin-right:8px; }
+  .tb .wm { font:800 21px system-ui; letter-spacing:-.04em; } .tb .wm i { font-style:normal; color:var(--accent); }
+  .tb .meta { margin-left:auto; font:11px "Courier New",monospace; color:#8d877a; letter-spacing:.08em; }
+  .kb { position:absolute; left:0; right:0; bottom:0; height:122px; background:#101013; padding:8px 6px; display:flex; flex-direction:column; gap:6px; }
+  .kb .row { display:flex; gap:4px; justify-content:center; }
+  .kb button { flex:1; max-width:32px; height:34px; border:0; border-radius:6px; background:#3a3a40; color:#fff; font:500 14px system-ui; cursor:pointer; padding:0; }
+  .kb button.w { max-width:none; flex:3; } .kb button:active { background:#55555c; }
+  /* ---------- glass ---------- */
+  #gl { background:#101520; }
+  #glbg { position:absolute; inset:0; overflow:hidden; }
+  .blob { position:absolute; border-radius:50%; filter:blur(0px); }
+  .bgtext { position:absolute; left:18px; right:18px; font:700 26px/1.25 system-ui; letter-spacing:-.02em; color:rgba(255,255,255,.9); }
+  .glass { position:absolute; z-index:5; will-change:transform; -webkit-backdrop-filter:var(--bf,none); backdrop-filter:var(--bf,none);
+           box-shadow:inset 0 1px 0 rgba(255,255,255,.55), inset 0 0 0 .5px rgba(255,255,255,.35), inset 0 -8px 14px -10px rgba(255,255,255,.35), 0 12px 28px -10px rgba(0,0,0,.55); }
+  .glass.balanced { background:rgba(255,255,255,.14); }
+  .glass.light { background:rgba(255,255,255,.88); box-shadow:inset 0 0 0 .5px rgba(0,0,0,.12), 0 6px 14px -8px rgba(0,0,0,.4); }
+  .glass .lab { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font:600 13px system-ui; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); pointer-events:none; }
+  .glass.light .lab { color:#222; text-shadow:none; }
+  .navl { display:flex; position:absolute; inset:0; z-index:2; }
+  .navl div { flex:1; display:flex; align-items:center; justify-content:center; font:600 12px system-ui; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.4); cursor:pointer; flex-direction:column; gap:2px; }
+  .light .navl div { color:#222; text-shadow:none; }
+  .puck { cursor:grab; }
+  .track { position:absolute; height:8px; border-radius:4px; background:rgba(255,255,255,.25); z-index:4; }
+  .track i { position:absolute; left:0; top:0; bottom:0; border-radius:4px; background:#ffb36b; }
+  .menu { position:absolute; z-index:8; overflow:hidden; transform-origin:0 0; }
+  .menu div.it { position:absolute; left:0; right:0; height:40px; display:flex; align-items:center; padding:0 16px; font:600 14px system-ui; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); cursor:pointer; opacity:0; }
+  .light.menu div.it { color:#222; text-shadow:none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Enk typing and liquid glass</h1>
+  <p class="lead">Two mockups for the next spec. Part 1 is the typewriter strike: what happens on every key press. Part 2 is the liquid glass component set with real refraction (a browser can do it with SVG displacement maps; the app will use Backdrop's lens). Both are interactive.</p>
+
+  <h2>1. Typing: the strike</h2>
+  <div class="stage">
+    <div class="phone" id="tw">
+      <div class="tb"><div class="dot"></div><div class="wm">enk<i>_</i></div><div class="meta" id="twMeta">p.1 · 0 / 3000</div></div>
+      <canvas id="twc" width="336" height="520"></canvas>
+      <div class="kb" id="kb"></div>
+    </div>
+    <div class="side">
+      <div class="lbl">Style</div>
+      <div class="seg" id="twStyle"><button data-v="today">Today</button><button data-v="strike" class="on">Strike</button></div>
+      <div class="lbl">Parts of the strike</div>
+      <div class="chk" id="twParts">
+        <label><input type="checkbox" data-k="slug" checked> slug swings up</label>
+        <label><input type="checkbox" data-k="ink" checked> ink impression</label>
+        <label><input type="checkbox" data-k="thump" checked> paper thump</label>
+        <label><input type="checkbox" data-k="tick" checked> carriage tick</label>
+        <label><input type="checkbox" data-k="weight" checked> heavy and light keys</label>
+        <label><input type="checkbox" data-k="sound" checked> sound</label>
+      </div>
+      <div class="lbl">Try</div>
+      <button class="act" id="demoType">Type a sentence</button>
+      <button class="act" id="demoFast">Type fast</button>
+      <button class="act" id="demoOpen">Open a note</button>
+      <button class="act" id="demoClear">Clear</button>
+      <ul class="tips">
+        <li><b>Type</b> on your keyboard or the keys on the phone. Enter returns the carriage and Backspace wipes a letter.</li>
+        <li><b>Strike</b> is the proposal: the slug swings up and hits the paper at 26 ms, the letter appears there at full ink (no fade), the paper thumps, the carriage ticks one column. The sound plays on touch-down, so the audio output delay lands on the impact.</li>
+        <li><b>Type fast.</b> Strikes overlap and the extras scale back, so it keeps up.</li>
+        <li><b>Open a note</b> shows the type-on: the carriage sweeps each line and the letters appear as it passes, instead of a fade.</li>
+      </ul>
+      <p class="note">Times in the spec are starting values for a phone. The sound here is a small synthesised click, only to show the timing.</p>
+    </div>
+  </div>
+
+  <h2>2. Liquid glass components</h2>
+  <div class="stage">
+    <div class="phone" id="gl">
+      <div id="glbg"></div>
+    </div>
+    <div class="side">
+      <div class="lbl">Effects level</div>
+      <div class="seg" id="glLevel"><button data-v="full" class="on">Full</button><button data-v="balanced">Balanced</button><button data-v="light">Light</button></div>
+      <div class="chk" id="glOpts">
+        <label><input type="checkbox" data-k="disp" checked> colour fringe at the edge</label>
+        <label><input type="checkbox" data-k="spec" checked> light follows the finger</label>
+      </div>
+      <ul class="tips">
+        <li><b>Drag the glass puck</b> over the headline and the stripes: the rim bends the picture behind it.</li>
+        <li><b>Nav bar:</b> tap or drag the lens. It stretches with speed and a flick carries it.</li>
+        <li><b>Toggle, slider, segmented:</b> the moving part is a lens that grows on touch and refracts what sits under it.</li>
+        <li><b>Button:</b> press and it swells. <b>Menu:</b> tap "Options" and the button itself grows into the menu (one piece of glass changes shape).</li>
+        <li>Switch to <b>Balanced</b> (blur and tint, no bending) and <b>Light</b> (solid) to see what the lower levels keep.</li>
+      </ul>
+      <p class="note">This page needs a Chromium-based browser for the refraction (it uses an SVG filter inside backdrop-filter). In the app the same look is drawn by Backdrop's lens on Android 13 and later.</p>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ================= shared ================= */
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x)), lerp = (a, b, t) => a + (b - a) * t;
+const live = new Set();
+class Spring {
+  constructor(x, resp = .35, damp = 1, on = () => {}) { this.x = x; this.v = 0; this.t = x; this.on = on; this.tune(resp, damp); }
+  tune(r, d) { this.k = (2 * Math.PI / r) ** 2; this.c = 2 * d * Math.sqrt(this.k); return this; }
+  to(t, v) { this.t = t; if (v !== undefined) this.v = v; live.add(this); return this; }
+  snap(t) { this.x = this.t = t; this.v = 0; this.on(this.x, 0); live.delete(this); return this; }
+  step(dt) { let n = Math.max(1, Math.round(dt / .004)); const h = dt / n;
+    while (n--) { this.v += (-this.k * (this.x - this.t) - this.c * this.v) * h; this.x += this.v * h; }
+    if (Math.abs(this.x - this.t) < .0004 * (1 + Math.abs(this.t)) && Math.abs(this.v) < .02) { this.x = this.t; this.v = 0; live.delete(this); }
+    this.on(this.x, this.v); }
+}
+let lastT = performance.now(), frameHooks = [];
+(function loop(now) { const dt = Math.min(.05, (now - lastT) / 1000); lastT = now; live.forEach(s => s.step(dt)); frameHooks.forEach(f => f(now)); requestAnimationFrame(loop); })(lastT);
+function seg(el, cb) { el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; el.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); cb(b.dataset.v); }); }
+const easeOut = t => 1 - (1 - t) ** 3, easeIn = t => t * t * t;
+
+/* ================= 1. TYPING ================= */
+const cv = document.getElementById('twc'), ctx = cv.getContext('2d');
+const DPR = Math.min(2, window.devicePixelRatio || 1); cv.width = 336 * DPR; cv.height = 520 * DPR; ctx.scale(DPR, DPR);
+const W = 336, H = 520, RAIL = 400, FS = 17, CW = FS * .6, COLS = 28, LH = 30, TX = (W - COLS * CW) / 2;
+const T = { style: 'strike', slug: true, ink: true, thump: true, tick: true, weight: true, sound: true };
+const IMPACT = 26;                       // ms from key down to the slug meeting the paper
+let chars = [];                          // {c, t0, w, ghost?}
+let caretI = 0, ghosts = [];             // ghosts: erased glyphs still wiping
+let lastStrike = -1e9, typeOn = null;    // typeOn: {start, per}
+const font = `${FS}px "Courier New", monospace`;
+
+function wrap(text) {
+  const lines = []; let line = '', idx = 0, start = 0;
+  const flush = () => { lines.push({ s: start, e: start + line.length }); };
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '\n') { flush(); start = i + 1; line = ''; continue; }
+    line += ch;
+    if (line.length === COLS && i + 1 < text.length && text[i + 1] !== '\n') {
+      const sp = line.lastIndexOf(' ');
+      if (sp > 0) { const keep = line.slice(0, sp + 1); lines.push({ s: start, e: start + keep.length }); start += keep.length; line = line.slice(sp + 1); }
+      else { flush(); start = i + 1; line = ''; }
+    }
+  }
+  flush(); return lines;
+}
+const textNow = () => chars.map(c => c.c).join('');
+function caretPos() { const L = wrap(textNow()); for (let k = L.length - 1; k >= 0; k--) if (caretI >= L[k].s) return { line: k, col: Math.min(caretI - L[k].s, COLS), L }; return { line: 0, col: 0, L }; }
+
+const carX = new Spring(TX + CW / 2, .08, .55), feed = new Spring(0, .22, 1), paperDY = new Spring(0, .09, .3), carRet = new Spring(0, .2, .7);
+function targetCarriageX() { const { col } = caretPos(); return TX + (col + .5) * CW; }
+function setCarriage(mode) {
+  if (T.style === 'today') carX.tune(.16, 1).to(targetCarriageX());
+  else if (mode === 'return') carX.tune(.24, .72).to(targetCarriageX());
+  else if (mode === 'tick' && T.tick) carX.tune(.075, .5).to(targetCarriageX());
+  else carX.tune(.12, 1).to(targetCarriageX());
+}
+function setFeed() { const { line } = caretPos(); feed.to(-line * LH); }
+
+/* weights: how hard the strike lands */
+function weightOf(c) { if (!T.weight) return 1; if (/[A-Z@#%&MW]/.test(c)) return 1.4; if (/[.,'`:;-]/.test(c)) return .5; return 1; }
+
+let ac = null;
+function click(heavy) {
+  if (!T.sound) return;
+  try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); const t = ac.currentTime, n = ac.createBuffer(1, 2205, 44100), d = n.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / 380);
+    const s = ac.createBufferSource(); s.buffer = n; const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2400; f.Q.value = .8; const g = ac.createGain(); g.gain.value = .5 * heavy;
+    s.connect(f); f.connect(g); g.connect(ac.destination); s.start(t);
+    const o = ac.createOscillator(), og = ac.createGain(); o.frequency.value = 120; og.gain.setValueAtTime(.25 * heavy, t); og.gain.exponentialRampToValueAtTime(.001, t + .06); o.connect(og); og.connect(ac.destination); o.start(t); o.stop(t + .07);
+  } catch (e) {}
+}
+function ding() { if (!T.sound) return; try { ac = ac || new AudioContext(); const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = 1760; g.gain.setValueAtTime(.18, t); g.gain.exponentialRampToValueAtTime(.001, t + .5); o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + .5); } catch (e) {} }
+
+function keyPress(k) {
+  const now = performance.now();
+  if (k === 'Backspace') {
+    if (caretI === 0) return;
+    const gone = chars.splice(caretI - 1, 1)[0]; caretI--; ghosts.push({ ...gone, t1: now, idx: caretI }); click(.6);
+    setCarriage('tick'); setFeed(); meta(); return;
+  }
+  if (k === 'Enter') {
+    chars.splice(caretI, 0, { c: '\n', t0: now, w: 1 }); caretI++; click(1.2); ding();
+    setFeed(); setCarriage('return'); meta(); return;
+  }
+  const fast = now - lastStrike < 95; lastStrike = now;
+  const c = { c: k, t0: now, w: k === ' ' ? 0 : weightOf(k), fast }; chars.splice(caretI, 0, c); caretI++;
+  if (k !== ' ') click(.55 + .45 * Math.min(1.4, c.w)); else click(.5);
+  const { col, line } = caretPos();
+  if (col === 0 && caretI > 0 && textNow()[caretI - 1] !== '\n' && line > 0) { ding(); }
+  setFeed(); setCarriage('tick');
+  if (T.style === 'strike' && T.thump && k !== ' ') setTimeout(() => { paperDY.v += 55 * c.w * (fast ? .6 : 1); live.add(paperDY); }, IMPACT);
+  meta();
+}
+function meta() { document.getElementById('twMeta').textContent = `p.1 · ${chars.length} / 3000`; }
+
+/* the picture */
+const INK = [43, 38, 30];
+function drawGlyph(c, x, y, a, sc, blur, dark) {
+  ctx.save(); ctx.translate(x + CW / 2, y); ctx.scale(sc, sc);
+  const k = dark ? .78 : 1; ctx.fillStyle = `rgba(${INK[0] * k},${INK[1] * k},${INK[2] * k},${a})`;
+  if (blur > 0) { ctx.shadowColor = `rgba(${INK[0]},${INK[1]},${INK[2]},${.5 * a})`; ctx.shadowBlur = blur; }
+  ctx.textAlign = 'center'; ctx.font = font; ctx.fillText(c, 0, 0); ctx.restore();
+}
+function jit(i) { const x = Math.sin((i + 1) * 127.1) * 43758.5453, r = x - Math.floor(x), y = Math.sin((i + 99) * 127.1) * 43758.5453, r2 = y - Math.floor(y); return { dy: (r - .5) * 1.1, a: .84 + r * .16, rot: (r2 - .5) * .04 }; }
+
+function draw(now) {
+  ctx.clearRect(0, 0, W, H);
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#e6dfd0'); g.addColorStop(1, '#e8e1d3'); ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(0, 0, W, H, [10, 10, 26, 26]); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.roundRect(0, 0, W, H, [10, 10, 26, 26]); ctx.clip();
+  const text = textNow(), L = wrap(text), cp = caretPos();
+  const baseY = RAIL - 30 + feed.x + L.length * 0 + (cp.line) * LH * 0; // caret line sits at RAIL-30
+  const pdy = paperDY.x;
+  ctx.font = font; ctx.textBaseline = 'alphabetic';
+  // visible glyphs
+  L.forEach((ln, li) => {
+    const y = RAIL - 30 + (li - cp.line) * LH + (feed.x + cp.line * LH) + pdy;
+    if (y < -20 || y > H + 20) return;
+    for (let i = ln.s; i < ln.e; i++) {
+      const c = chars[i]; if (!c || c.c === ' ' || c.c === '\n') continue;
+      const x = TX + (i - ln.s) * CW, j = jit(i), age = now - c.t0;
+      let sc = 1, a = j.a, blur = 0, dark = false, show = true;
+      if (typeOn && c.reveal !== undefined) { show = now >= c.reveal; if (!show) continue; const ra = now - c.reveal; if (T.style === 'strike' && ra < 60) { sc = lerp(1.08, 1, ra / 60); dark = true; } }
+      else if (T.style === 'today') { const p = clamp(age / 160, 0, 1), e = p < .5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2; sc = 1.35 - .35 * e; a = j.a * (.2 + .8 * e); }
+      else if (age < IMPACT && c.t0 > 0 && !c.old) show = false;
+      else if (!c.old) { const ia = age - IMPACT; if (T.ink) { const p = clamp(ia / 70, 0, 1); sc = lerp(1 + .1 * c.w, 1, easeOut(p)); dark = ia < 60; blur = (1 - clamp(ia / 45, 0, 1)) * 2.2 * c.w * (c.fast ? .3 : 1); } }
+      if (show) drawGlyph(c.c, x, y + j.dy, a, sc, blur, dark);
+    }
+  });
+  // erased glyphs: wiped left to right
+  ghosts = ghosts.filter(gh => now - gh.t1 < 120);
+  ghosts.forEach(gh => { const li = L.findIndex(l => gh.idx >= l.s && gh.idx <= l.e); const ln = L[Math.max(0, li)]; if (!ln) return;
+    const y = RAIL - 30 + (Math.max(0, li) - cp.line) * LH + (feed.x + cp.line * LH) + pdy, x = TX + (gh.idx - ln.s) * CW, p = clamp((now - gh.t1) / 90, 0, 1);
+    if (gh.c.trim()) { ctx.save(); ctx.beginPath(); ctx.rect(x + p * CW, y - 22, CW, 30); ctx.clip(); drawGlyph(gh.c, x, y, .9, 1, 0, false); ctx.restore(); if (p < 1) { ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(x + p * CW - 1, y - 18, 3, 24); } } });
+  ctx.restore();
+  // top fade
+  const tf = ctx.createLinearGradient(0, 0, 0, 70); tf.addColorStop(0, 'rgba(0,0,0,.22)'); tf.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = tf; ctx.fillRect(0, 0, W, 70);
+  // caret
+  const cx = TX + cp.col * CW; ctx.fillStyle = Math.floor(now / 500) % 2 && now - lastStrike > 600 ? 'rgba(255,90,31,.25)' : '#ff5a1f'; ctx.fillRect(cx, RAIL - 29 + pdy, CW, 2);
+  // rail
+  const rg = ctx.createLinearGradient(0, RAIL - 8, 0, RAIL + 8); rg.addColorStop(0, '#d3d0c8'); rg.addColorStop(.45, '#96948e'); rg.addColorStop(1, '#5f5d58'); ctx.fillStyle = rg; ctx.fillRect(0, RAIL - 8, W, 16);
+  // carriage + slug
+  const X = carX.x, since = now - lastStrike, st = T.style === 'strike' && T.slug;
+  let slugY = RAIL - 12, arm = 0;
+  if (st && since < 130) { const f = since <= IMPACT ? easeIn(since / IMPACT) : 1; const back = since > IMPACT ? easeOut(clamp((since - IMPACT) / 84, 0, 1)) : 0; slugY = RAIL - 12 - 17 * (since <= IMPACT ? f : 1 - back + Math.sin(back * Math.PI) * -.06); arm = 1; }
+  else if (T.style === 'today' && since < 110) { const t = since / 110; slugY = RAIL - 12 + (t < .45 ? -14 * easeOut(t / .45) : -14 + 14 * easeOut((t - .45) / .55)) * .55; }
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 8; ctx.fillStyle = '#2b2925'; ctx.beginPath(); ctx.roundRect(X - 27, RAIL - 15, 54, 34, 8); ctx.fill(); ctx.restore();
+  ctx.fillStyle = '#d0cec6'; ctx.fillRect(X - 27, RAIL + 14, 54, 4);
+  ctx.fillStyle = '#ff5a1f'; ctx.beginPath(); ctx.roundRect(X - 8, RAIL - 4, 16, 3, 1.5); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.28)'; for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(X + k * 4.2, RAIL + 4); ctx.lineTo(X + k * 4.2, RAIL + 10); ctx.stroke(); }
+  // slug
+  if (T.style === 'strike' && T.slug && since < 150) { ctx.fillStyle = '#7d7b75'; ctx.fillRect(X - 1.2, slugY + 10, 2.4, RAIL - 15 - slugY - 10 + 4); }
+  ctx.fillStyle = '#8f8d86'; ctx.beginPath(); ctx.roundRect(X - 7, slugY, 14, 12, [2, 2, 0, 0]); ctx.fill();
+  const last = chars[caretI - 1]; if (last && last.c.trim()) { ctx.fillStyle = '#2b2925'; ctx.font = '600 10px "Courier New"'; ctx.textAlign = 'center'; ctx.fillText(last.c, X, slugY + 9.5); }
+  // impact flash line on the paper
+  if (st && since >= IMPACT && since < IMPACT + 70) { const ia = (since - IMPACT) / 70; ctx.fillStyle = `rgba(255,255,255,${.35 * (1 - ia)})`; ctx.beginPath(); ctx.ellipse(X, RAIL - 31 + pdy, 9 + 6 * ia, 3, 0, 0, 7); ctx.fill(); }
+}
+frameHooks.push(draw);
+
+/* keyboard */
+const kb = document.getElementById('kb');
+['qwertyuiop', 'asdfghjkl', 'zxcvbnm'].forEach((r, ri) => { const row = document.createElement('div'); row.className = 'row'; if (ri === 2) { const b = document.createElement('button'); b.textContent = '⇧'; b.dataset.k = 'Shift'; row.appendChild(b); } [...r].forEach(ch => { const b = document.createElement('button'); b.textContent = ch; b.dataset.k = ch; row.appendChild(b); }); if (ri === 2) { const b = document.createElement('button'); b.textContent = '⌫'; b.dataset.k = 'Backspace'; row.appendChild(b); } kb.appendChild(row); });
+const last = document.createElement('div'); last.className = 'row'; [['.', '.'], ['space', ' '], ['↵', 'Enter']].forEach(([l, k]) => { const b = document.createElement('button'); b.textContent = l; b.dataset.k = k; if (k === ' ') b.className = 'w'; last.appendChild(b); }); kb.appendChild(last);
+let shift = false;
+kb.addEventListener('pointerdown', e => { const b = e.target.closest('button'); if (!b) return; e.preventDefault(); const k = b.dataset.k; if (k === 'Shift') { shift = !shift; return; } keyPress(shift && k.length === 1 ? k.toUpperCase() : k); shift = false; });
+window.addEventListener('keydown', e => { if (e.metaKey || e.ctrlKey || e.altKey) return; if (e.key === 'Backspace' || e.key === 'Enter') { e.preventDefault(); keyPress(e.key); } else if (e.key.length === 1) { e.preventDefault(); keyPress(e.key); } });
+seg(document.getElementById('twStyle'), v => { T.style = v; });
+document.getElementById('twParts').addEventListener('change', e => { T[e.target.dataset.k] = e.target.checked; });
+function typeString(s, gap) { let i = 0; const id = setInterval(() => { if (i >= s.length) return clearInterval(id); keyPress(s[i++]); }, gap); }
+function clearAll() { chars = []; caretI = 0; ghosts = []; typeOn = null; feed.snap(0); carX.snap(TX + CW / 2); paperDY.snap(0); meta(); }
+document.getElementById('demoType').onclick = () => { clearAll(); typeString('Dear Sam, the rain has not stopped\nsince Monday and the roof keeps\nits own time now.', 120); };
+document.getElementById('demoFast').onclick = () => { clearAll(); typeString('the quick brown fox jumps over the lazy dog and keeps typing quite fast', 55); };
+document.getElementById('demoClear').onclick = clearAll;
+document.getElementById('demoOpen').onclick = () => {
+  clearAll(); const s = 'Dear Sam,\nthe rain has not stopped\nsince Monday and the roof\nkeeps its own time now.\nI type by the lamp.';
+  const now = performance.now(); chars = [...s].map(c => ({ c, t0: 0, w: 1, old: true })); caretI = chars.length; meta();
+  const L = wrap(s); const per = T.style === 'strike' ? 70 : 0; // carriage sweep: 70 ms per line, lines staggered by 40 ms
+  chars.forEach((c, i) => { const li = L.findIndex(l => i >= l.s && i <= l.e), col = i - L[li].s; c.reveal = T.style === 'strike' ? now + 120 + li * 150 + (col / COLS) * per * 1.6 : now; c.old = true; });
+  typeOn = { start: now }; chars.forEach(c => { if (T.style === 'today') { c.old = false; c.t0 = now; } });
+  setFeed(); carX.snap(TX + CW / 2);
+  if (T.style === 'strike') { L.forEach((ln, li) => { setTimeout(() => { carX.tune(.1, .8).to(TX + (ln.e - ln.s + .5) * CW); }, 120 + li * 150); setTimeout(() => { carX.tune(.1, .8).to(TX + .5 * CW); }, 120 + li * 150 + 85); }); setTimeout(() => { carX.tune(.16, 1).to(targetCarriageX()); }, 120 + L.length * 150 + 90); }
+  else carX.to(targetCarriageX());
+  setTimeout(() => { typeOn = null; chars.forEach(c => { delete c.reveal; }); }, 1500);
+};
+setTimeout(() => document.getElementById('demoType').click(), 600);
+
+/* ================= 2. GLASS ================= */
+const glPhone = document.getElementById('gl'), glbg = document.getElementById('glbg');
+const G = { level: 'full', disp: true, spec: true };
+// background: colour, stripes and a headline so refraction reads
+glbg.innerHTML = `
+  <div style="position:absolute;inset:0;background:linear-gradient(160deg,#173a6b 0%,#6b2f7a 45%,#e0673a 100%)"></div>
+  <div class="blob" style="left:-40px;top:140px;width:220px;height:220px;background:#ffd166;opacity:.9"></div>
+  <div class="blob" style="right:-30px;top:360px;width:200px;height:200px;background:#06d6a0;opacity:.85"></div>
+  <div class="blob" style="left:60px;top:560px;width:150px;height:150px;background:#ef476f;opacity:.9"></div>
+  <div style="position:absolute;left:0;right:0;top:250px;height:150px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.9) 0 6px,transparent 6px 22px)"></div>
+  <div class="bgtext" style="top:70px">Liquid glass bends the page behind it</div>
+  <div class="bgtext" style="top:420px;font-size:20px;opacity:.85">The quick brown fox jumps over the lazy dog. Notes, kept offline.</div>`;
+
+/* refraction map: R,G encode where each pixel samples from (0.5 = stay). Strongest at the rim. */
+function makeMap(w, h, r, bezel, power = 2) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'), img = x.createImageData(w, h), d = img.data;
+  const cx = w / 2, cy = h / 2, hw = w / 2 - r, hh = h / 2 - r;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const px = i + .5 - cx, py = j + .5 - cy, qx = Math.abs(px) - hw, qy = Math.abs(py) - hh;
+    const ox = Math.max(qx, 0), oy = Math.max(qy, 0), outside = Math.hypot(ox, oy), inside = Math.min(Math.max(qx, qy), 0), sd = outside + inside - r; // <0 inside
+    let dx = 0, dy = 0;
+    if (sd < 0 && -sd < bezel) {
+      const m = Math.pow(1 - (-sd) / bezel, power);
+      let nx, ny; if (outside > 0) { nx = Math.sign(px) * ox / outside; ny = Math.sign(py) * oy / outside; } else if (qx > qy) { nx = Math.sign(px); ny = 0; } else { nx = 0; ny = Math.sign(py); }
+      dx = nx * m; dy = ny * m;
+    }
+    const k = (j * w + i) * 4; d[k] = 128 + dx * 127; d[k + 1] = 128 + dy * 127; d[k + 2] = 128; d[k + 3] = 255;
+  }
+  x.putImageData(img, 0, 0); return c.toDataURL();
+}
+const svgNS = 'http://www.w3.org/2000/svg';
+const defs = document.createElementNS(svgNS, 'svg'); defs.setAttribute('width', 0); defs.setAttribute('height', 0); defs.style.position = 'absolute'; document.body.appendChild(defs);
+let fid = 0;
+/* Makes one glass element. cfg: {x,y,w,h,r,bezel,strength,blur,sat} */
+function makeGlass(cfg) {
+  const el = document.createElement('div'); el.className = 'glass'; el.style.cssText = `left:${cfg.x}px;top:${cfg.y}px;width:${cfg.w}px;height:${cfg.h}px;border-radius:${cfg.r}px`;
+  const id = 'f' + (++fid); const f = document.createElementNS(svgNS, 'filter'); f.setAttribute('id', id); f.setAttribute('color-interpolation-filters', 'sRGB'); f.setAttribute('x', 0); f.setAttribute('y', 0); f.setAttribute('width', '100%'); f.setAttribute('height', '100%');
+  defs.appendChild(f); el._f = f; el._cfg = cfg; el._id = id; el.refresh = () => buildFilter(el); glPhone.appendChild(el); buildFilter(el); return el;
+}
+function buildFilter(el) {
+  const c = el._cfg, f = el._f; f.innerHTML = '';
+  if (G.level !== 'full') { el.className = 'glass ' + G.level + (el.dataset.extra ? ' ' + el.dataset.extra : ''); el.style.setProperty('--bf', G.level === 'balanced' ? `blur(${c.blur || 14}px) saturate(1.6)` : 'none'); return; }
+  el.className = 'glass' + (el.dataset.extra ? ' ' + el.dataset.extra : '');
+  const w = Math.max(8, Math.round(c.w)), h = Math.max(8, Math.round(c.h)); const url = makeMap(w, h, Math.min(c.r, w / 2, h / 2), c.bezel || 16);
+  const mk = (t, attrs) => { const n = document.createElementNS(svgNS, t); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+  f.appendChild(mk('feImage', { href: url, x: 0, y: 0, width: w, height: h, result: 'map', preserveAspectRatio: 'none' }));
+  const S = c.strength || 40;
+  if (G.disp) {
+    [['R', 1.0, 'r'], ['G', .94, 'g'], ['B', .88, 'b']].forEach(([ch, k, n]) => {
+      f.appendChild(mk('feDisplacementMap', { in: 'SourceGraphic', in2: 'map', scale: S * k, xChannelSelector: 'R', yChannelSelector: 'G', result: 'd' + n }));
+      const m = mk('feColorMatrix', { in: 'd' + n, type: 'matrix', values: ch === 'R' ? '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0' : ch === 'G' ? '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0' : '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0', result: 'c' + n }); f.appendChild(m);
+    });
+    f.appendChild(mk('feBlend', { in: 'cr', in2: 'cg', mode: 'screen', result: 'rg' })); f.appendChild(mk('feBlend', { in: 'rg', in2: 'cb', mode: 'screen' }));
+  } else f.appendChild(mk('feDisplacementMap', { in: 'SourceGraphic', in2: 'map', scale: S, xChannelSelector: 'R', yChannelSelector: 'G' }));
+  el.style.setProperty('--bf', `url(#${el._id}) blur(${c.blur != null ? c.blur : 1.2}px) saturate(${c.sat || 1.45}) brightness(1.06)`);
+}
+const all = [];
+function glass(cfg, extra) { const e = makeGlass(cfg); if (extra) e.dataset.extra = extra; all.push(e); return e; }
+function labelOn(el, text) { const l = document.createElement('div'); l.className = 'lab'; l.textContent = text; el.appendChild(l); return l; }
+
+/* puck */
+const puck = glass({ x: 40, y: 190, w: 118, h: 118, r: 59, bezel: 34, strength: 70, blur: .6 }); puck.classList.add('puck'); labelOn(puck, 'drag me');
+const pk = { x: 40, y: 190, sx: new Spring(40, .3, .8), sy: new Spring(190, .3, .8) };
+pk.sx.on = x => { puck.style.left = x + 'px'; }; pk.sy.on = y => { puck.style.top = y + 'px'; };
+let pd = null; const pscale = new Spring(1, .2, 1, x => { puck.style.scale = x; });
+puck.addEventListener('pointerdown', e => { puck.setPointerCapture(e.pointerId); pd = { dx: e.clientX - pk.sx.x, dy: e.clientY - pk.sy.x }; pscale.to(1.1); });
+puck.addEventListener('pointermove', e => { if (!pd) return; const x = clamp(e.clientX - pd.dx, -10, 250), y = clamp(e.clientY - pd.dy, 40, 600); live.delete(pk.sx); live.delete(pk.sy); pk.sx.x = pk.sx.t = x; pk.sy.x = pk.sy.t = y; pk.sx.on(x); pk.sy.on(y); if (G.spec) puck.style.setProperty('--spec', '1'); });
+puck.addEventListener('pointerup', () => { pd = null; pscale.to(1); });
+
+/* nav bar with lens */
+const nav = glass({ x: 16, y: 626, w: 328, h: 70, r: 35, bezel: 14, strength: 22, blur: 8 }); nav.dataset.extra = ''; nav.style.zIndex = 6;
+const navItems = ['Write', 'Box', 'Find', 'Setup'], navl = document.createElement('div'); navl.className = 'navl'; navItems.forEach((n, i) => { const d = document.createElement('div'); d.textContent = n; d.dataset.i = i; navl.appendChild(d); }); nav.appendChild(navl);
+const tw = (328 - 12) / 4, lens = glass({ x: 22, y: 631, w: tw, h: 60, r: 30, bezel: 22, strength: 46, blur: .8 }); lens.style.zIndex = 7; lens.style.pointerEvents = 'none';
+const lensX = new Spring(0, .35, 1, (x, v) => { const k = Math.min(.14, Math.abs(v) / 4200); lens.style.left = (22 + x) + 'px'; lens.style.transform = `scale(${1 + k + .0},${1 - k / 2 + (nd ? .06 : 0)})`; });
+let nd = null; const project = v => (v / 1000) * .998 / .002 * .002 * 1000 / 1000 * 1;
+navl.addEventListener('pointerdown', e => { navl.setPointerCapture(e.pointerId); const x = e.clientX - glPhone.getBoundingClientRect().left - 22; nd = { sx: e.clientX, moved: false, off: x >= lensX.x && x <= lensX.x + tw ? x - lensX.x : tw / 2, lx: e.clientX, lt: performance.now(), v: 0, tap: clamp(Math.floor(x / tw), 0, 3) }; lens.style.scale = 1.08; });
+navl.addEventListener('pointermove', e => { if (!nd) return; if (!nd.moved && Math.abs(e.clientX - nd.sx) < 8) return; nd.moved = true; const now = performance.now(); nd.v = .6 * nd.v + .4 * (e.clientX - nd.lx) / Math.max(1, now - nd.lt) * 1000; nd.lx = e.clientX; nd.lt = now; const x = clamp(e.clientX - glPhone.getBoundingClientRect().left - 22 - nd.off, -10, 3 * tw + 10); live.delete(lensX); lensX.x = lensX.t = x; lensX.v = nd.v; lensX.on(x, nd.v); });
+navl.addEventListener('pointerup', () => { if (!nd) return; const n = nd; nd = null; lens.style.scale = 1; const target = n.moved ? clamp(Math.round((lensX.x + n.v * .35) / tw), 0, 3) : n.tap; lensX.tune(.35, Math.abs(n.v) > 350 ? .8 : 1).to(target * tw, n.moved ? n.v : 0); });
+lensX.snap(tw);
+
+/* segmented */
+const segw = 220, sg = glass({ x: 20, y: 322, w: segw, h: 44, r: 22, bezel: 10, strength: 14, blur: 8 }); const sgl = document.createElement('div'); sgl.className = 'navl'; ['Light', 'Dark', 'System'].forEach(n => { const d = document.createElement('div'); d.textContent = n; sgl.appendChild(d); }); sg.appendChild(sgl);
+const sw = (segw - 8) / 3, sgLens = glass({ x: 24, y: 326, w: sw, h: 36, r: 18, bezel: 14, strength: 30, blur: .8 }); sgLens.style.pointerEvents = 'none'; sgLens.style.zIndex = 6;
+const sgX = new Spring(0, .32, 1, (x, v) => { const k = Math.min(.14, Math.abs(v) / 3000); sgLens.style.left = (24 + x) + 'px'; sgLens.style.transform = `scale(${1 + k},${1 - k / 2})`; }); sgX.snap(2 * sw);
+sgl.addEventListener('pointerdown', e => { const x = e.clientX - glPhone.getBoundingClientRect().left - 24; sgX.to(clamp(Math.floor(x / sw), 0, 2) * sw); });
+
+/* toggle */
+const tg = glass({ x: 262, y: 322, w: 70, h: 44, r: 22, bezel: 8, strength: 10, blur: 8 }); tg.style.background = 'rgba(255,255,255,.1)';
+const bead = glass({ x: 266, y: 326, w: 40, h: 36, r: 18, bezel: 14, strength: 28, blur: .6 }); bead.style.zIndex = 6; let tgOn = false;
+const bx = new Spring(0, .28, 1, (x, v) => { const k = Math.min(.14, Math.abs(v) / 700); bead.style.left = (266 + x) + 'px'; bead.style.transform = `scale(${1 + k},${1 - k / 2})`; }), bs = new Spring(1, .2, 1, x => { bead.style.scale = x; });
+tg.addEventListener('pointerdown', () => { tgOn = !tgOn; bx.to(tgOn ? 26 : 0); bs.to(1.16); setTimeout(() => bs.to(1), 140); tg.style.background = tgOn ? 'rgba(255,90,31,.55)' : 'rgba(255,255,255,.1)'; });
+bead.style.pointerEvents = 'none';
+
+/* slider */
+const trk = document.createElement('div'); trk.className = 'track'; trk.style.cssText = 'left:24px;top:420px;width:312px'; const fill = document.createElement('i'); trk.appendChild(fill); glPhone.appendChild(trk);
+const th = glass({ x: 120, y: 406, w: 62, h: 36, r: 18, bezel: 16, strength: 34, blur: .6 }); th.style.zIndex = 6; let sv = .45; const ss = new Spring(1, .2, 1, x => { th.style.scale = x; });
+const sp = new Spring(sv, .35, 1, (x, v) => { const k = Math.min(.14, Math.abs(v) * 1.6 / 100); th.style.left = (24 + x * (312 - 62)) + 'px'; fill.style.width = (x * (312 - 62) + 31) + 'px'; th.style.transform = `scale(${1 + k},${1 - k / 2})`; }); sp.snap(sv);
+let sd = false; th.addEventListener('pointerdown', e => { th.setPointerCapture(e.pointerId); sd = true; ss.to(1.14); }); th.addEventListener('pointermove', e => { if (!sd) return; const x = clamp((e.clientX - glPhone.getBoundingClientRect().left - 24 - 31) / (312 - 62), 0, 1); live.delete(sp); sp.v = (x - sp.x) * 40; sp.x = sp.t = x; sp.on(x, sp.v); }); th.addEventListener('pointerup', () => { sd = false; ss.to(1); sp.to(sp.x, sp.v * .5); });
+th.style.pointerEvents = 'auto';
+
+/* button, menu morph */
+const btn = glass({ x: 20, y: 470, w: 120, h: 46, r: 23, bezel: 14, strength: 26, blur: 4 }); labelOn(btn, 'Options');
+const bsc = new Spring(1, .2, 1, x => { btn.style.scale = x; }); let menuOpen = false;
+const menu = glass({ x: 20, y: 470, w: 120, h: 46, r: 23, bezel: 18, strength: 34, blur: 12 }); menu.classList.add('menu'); menu.style.display = 'none'; menu.style.zIndex = 8;
+const mItems = ['Move to divider', 'Share as text', 'Move to Trash']; mItems.forEach((t, i) => { const d = document.createElement('div'); d.className = 'it'; d.textContent = t; d.style.top = (6 + i * 40) + 'px'; d.onclick = e => { e.stopPropagation(); toggleMenu(false); }; menu.appendChild(d); });
+const mp = new Spring(0, .38, .82, p => { const t = p, w = lerp(120, 220, t), h = lerp(46, 138, t), r = lerp(23, 24, t), y = lerp(470, 440, t); menu.style.width = w + 'px'; menu.style.height = h + 'px'; menu.style.borderRadius = r + 'px'; menu.style.top = y + 'px'; menu.style.opacity = clamp(t * 4, 0, 1); btn.style.opacity = clamp(1 - t * 4, 0, 1);
+  menu.querySelectorAll('.it').forEach((d, i) => { d.style.opacity = clamp((t - .35 - i * .08) * 4, 0, 1); d.style.transform = `translateY(${(1 - clamp((t - .25) * 2, 0, 1)) * 8}px)`; });
+  if (p <= .002 && !menuOpen) { menu.style.display = 'none'; } if (t > .01 || menuOpen) menu.style.display = 'block'; if (G.level === 'full' && menu._cfg) { menu._cfg.w = w; menu._cfg.h = h; } if (p > .98 || p < .02) menu.refresh(); });
+function toggleMenu(v) { menuOpen = v; if (v) menu.style.display = 'block'; mp.to(v ? 1 : 0); }
+btn.addEventListener('pointerdown', () => bsc.to(1.07)); btn.addEventListener('pointerup', () => { bsc.to(1); toggleMenu(true); }); btn.addEventListener('pointerleave', () => bsc.to(1));
+glPhone.addEventListener('pointerdown', e => { if (menuOpen && !e.target.closest('.menu') && !e.target.closest('.glass')) toggleMenu(false); });
+
+/* search field and toast */
+const sf = glass({ x: 156, y: 470, w: 180, h: 46, r: 23, bezel: 12, strength: 20, blur: 8 }); labelOn(sf, '⌕  Search your notes').style.justifyContent = 'flex-start'; sf.lastChild.style.paddingLeft = '16px';
+
+seg(document.getElementById('glLevel'), v => { G.level = v; all.forEach(e => e.refresh()); });
+document.getElementById('glOpts').addEventListener('change', e => { G[e.target.dataset.k] = e.target.checked; all.forEach(x => x.refresh()); });
+</script>
+</body>
+</html>
