@@ -123,6 +123,16 @@
 
 <script>
 /* ================= shared ================= */
+/* Older browsers (Safari before 16, some in-app viewers) have no roundRect: add one so drawing cannot fail. */
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+    const rr = Array.isArray(r) ? r : [r, r, r, r]; const [tl, tr, br, bl] = rr.length === 4 ? rr : [rr[0], rr[0], rr[0], rr[0]];
+    this.moveTo(x + tl, y); this.lineTo(x + w - tr, y); this.arcTo(x + w, y, x + w, y + tr, tr); this.lineTo(x + w, y + h - br); this.arcTo(x + w, y + h, x + w - br, y + h, br);
+    this.lineTo(x + bl, y + h); this.arcTo(x, y + h, x, y + h - bl, bl); this.lineTo(x, y + tl); this.arcTo(x, y, x + tl, y, tl); this.closePath();
+  };
+}
+function showError(e) { let b = document.getElementById('errbar'); if (!b) { b = document.createElement('div'); b.id = 'errbar'; b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:#7a1f12;color:#fff;font:12px monospace;padding:8px 12px;z-index:99;white-space:pre-wrap'; document.body.appendChild(b); } b.textContent = 'Mockup error (please report this line): ' + (e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e); }
+window.addEventListener('error', ev => showError(ev.error || ev.message));
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x)), lerp = (a, b, t) => a + (b - a) * t;
 const live = new Set();
 class Spring {
@@ -136,7 +146,7 @@ class Spring {
     this.on(this.x, this.v); }
 }
 let lastT = performance.now(), frameHooks = [];
-(function loop(now) { const dt = Math.min(.05, (now - lastT) / 1000); lastT = now; live.forEach(s => s.step(dt)); frameHooks.forEach(f => f(now)); requestAnimationFrame(loop); })(lastT);
+(function loop(now) { requestAnimationFrame(loop); const dt = Math.min(.05, (now - lastT) / 1000); lastT = now; try { live.forEach(s => s.step(dt)); frameHooks.forEach(f => f(now)); } catch (e) { showError(e); } })(lastT);
 function seg(el, cb) { el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; el.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); cb(b.dataset.v); }); }
 const easeOut = t => 1 - (1 - t) ** 3, easeIn = t => t * t * t;
 
@@ -284,8 +294,12 @@ const kb = document.getElementById('kb');
 ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'].forEach((r, ri) => { const row = document.createElement('div'); row.className = 'row'; if (ri === 2) { const b = document.createElement('button'); b.textContent = '⇧'; b.dataset.k = 'Shift'; row.appendChild(b); } [...r].forEach(ch => { const b = document.createElement('button'); b.textContent = ch; b.dataset.k = ch; row.appendChild(b); }); if (ri === 2) { const b = document.createElement('button'); b.textContent = '⌫'; b.dataset.k = 'Backspace'; row.appendChild(b); } kb.appendChild(row); });
 const last = document.createElement('div'); last.className = 'row'; [['.', '.'], ['space', ' '], ['↵', 'Enter']].forEach(([l, k]) => { const b = document.createElement('button'); b.textContent = l; b.dataset.k = k; if (k === ' ') b.className = 'w'; last.appendChild(b); }); kb.appendChild(last);
 let shift = false;
-kb.addEventListener('pointerdown', e => { const b = e.target.closest('button'); if (!b) return; e.preventDefault(); const k = b.dataset.k; if (k === 'Shift') { shift = !shift; return; } keyPress(shift && k.length === 1 ? k.toUpperCase() : k); shift = false; });
-window.addEventListener('keydown', e => { if (e.metaKey || e.ctrlKey || e.altKey) return; if (e.key === 'Backspace' || e.key === 'Enter') { e.preventDefault(); keyPress(e.key); } else if (e.key.length === 1) { e.preventDefault(); keyPress(e.key); } });
+let lastKeyDown = 0;
+function onScreenKey(e) { const b = e.target.closest('button'); if (!b) return; e.preventDefault(); const nowT = performance.now(); if (e.type === 'click' && nowT - lastKeyDown < 400) return; if (e.type === 'pointerdown') lastKeyDown = nowT; const k = b.dataset.k; if (k === 'Shift') { shift = !shift; return; } keyPress(shift && k.length === 1 ? k.toUpperCase() : k); shift = false; }
+kb.addEventListener('pointerdown', onScreenKey); kb.addEventListener('click', onScreenKey);
+const twPhone = document.getElementById('tw'); twPhone.tabIndex = 0; twPhone.style.outline = 'none';
+twPhone.addEventListener('pointerdown', () => twPhone.focus({ preventScroll: true }));
+document.addEventListener('keydown', e => { if (e.metaKey || e.ctrlKey || e.altKey) return; if (e.key === 'Backspace' || e.key === 'Enter') { e.preventDefault(); keyPress(e.key); } else if (e.key.length === 1) { e.preventDefault(); keyPress(e.key); } });
 seg(document.getElementById('twStyle'), v => { T.style = v; });
 document.getElementById('twParts').addEventListener('change', e => { T[e.target.dataset.k] = e.target.checked; });
 function typeString(s, gap) { let i = 0; const id = setInterval(() => { if (i >= s.length) return clearInterval(id); keyPress(s[i++]); }, gap); }
