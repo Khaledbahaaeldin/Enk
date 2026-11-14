@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enk writer transition concepts</title>
+<style>
+  :root { --bg:#16140f; --ink:#f3eee3; --dim:#a39c8d; --line:#34302a; --accent:#ff5a1f; --cream:#f3eee3; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:1260px; margin:0 auto; padding:26px 16px 90px; }
+  h1 { font-size:28px; letter-spacing:-.02em; margin:0 0 4px; }
+  p.lead { color:var(--dim); margin:0 0 14px; max-width:80ch; }
+  .bar { display:flex; flex-wrap:wrap; gap:10px 22px; align-items:center; margin:12px 0 22px; }
+  .seg { display:inline-flex; background:#26221c; border:1px solid var(--line); border-radius:14px; padding:3px; gap:2px; }
+  .seg button { border:0; background:transparent; color:var(--dim); font:600 13px system-ui; padding:9px 13px; border-radius:11px; cursor:pointer; }
+  .seg button.on { background:var(--ink); color:#1b1a18; }
+  button.act { background:#2a261f; color:var(--ink); border:1px solid var(--line); border-radius:12px; padding:9px 14px; font:600 13px system-ui; cursor:pointer; }
+  .lbl { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+  .grid { display:flex; flex-wrap:wrap; gap:34px; align-items:flex-start; }
+  .col { width:360px; }
+  .col h2 { font-size:19px; margin:0 0 2px; letter-spacing:-.01em; }
+  .col p { color:var(--dim); font-size:13px; margin:0 0 10px; min-height:78px; }
+  .col .row { margin:10px 0 0; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .col input[type=range] { flex:1; min-width:120px; accent-color:#ff5a1f; }
+  .pros { margin:10px 0 0; padding-left:18px; font-size:13px; color:var(--dim); }
+  .pros b { color:var(--ink); font-weight:600; }
+
+  .phone { width:360px; height:720px; border-radius:38px; position:relative; overflow:hidden; box-shadow:0 0 0 2px #3a352d, 0 30px 80px rgba(0,0,0,.6); user-select:none; touch-action:none;
+           background:linear-gradient(#32302b,#1c1a17); }
+  .phone > *, .wr > * { position:absolute; }
+  .status { left:0; right:0; top:0; height:30px; display:flex; justify-content:space-between; align-items:center; padding:0 22px; font:600 12px system-ui; color:#d9d3c6; z-index:50; pointer-events:none; }
+
+  /* Box screen */
+  .box { inset:0; background:linear-gradient(#1f1d19,#15130f); z-index:2; transform-origin:50% 50%; will-change:transform,filter; }
+  .box h3 { margin:46px 0 0 22px; font:800 30px system-ui; letter-spacing:-.03em; color:var(--cream); }
+  .box .sub { margin:0 0 0 22px; font:12px "Courier New",monospace; color:#9d9686; letter-spacing:.08em; }
+  .card { position:absolute; left:12px; width:336px; height:84px; border-radius:18px; background:linear-gradient(#e8e1d3,#e2dac9); box-shadow:0 6px 14px rgba(0,0,0,.35); padding:12px 16px; color:#2b261e; }
+  .card b { display:block; font:700 15px system-ui; } .card span { display:block; font:13px/1.35 "Courier New",monospace; color:#5d564a; margin-top:3px; } .card i { position:absolute; right:14px; top:12px; font:11px "Courier New",monospace; font-style:normal; color:#8d8676; }
+
+  /* writer pieces */
+  .wr { inset:0; z-index:6; will-change:clip-path; }
+  .paper { left:12px; width:336px; overflow:hidden; border-radius:10px 10px 26px 26px; background:linear-gradient(#e6dfd0,#e8e1d3); box-shadow:inset 0 0 30px rgba(120,100,70,.18), 0 18px 40px rgba(0,0,0,.35); z-index:2; }
+  .paper .ln { position:absolute; left:25px; font:17px "Courier New",monospace; color:#2b261e; white-space:pre; }
+  .paper .fadeTop { position:absolute; left:0; right:0; top:0; height:64px; background:linear-gradient(rgba(0,0,0,.20),rgba(0,0,0,0)); }
+  .caret { height:2px; width:10px; background:var(--accent); z-index:3; animation:blink 1.06s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:.15; } }
+  .rail { left:0; right:0; height:16px; background:linear-gradient(#d3d0c8,#96948e 45%,#5f5d58); z-index:3; }
+  .carriage { width:54px; height:34px; border-radius:8px; background:#2b2925; box-shadow:0 8px 14px rgba(0,0,0,.5); z-index:4; }
+  .carriage::before { content:""; position:absolute; left:0; right:0; bottom:0; height:4px; background:#d0cec6; border-radius:0 0 8px 8px; }
+  .carriage i { position:absolute; left:19px; top:11px; width:16px; height:3px; border-radius:2px; background:var(--accent); }
+  .pulse { position:absolute; width:54px; height:34px; border-radius:10px; border:2px solid #ffb36b; z-index:5; pointer-events:none; opacity:0; }
+  .pulse.go { animation:pulse .6s cubic-bezier(.2,.7,.3,1); }
+  @keyframes pulse { 0% { opacity:.9; transform:scale(1); } 100% { opacity:0; transform:scale(1.9,2.6); } }
+  .kbd { left:0; right:0; bottom:0; height:232px; background:linear-gradient(#17171b,#101013); border-radius:22px 22px 0 0; z-index:3; padding:12px 6px; display:flex; flex-direction:column; gap:10px; }
+  .kbd div { display:flex; gap:6px; justify-content:center; } .kbd span { flex:1; max-width:31px; height:44px; background:#3a3a40; border-radius:7px; } .kbd div.b span { max-width:none; }
+
+  /* glass */
+  .glass { z-index:20; will-change:transform; background:linear-gradient(rgba(40,37,32,.46),rgba(20,18,15,.52)); -webkit-backdrop-filter:var(--bf,none); backdrop-filter:var(--bf,none);
+           box-shadow:inset 0 1px 0 rgba(255,255,255,.55), inset 0 0 0 .5px rgba(255,255,255,.35), inset 0 -8px 14px -10px rgba(255,255,255,.35), 0 12px 28px -10px rgba(0,0,0,.55); }
+  .glass.balanced { background:linear-gradient(rgba(40,37,32,.50),rgba(20,18,15,.56)); } .glass.light { background:rgba(46,43,38,.96); box-shadow:inset 0 0 0 .5px rgba(255,255,255,.18); }
+  .tabs { position:absolute; inset:0; padding:5px; display:flex; z-index:22; } .tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:#bdb6a7; font:500 10.5px system-ui; }
+  .tab.sel { color:#fff; font-weight:600; } .tab svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+  .tabhit { position:absolute; z-index:24; cursor:pointer; }
+  .fly { z-index:26; pointer-events:none; will-change:transform; }
+  .fly .lf, .fly .sm { position:absolute; inset:0; border-radius:inherit; }
+  .fly .lf { background:rgba(255,255,255,.13); box-shadow:inset 0 1px 0 rgba(255,255,255,.7), inset 0 0 0 .5px rgba(255,255,255,.5), 0 6px 14px rgba(0,0,0,.3); }
+  .fly .sm { background:linear-gradient(rgba(40,37,32,.55),rgba(20,18,15,.6)); box-shadow:inset 0 1px 0 rgba(255,255,255,.55), inset 0 0 0 .5px rgba(255,255,255,.35), 0 12px 28px -10px rgba(0,0,0,.55); }
+  .fly .txt { position:absolute; inset:0; display:grid; place-items:center; font:11px "Courier New",monospace; color:#e6e0d2; letter-spacing:.06em; white-space:nowrap; }
+  .isl { z-index:28; cursor:pointer; display:grid; place-items:center; font:11px "Courier New",monospace; color:#e6e0d2; letter-spacing:.06em; white-space:nowrap; }
+  .ring { z-index:7; border-radius:50%; pointer-events:none; -webkit-backdrop-filter:blur(5px) saturate(1.7) brightness(1.18); backdrop-filter:blur(5px) saturate(1.7) brightness(1.18);
+          background:radial-gradient(circle, transparent 0, rgba(255,240,215,.10) 100%); box-shadow:inset 0 0 0 1.2px rgba(255,255,255,.65), inset 0 0 14px rgba(255,214,170,.35); }
+  .lite .ring { -webkit-backdrop-filter:none; backdrop-filter:none; background:rgba(255,240,215,.18); }
+  .lite .glass { -webkit-backdrop-filter:none; backdrop-filter:none; }
+  .hint { left:0; right:0; bottom:104px; text-align:center; font:12px system-ui; color:#9d9686; z-index:5; pointer-events:none; }
+  .ding { z-index:30; font:800 11px "Courier New",monospace; letter-spacing:.18em; color:#ffb36b; opacity:0; pointer-events:none; text-shadow:0 0 10px rgba(255,150,70,.6); }
+  .ding.go { animation:dingA .8s ease-out; }
+  @keyframes dingA { 0% { opacity:0; transform:translateY(6px); } 25% { opacity:1; } 100% { opacity:0; transform:translateY(-16px); } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Enk: three ways into the writer</h1>
+  <p class="lead">Tap <b>Write</b> in the glass bar of each phone to play the transition; tap the island (or "Back to Box") to run it in reverse. Every transition is driven by one spring, so you can interrupt it mid-flight: tap again while it moves and it reverses from where it is. Drag the scrubber to inspect any frame. The glass bends what is behind it (Chromium browsers).</p>
+  <div class="bar">
+    <span class="lbl">Effects</span>
+    <div class="seg" id="lvl"><button data-v="full" class="on">Full</button><button data-v="balanced">Balanced</button><button data-v="light">Light</button></div>
+    <span class="lbl">Speed</span>
+    <div class="seg" id="spd"><button data-v="1" class="on">1x</button><button data-v=".35">Slow</button><button data-v=".12">Very slow</button></div>
+    <button class="act" id="playAll">Play all</button>
+    <button class="act" id="backAll">Back all</button>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<script>
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x)), lerp = (a, b, t) => a + (b - a) * t;
+const seg = (p, a, b) => clamp((p - a) / (b - a), 0, 1), ez = t => t * t * (3 - 2 * t), out = t => 1 - Math.pow(1 - t, 3), back = t => { const c = 1.9; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+let SLOW = 1, LEVEL = 'full';
+const live = new Set();
+class Spring {
+  constructor(x, resp = .6, damp = .8, on = () => {}) { this.x = x; this.v = 0; this.t = x; this.on = on; this.k = (2 * Math.PI / resp) ** 2; this.c = 2 * damp * Math.sqrt(this.k); }
+  to(t) { this.t = t; live.add(this); return this; }
+  snap(t) { this.x = this.t = t; this.v = 0; live.delete(this); this.on(this.x); }
+  step(dt) { let n = Math.max(1, Math.round(dt / .004)); const h = dt / n; while (n--) { this.v += (-this.k * (this.x - this.t) - this.c * this.v) * h; this.x += this.v * h; }
+    if (Math.abs(this.x - this.t) < .0005 && Math.abs(this.v) < .02) { this.x = this.t; this.v = 0; live.delete(this); } this.on(this.x); }
+}
+let lastT = performance.now();
+(function loop(now) { requestAnimationFrame(loop); const dt = Math.min(.05, (now - lastT) / 1000) * SLOW; lastT = now; try { live.forEach(s => s.step(dt)); } catch (e) { showError(e); } })(lastT);
+function showError(e) { let b = document.getElementById('errbar'); if (!b) { b = document.createElement('div'); b.id = 'errbar'; b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;background:#7a1f12;color:#fff;font:12px monospace;padding:8px 12px;z-index:99'; document.body.appendChild(b); } b.textContent = 'Mockup error: ' + (e && e.stack ? e.stack.split('\n').slice(0, 2).join(' | ') : e); }
+window.addEventListener('error', ev => showError(ev.error || ev.message));
+
+/* ---------- refraction (SVG displacement map inside backdrop-filter) ---------- */
+const svgNS = 'http://www.w3.org/2000/svg', defs = document.createElementNS(svgNS, 'svg'); defs.setAttribute('width', 0); defs.setAttribute('height', 0); defs.style.position = 'absolute'; document.body.appendChild(defs);
+let fid = 0; const refracted = [];
+function makeMap(w, h, r, bezel, power = 2) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'), img = x.createImageData(w, h), d = img.data;
+  const cx = w / 2, cy = h / 2, hw = w / 2 - r, hh = h / 2 - r;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const px = i + .5 - cx, py = j + .5 - cy, qx = Math.abs(px) - hw, qy = Math.abs(py) - hh, ox = Math.max(qx, 0), oy = Math.max(qy, 0), outside = Math.hypot(ox, oy), inside = Math.min(Math.max(qx, qy), 0), sd = outside + inside - r;
+    let dx = 0, dy = 0;
+    if (sd < 0 && -sd < bezel) { const m = Math.pow(1 - (-sd) / bezel, power); let nx, ny; if (outside > 0) { nx = Math.sign(px) * ox / outside; ny = Math.sign(py) * oy / outside; } else if (qx > qy) { nx = Math.sign(px); ny = 0; } else { nx = 0; ny = Math.sign(py); } dx = nx * m; dy = ny * m; }
+    const k = (j * w + i) * 4; d[k] = 128 + dx * 127; d[k + 1] = 128 + dy * 127; d[k + 2] = 128; d[k + 3] = 255;
+  }
+  x.putImageData(img, 0, 0); return c.toDataURL();
+}
+function glassBox(parent, x, y, w, h, r, cfg) {
+  const el = document.createElement('div'); el.className = 'glass'; el.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${r}px`; parent.appendChild(el);
+  el._cfg = Object.assign({ w, h, r, bezel: 16, strength: 26, blur: 2, refract: true }, cfg || {});
+  if (el._cfg.refract) { const id = 'g' + (++fid), f = document.createElementNS(svgNS, 'filter'); f.setAttribute('id', id); f.setAttribute('color-interpolation-filters', 'sRGB'); f.setAttribute('x', 0); f.setAttribute('y', 0); f.setAttribute('width', '100%'); f.setAttribute('height', '100%'); defs.appendChild(f); el._f = f; el._id = id; }
+  refracted.push(el); applyGlass(el); return el;
+}
+function applyGlass(el) {
+  const c = el._cfg; el.classList.remove('balanced', 'light');
+  if (LEVEL === 'light') { el.classList.add('light'); el.style.setProperty('--bf', 'none'); return; }
+  if (LEVEL === 'balanced' || !c.refract) { if (LEVEL === 'balanced') el.classList.add('balanced'); el.style.setProperty('--bf', `blur(${c.refract ? 14 : 12}px) saturate(1.6)`); return; }
+  const f = el._f; f.innerHTML = ''; const w = Math.round(c.w), h = Math.round(c.h), url = makeMap(w, h, Math.min(c.r, w / 2, h / 2), c.bezel);
+  const mk = (t, a) => { const n = document.createElementNS(svgNS, t); for (const k in a) n.setAttribute(k, a[k]); return n; };
+  f.appendChild(mk('feImage', { href: url, x: 0, y: 0, width: w, height: h, result: 'map', preserveAspectRatio: 'none' }));
+  [['R', 1, 'r', '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'], ['G', .94, 'g', '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0'], ['B', .88, 'b', '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0']].forEach(([ch, k, n, mtx]) => {
+    f.appendChild(mk('feDisplacementMap', { in: 'SourceGraphic', in2: 'map', scale: c.strength * k, xChannelSelector: 'R', yChannelSelector: 'G', result: 'd' + n }));
+    f.appendChild(mk('feColorMatrix', { in: 'd' + n, type: 'matrix', values: mtx, result: 'c' + n }));
+  });
+  f.appendChild(mk('feBlend', { in: 'cr', in2: 'cg', mode: 'screen', result: 'rg' })); f.appendChild(mk('feBlend', { in: 'rg', in2: 'cb', mode: 'screen' }));
+  el.style.setProperty('--bf', `url(#${el._id}) blur(${c.blur}px) saturate(1.45) brightness(1.06)`);
+}
+
+/* ---------- geometry (dp == px in the mockup) ---------- */
+const PT = 44, PB = 480, PH = PB - PT, RY = PT + Math.round(.62 * PH), LR = RY - PT;
+const NAV = { x: 12, y: 642, w: 336, h: 64 }, ITEM = (336 - 10) / 4;
+const tabCx = i => NAV.x + 5 + ITEM * (i + .5), TABY = NAV.y + 32;
+const ISL = { x: 105, y: 40, w: 150, h: 40 };
+const CARET_X = 12 + 25 + 23 * 10.2;
+const ICO = {
+  Write: '<svg viewBox="0 0 22 22"><path d="M2 14h18"/><rect x="7" y="5" width="8" height="8" rx="1.5"/><path d="M11 6.5v5"/></svg>',
+  Box: '<svg viewBox="0 0 22 22"><rect x="3" y="6" width="16" height="12" rx="3"/><path d="M8 12h6"/></svg>',
+  Find: '<svg viewBox="0 0 22 22"><circle cx="9.5" cy="9.5" r="5.5"/><path d="M13.5 13.5l5 5"/></svg>',
+  Setup: '<svg viewBox="0 0 22 22"><path d="M3 6h16M3 11h16M3 16h16"/><circle cx="8" cy="6" r="2" fill="currentColor"/><circle cx="14" cy="11" r="2" fill="currentColor"/><circle cx="9" cy="16" r="2" fill="currentColor"/></svg>'
+};
+const NOTES = [['Dear Sam,', 'the rain has not stopped since Monday', 'Today'], ['Grocery run', 'oat milk, tape, two lemons, a', 'Mon'], ['Roof notes', 'the leak is above the window and', 'Sun'], ['Letter to Mum', 'I finally found the recipe you', 'Nov 9'], ['Ideas for May', 'a small press, a very small one', 'Nov 3']];
+const LINES = ['Dear Sam,', '', 'the rain has not stopped', 'since Monday and the roof', 'keeps its own time now.'];
+const FEED = 'feed';
+
+/* ---------- the three concepts: render(ctx, p) sets every property for progress p (0 = Box, 1 = writer) ---------- */
+const S = (el, o) => Object.assign(el.style, o);
+const lite = () => LEVEL === 'light';
+const blurPx = v => lite() ? 0 : v;
+
+function placeFly(c, cx, cy, w, h, smoke, txt) {
+  S(c.fly, { left: (cx - w / 2) + 'px', top: (cy - h / 2) + 'px', width: w + 'px', height: h + 'px', borderRadius: Math.min(w, h) / 2 + 'px' });
+  c.fly.querySelector('.lf').style.opacity = 1 - smoke; c.fly.querySelector('.sm').style.opacity = smoke; c.fly.querySelector('.txt').style.opacity = txt;
+  S(c.fly, { '-webkit-backdrop-filter': lite() ? 'none' : 'blur(6px) saturate(1.5)', backdropFilter: lite() ? 'none' : 'blur(6px) saturate(1.5)' });
+}
+function commonBox(c, e, o) {
+  S(c.box, { transform: `scale(${lerp(1, o.scale, e)}) translateY(${lerp(0, o.ty || 0, e)}px)`, transformOrigin: o.origin || '50% 50%', filter: `blur(${blurPx(lerp(0, o.blur, e))}px) brightness(${lerp(1, o.dim, e)})` });
+}
+function setWriter(c, o) {
+  S(c.paper, { transform: `translateY(${o.paperY || 0}px)`, opacity: o.paperA == null ? 1 : o.paperA, clipPath: o.paperClip || 'none' });
+  S(c.rail, { transform: `translateY(${o.paperY || 0}px) scaleX(${o.railX == null ? 1 : o.railX})`, opacity: o.railA == null ? 1 : o.railA });
+  S(c.car, { transform: `translate(${o.carX || 0}px,${(o.carY || 0) + (o.paperY || 0)}px)`, opacity: o.carA == null ? 1 : o.carA });
+  S(c.caret, { transform: `translateY(${o.paperY || 0}px)`, opacity: o.caretA == null ? 1 : o.caretA, animationPlayState: 'running' });
+  S(c.kb, { transform: `translateY(${o.kbY || 0}px)` });
+}
+
+const CONCEPTS = {
+  /* 1. LIFT: the nav lens lifts off, arcs up and lands as the island */
+  lift(c, p) {
+    const e = ez(seg(p, 0, .55));
+    commonBox(c, e, { scale: .93, ty: -14, blur: 9, dim: .55 });
+    S(c.box, { opacity: 1 - seg(p, .75, .97) });
+    S(c.nav, { zIndex: 20, transform: `translateY(${lerp(0, 110, ez(seg(p, .04, .42)))}px)`, opacity: 1 - seg(p, .18, .42) });
+    S(c.wr, { background: 'none', clipPath: 'none' });
+    // the lens: slide to Write, then arc to the island
+    const slide = ez(seg(p, 0, .12)), f = ez(seg(p, .12, .8));
+    let cx = lerp(tabCx(1), tabCx(0), slide), cy = TABY;
+    const P0 = [tabCx(0), TABY], C = [22, 300], P1 = [ISL.x + ISL.w / 2, ISL.y + ISL.h / 2];
+    if (p > .12) { const u = 1 - f; cx = u * u * P0[0] + 2 * u * f * C[0] + f * f * P1[0]; cy = u * u * P0[1] + 2 * u * f * C[1] + f * f * P1[1]; }
+    const w = lerp(ITEM, ISL.w, f), h = lerp(54, ISL.h, f);
+    placeFly(c, cx, cy, w, h, ez(seg(p, .3, .8)), seg(p, .78, .98));
+    S(c.fly, { opacity: 1, transform: `scale(${1 + .06 * Math.sin(Math.PI * seg(p, .1, .5))})` });
+    S(c.isl, { opacity: 0, pointerEvents: p > .95 ? 'auto' : 'none' });
+    const pq = Math.max(0, (p - .12) / .88);
+    setWriter(c, { paperY: (1 - pq) * 560, paperA: seg(p, .1, .32), railX: lerp(.3, 1, out(seg(p, .4, .8))), railA: seg(p, .4, .6), carX: lerp(-320, 0, back(seg(p, .45, .92))), carA: seg(p, .45, .6), caretA: seg(p, .88, 1), kbY: lerp(240, 0, out(seg(p, .2, .78))) });
+    S(c.hint, { opacity: 1 - seg(p, 0, .1) });
+    S(c.lens, { opacity: 0 });
+  },
+  /* 2. APERTURE: a glass iris opens from the Write tab and reveals the writer */
+  aperture(c, p) {
+    const rr = ez(seg(p, .03, .92)), r = rr * 900, th = lerp(34, 3, rr), e = ez(seg(p, 0, .85)), ox = tabCx(0), oy = TABY;
+    commonBox(c, e, { scale: 1.12, blur: 6, dim: .5, origin: `${ox}px ${oy}px` });
+    S(c.box, { opacity: 1 });
+    S(c.nav, { transform: 'none', opacity: 1, zIndex: 3 });
+    S(c.wr, { background: 'linear-gradient(#32302b,#1c1a17)', clipPath: `circle(${r}px at ${ox}px ${oy}px)` });
+    const R2 = r + th * .5, hole = Math.max(0, R2 - th);
+    S(c.ring, { left: (ox - R2) + 'px', top: (oy - R2) + 'px', width: 2 * R2 + 'px', height: 2 * R2 + 'px', opacity: p <= .01 ? 0 : 1 - seg(p, .8, .95),
+      webkitMaskImage: `radial-gradient(circle, transparent ${hole}px, #000 ${hole + 1}px)`, maskImage: `radial-gradient(circle, transparent ${hole}px, #000 ${hole + 1}px)` });
+    S(c.fly, { opacity: 0 });
+    const slide = ez(seg(p, 0, .14));
+    S(c.lens, { opacity: 1 - seg(p, .06, .3), left: (17 + ITEM * lerp(1, 0, slide)) + 'px', top: '647px', width: ITEM + 'px', height: '54px', borderRadius: '27px', transform: `scale(${1 + .12 * Math.sin(Math.PI * seg(p, .02, .3))})` });
+    const q = seg(p, .2, 1);
+    setWriter(c, { paperY: lerp(34, 0, out(seg(p, .1, .95))), paperA: 1, railA: 1, carX: lerp(-90, 0, out(seg(p, .35, .95))), caretA: seg(p, .9, 1), kbY: lerp(70, 0, out(seg(p, .15, .85))) });
+    S(c.paper, { transformOrigin: `${ox - 12}px ${oy - PT}px`, transform: `scale(${lerp(.9, 1, out(seg(p, .1, .95)))})` });
+    const ip = seg(p, .72, .98);
+    S(c.isl, { opacity: ip, transform: `scale(${lerp(.55, 1, back(ip))})`, pointerEvents: p > .95 ? 'auto' : 'none' });
+    S(c.hint, { opacity: 1 - seg(p, 0, .1) });
+  },
+  /* 3. RAIL: the nav bar flattens into the typewriter rail; paper feeds out of it; the carriage lands with a ding */
+  rail(c, p) {
+    const e = ez(seg(p, 0, .6));
+    commonBox(c, ez(seg(p, .05, .7)), { scale: .96, ty: -8, blur: 8, dim: .35 });
+    S(c.box, { opacity: 1 - seg(p, .72, .92) });
+    const m = ez(seg(p, .05, .6));
+    S(c.nav, { zIndex: 20, transform: 'none', opacity: 1 - seg(p, .5, .62), left: lerp(NAV.x, 0, m) + 'px', top: lerp(NAV.y, RY - 8, m) + 'px', width: lerp(NAV.w, 360, m) + 'px', height: lerp(NAV.h, 16, m) + 'px', borderRadius: lerp(32, 8, m) + 'px' });
+    S(c.tabs, { opacity: 1 - seg(p, 0, .16) });
+    S(c.wr, { background: 'none', clipPath: 'none' });
+    S(c.fly, { opacity: 0 });
+    S(c.lens, { opacity: 1 - seg(p, 0, .14), left: (17 + ITEM) + 'px', top: '647px', width: ITEM + 'px', height: '54px', borderRadius: '27px', transform: 'none' });
+    const u = out(seg(p, .4, .92)), top = LR * (1 - u), bot = (PH - LR) * (1 - u);
+    setWriter(c, { paperClip: `inset(${top}px 0 ${bot}px 0 round 10px 10px 26px 26px)`, paperA: 1, railA: seg(p, .5, .62), railX: 1, carY: lerp(-80, 0, back(seg(p, .72, .96))), carA: seg(p, .72, .8), caretA: seg(p, .94, 1), kbY: lerp(240, 0, out(seg(p, .35, .88))) });
+    const ip = seg(p, .8, 1);
+    S(c.isl, { opacity: ip, transform: `scale(${lerp(.55, 1, back(ip))})`, pointerEvents: p > .95 ? 'auto' : 'none' });
+    S(c.hint, { opacity: 1 - seg(p, 0, .1) });
+    if (c.prev < .9 && p >= .9) c.ding();
+    c.prev = p;
+  }
+};
+
+function makePhone(opts) {
+  const col = document.createElement('div'); col.className = 'col';
+  col.innerHTML = `<h2>${opts.title}</h2><p>${opts.blurb}</p>`;
+  const phone = document.createElement('div'); phone.className = 'phone'; col.appendChild(phone);
+  phone.insertAdjacentHTML('beforeend', '<div class="status"><span>9:41</span><span>◖◗ ▲ ▮</span></div>');
+  // Box screen
+  const box = document.createElement('div'); box.className = 'box'; box.innerHTML = '<h3>Box</h3><div class="sub">5 NOTES · ALL TIME</div>';
+  NOTES.forEach((n, i) => box.insertAdjacentHTML('beforeend', `<div class="card" style="top:${108 + i * 94}px"><i>${n[2]}</i><b>${n[0]}</b><span>${n[1]}</span></div>`));
+  phone.appendChild(box);
+  // writer screen
+  const wr = document.createElement('div'); wr.className = 'wr'; phone.appendChild(wr);
+  const paper = document.createElement('div'); paper.className = 'paper'; paper.style.cssText = `top:${PT}px;height:${PH}px`;
+  LINES.forEach((t, i) => { const l = document.createElement('div'); l.className = 'ln'; l.style.top = (LR - 34 - (4 - i) * 30) + 'px'; l.textContent = t; paper.appendChild(l); });
+  paper.insertAdjacentHTML('beforeend', '<div class="fadeTop"></div>'); wr.appendChild(paper);
+  const rail = document.createElement('div'); rail.className = 'rail'; rail.style.top = (RY - 8) + 'px'; wr.appendChild(rail);
+  const caret = document.createElement('div'); caret.className = 'caret'; caret.style.cssText = `left:${CARET_X}px;top:${RY - 12}px`; wr.appendChild(caret);
+  const car = document.createElement('div'); car.className = 'carriage'; car.innerHTML = '<i></i>'; car.style.cssText = `left:${CARET_X + 5 - 27}px;top:${RY - 15}px`; wr.appendChild(car);
+  const pulse = document.createElement('div'); pulse.className = 'pulse'; pulse.style.cssText = `left:${CARET_X + 5 - 27}px;top:${RY - 15}px`; wr.appendChild(pulse);
+  const dingEl = document.createElement('div'); dingEl.className = 'ding'; dingEl.textContent = 'DING'; dingEl.style.cssText = `left:${CARET_X + 38}px;top:${RY - 40}px`; phone.appendChild(dingEl);
+  const kb = document.createElement('div'); kb.className = 'kbd'; kb.innerHTML = '<div>' + '<span></span>'.repeat(10) + '</div><div>' + '<span></span>'.repeat(9) + '</div><div>' + '<span></span>'.repeat(9) + '</div><div class="b"><span style="flex:1.5"></span><span style="flex:1"></span><span style="flex:4"></span><span style="flex:1.6"></span></div>'; wr.appendChild(kb);
+  // nav bar (glass), lens, fly (the glass that becomes the island), ring, island
+  const nav = glassBox(phone, NAV.x, NAV.y, NAV.w, NAV.h, 32, { bezel: 18, strength: 22, refract: !opts.navBlurOnly });
+  const tabs = document.createElement('div'); tabs.className = 'tabs'; ['Write', 'Box', 'Find', 'Setup'].forEach((n, i) => { const t = document.createElement('div'); t.className = 'tab' + (i === 1 ? ' sel' : ''); t.innerHTML = ICO[n] + `<span>${n}</span>`; tabs.appendChild(t); }); nav.appendChild(tabs);
+  const lens = document.createElement('div'); lens.className = 'glass lens'; lens.style.cssText = `z-index:23;left:${17 + ITEM}px;top:647px;width:${ITEM}px;height:54px;border-radius:27px;background:rgba(255,255,255,.13);box-shadow:inset 0 1px 0 rgba(255,255,255,.7), inset 0 0 0 .5px rgba(255,255,255,.5), 0 6px 14px rgba(0,0,0,.3);-webkit-backdrop-filter:none;backdrop-filter:none;pointer-events:none`; phone.appendChild(lens);
+  const fly = document.createElement('div'); fly.className = 'fly'; fly.style.position = 'absolute'; fly.innerHTML = '<div class="lf"></div><div class="sm"></div><div class="txt">p.1 · 85 / 3000</div>'; phone.appendChild(fly);
+  const ring = document.createElement('div'); ring.className = 'ring'; ring.style.opacity = 0; phone.appendChild(ring);
+  const isl = glassBox(phone, ISL.x, ISL.y, ISL.w, ISL.h, 20, { bezel: 14, strength: 26, blur: 12 }); isl.classList.add('isl'); isl.textContent = 'p.1 · 85 / 3000'; isl.style.opacity = 0;
+  const hint = document.createElement('div'); hint.className = 'hint'; hint.textContent = 'tap Write'; phone.appendChild(hint);
+  // hit areas
+  const hit = (x, y, w, h, fn) => { const d = document.createElement('div'); d.className = 'tabhit'; d.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px`; d.addEventListener('pointerup', fn); phone.appendChild(d); };
+  const ctx = { box, wr, paper, rail, caret, car, kb, nav, tabs, lens, fly, ring, isl, hint, prev: 0, ding() { pulse.classList.remove('go'); void pulse.offsetWidth; pulse.classList.add('go'); dingEl.classList.remove('go'); void dingEl.offsetWidth; dingEl.classList.add('go'); } };
+  const sp = new Spring(0, .72, .76, p => { if (ctx.prev == null) ctx.prev = 0; CONCEPTS[opts.id](ctx, p); slider.value = Math.round(clamp(p, 0, 1) * 100); });
+  const slider = document.createElement('input'); slider.type = 'range'; slider.min = 0; slider.max = 100; slider.value = 0; slider.addEventListener('input', () => { live.delete(sp); ctx.prev = slider.value / 100; sp.x = sp.t = slider.value / 100; sp.v = 0; CONCEPTS[opts.id](ctx, sp.x); });
+  hit(NAV.x + 5, NAV.y, ITEM, NAV.h, () => sp.to(1));
+  isl.addEventListener('pointerup', () => { if (sp.x > .9) sp.to(0); });
+  const row = document.createElement('div'); row.className = 'row';
+  row.innerHTML = '<button class="act" data-a="in">Tap Write</button><button class="act" data-a="out">Back to Box</button>';
+  row.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; sp.to(b.dataset.a === 'in' ? 1 : 0); });
+  col.appendChild(row);
+  const row2 = document.createElement('div'); row2.className = 'row'; row2.innerHTML = '<span class="lbl">Scrub</span>'; row2.appendChild(slider); col.appendChild(row2);
+  col.insertAdjacentHTML('beforeend', opts.notes);
+  document.getElementById('grid').appendChild(col);
+  sp.on(0); applyAll();
+  return { sp, ctx };
+}
+function applyAll() { refracted.forEach(applyGlass); document.body.classList.toggle('lite', LEVEL === 'light'); phones.forEach(ph => ph && CONCEPTS[ph.id](ph.ctx, ph.sp.x)); }
+
+const phones = [];
+const defs3 = [
+  { id: 'lift', title: 'A · Lift', blurb: 'The glass lens under Write lifts off the bar, arcs up the screen and lands as the island. One piece of glass the whole way: the bar sinks, the Box recedes into a blur, the paper rises from below, the rail sweeps in, the carriage slides on.',
+    notes: '<ul class="pros"><li><b>Wins</b> the story is obvious: the thing you touched becomes the thing that stays. Ties the nav bar to the new island.</li><li><b>Costs</b> a shared-element flight over a live blur; the busiest of the three while it moves.</li></ul>' },
+  { id: 'aperture', title: 'B · Aperture', blurb: 'The writer opens like an iris from your thumb. A glass ring grows from the Write tab and the writer is revealed inside it while the Box is pushed outward and dims. The island pops in last.',
+    notes: '<ul class="pros"><li><b>Wins</b> one gesture, one shape, very Apple. The ring is where the glass shows off (it bends the Box as it passes).</li><li><b>Costs</b> a big clip path; the ring needs the blur at Balanced and Full only.</li></ul>' },
+  { id: 'rail', title: 'C · Rail', blurb: 'The glass nav bar itself flattens into the typewriter rail and slides up the screen; the paper is fed out of that slot; the carriage drops onto the rail with a ding and the island arrives.',
+    notes: '<ul class="pros"><li><b>Wins</b> the most Enk: nothing flies in from nowhere, the bar becomes the machine. Cheapest to run (one morph and a clip).</li><li><b>Costs</b> the nav bar must be a GlassMorph; the rail swap from glass to steel needs a careful crossfade.</li></ul>' , navBlurOnly: true }
+];
+defs3.forEach((d, i) => { const ph = makePhone(d); ph.id = d.id; phones[i] = ph; });
+applyAll();
+
+document.getElementById('lvl').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; document.querySelectorAll('#lvl button').forEach(x => x.classList.toggle('on', x === b)); LEVEL = b.dataset.v; applyAll(); });
+document.getElementById('spd').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; document.querySelectorAll('#spd button').forEach(x => x.classList.toggle('on', x === b)); SLOW = parseFloat(b.dataset.v); });
+document.getElementById('playAll').addEventListener('click', () => phones.forEach(ph => { ph.sp.snap(0); ph.ctx.prev = 0; ph.sp.to(1); }));
+document.getElementById('backAll').addEventListener('click', () => phones.forEach(ph => ph.sp.to(0)));
+</script>
+</body>
+</html>
