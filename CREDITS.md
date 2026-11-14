@@ -25,3 +25,4 @@ All audio samples included in Enk are dedicated to the public domain under Creat
 - **Roborazzi** by takahirom (`io.github.takahirom.roborazzi`). Licensed under the Apache License, Version 2.0.
 - **Backdrop** by Kyant (`io.github.kyant0:backdrop`). Licensed under the Apache License, Version 2.0.
 - **DataStore Preferences** by Google LLC (`androidx.datastore:datastore-preferences`). Licensed under the Apache License, Version 2.0.
+- **FlorisBoard keyboard layout data** by The FlorisBoard Contributors (English letters, long-press alternatives, symbols). Licensed under the Apache License, Version 2.0.

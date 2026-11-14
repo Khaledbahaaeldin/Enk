@@ -1,0 +1,48 @@
+{
+  "id": "en",
+  "name": "English",
+  "popups": {
+    "a": ["à", "á", "â", "ä", "æ", "ã", "å", "ā"],
+    "c": ["ç"],
+    "e": ["è", "é", "ê", "ë", "ē"],
+    "i": ["ì", "í", "î", "ï", "ī"],
+    "n": ["ñ", "ń"],
+    "o": ["ò", "ó", "ô", "ö", "õ", "ø", "œ", "ō"],
+    "s": ["ß"],
+    "u": ["ù", "ú", "û", "ü", "ū"],
+    ".": ["?", "!", ":", ";", "-", "'", "\"", "@", "/", "&"],
+    ",": ["%", "+", "(", ")", "#"],
+    "-": ["_", "–", "—", "·"],
+    "\"": ["”", "„", "“", "«", "»"],
+    "'": ["’", "‚", "‘", "‹", "›"],
+    "?": ["¿", "‽"],
+    "!": ["¡"],
+    "$": ["€", "£", "¥", "¢"],
+    "%": ["‰"],
+    "+": ["±"],
+    "*": ["†", "★", "‡"],
+    "(": ["<", "[", "{"],
+    ")": [">", "]", "}"],
+    "#": ["№"]
+  },
+  "pages": {
+    "letters": [
+      ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+      [{"type": "spacer", "width": 0.5}, "a", "s", "d", "f", "g", "h", "j", "k", "l", {"type": "spacer", "width": 0.5}],
+      [{"type": "shift"}, "z", "x", "c", "v", "b", "n", "m", {"type": "backspace"}],
+      [{"type": "page", "target": "numbers", "label": "123"}, {"type": "globe"}, ",", {"type": "space"}, ".", {"type": "enter", "width": 1.5}]
+    ],
+    "numbers": [
+      ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+      ["-", "/", ":", ";", "(", ")", "$", "&", "@", "\""],
+      [{"type": "page", "target": "symbols", "label": "#+="}, {"type": "char", "label": ".", "width": 1.4}, {"type": "char", "label": ",", "width": 1.4}, {"type": "char", "label": "?", "width": 1.4}, {"type": "char", "label": "!", "width": 1.4}, {"type": "char", "label": "'", "width": 1.4}, {"type": "backspace"}],
+      [{"type": "page", "target": "letters", "label": "ABC"}, {"type": "globe"}, {"type": "space", "width": 5.5}, {"type": "enter", "width": 2}]
+    ],
+    "symbols": [
+      ["[", "]", "{", "}", "#", "%", "^", "*", "+", "="],
+      ["_", "\\", "|", "~", "<", ">", "€", "£", "¥", "•"],
+      [{"type": "page", "target": "numbers", "label": "123"}, {"type": "char", "label": ".", "width": 1.4}, {"type": "char", "label": ",", "width": 1.4}, {"type": "char", "label": "?", "width": 1.4}, {"type": "char", "label": "!", "width": 1.4}, {"type": "char", "label": "'", "width": 1.4}, {"type": "backspace"}],
+      [{"type": "page", "target": "letters", "label": "ABC"}, {"type": "globe"}, {"type": "space", "width": 5.5}, {"type": "enter", "width": 2}]
+    ]
+  }
+}

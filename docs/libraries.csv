@@ -15,3 +15,4 @@ androidx.room:room-ktx,2.8.5,Apache-2.0,https://developer.android.com/jetpack/an
 io.github.kyant0:backdrop,2.0.1,Apache-2.0,https://github.com/Kyant0/AndroidLiquidGlass
 androidx.glance:glance-appwidget,1.1.1,Apache-2.0,https://developer.android.com/jetpack/androidx/releases/glance
 androidx.compose.ui:ui-tooling-preview,2026.09.00,Apache-2.0,https://developer.android.com/jetpack/androidx/releases/compose-ui
+florisboard-layout-data,main,Apache-2.0,https://github.com/florisboard/florisboard

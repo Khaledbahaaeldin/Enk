@@ -1,0 +1,5 @@
+The English letter order, the long-press alternatives and the punctuation and symbol sets in en.json
+are derived from the layout data of FlorisBoard (https://github.com/florisboard/florisboard),
+Copyright 2020-2026 The FlorisBoard Contributors, licensed under the Apache License, Version 2.0
+(https://www.apache.org/licenses/LICENSE-2.0). The data was rewritten into Enk's own format and
+reordered; no FlorisBoard code is used.
