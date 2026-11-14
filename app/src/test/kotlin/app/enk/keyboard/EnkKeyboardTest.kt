@@ -9,11 +9,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import app.enk.design.shell.LocalReduceEffects
@@ -568,6 +571,129 @@ class EnkKeyboardTest {
 
         // Test 5: page switching works without animation delays
         composeRule.onNodeWithTag("key_page_numbers").performTouchInput { click() }
+        composeRule.onNodeWithTag("key_1").assertExists()
+        composeRule.onNodeWithTag("key_q").assertDoesNotExist()
+    }
+
+    private fun checkAccessibilityForPage(pageId: PageId) {
+        val pageState = KeyboardState(page = pageId, shift = Shift.Off)
+        composeRule.setContent {
+            EnkShellTheme(ThemeId.Graphite, ThemeMode.Light) {
+                EnkKeyboard(
+                    layout = layout,
+                    metrics = metrics,
+                    onFeedback = {},
+                    onApply = {},
+                    onAlternative = { _, _ -> },
+                    caretProvider = { 0 },
+                    initialState = pageState
+                )
+            }
+        }
+        composeRule.waitForIdle()
+
+        val seenDescriptions = mutableSetOf<String>()
+        val rows = layout.pages.getValue(pageId)
+
+        for ((r, row) in rows.withIndex()) {
+            val expectedMinHeight = if (r == 0 || r == rows.size - 1) {
+                metrics.keyHeightDp + metrics.gapYDp / 2f
+            } else {
+                metrics.keyHeightDp + metrics.gapYDp
+            }
+
+            for (spec in row.keys) {
+                if (spec is SpacerKey) continue
+                val tag = when (spec) {
+                    is CharKey -> "key_${spec.label}"
+                    is ShiftKey -> "key_shift"
+                    is BackspaceKey -> "key_backspace"
+                    is SpaceKey -> "key_space"
+                    is EnterKey -> "key_enter"
+                    is GlobeKey -> "key_globe"
+                    is PageKey -> "key_page_${spec.target.name.lowercase()}"
+                    else -> continue
+                }
+
+                val node = composeRule.onNodeWithTag(tag)
+                node.assertExists()
+                node.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+
+                val config = node.fetchSemanticsNode().config
+                val desc = config.getOrNull(SemanticsProperties.ContentDescription)?.firstOrNull()
+                assertTrue("Key $tag must have non-empty description", !desc.isNullOrEmpty())
+                assertTrue("No duplicate content descriptions on $pageId: duplicate '$desc'", seenDescriptions.add(desc!!))
+
+                val heightDp = node.getUnclippedBoundsInRoot().height.value
+                assertTrue("Key $tag height $heightDp must be >= $expectedMinHeight - 0.5", heightDp >= expectedMinHeight - 0.5f)
+            }
+        }
+    }
+
+    @Test
+    fun accessibilityLettersPage() {
+        checkAccessibilityForPage(PageId.Letters)
+    }
+
+    @Test
+    fun accessibilityNumbersPage() {
+        checkAccessibilityForPage(PageId.Numbers)
+    }
+
+    @Test
+    fun accessibilitySymbolsPage() {
+        checkAccessibilityForPage(PageId.Symbols)
+    }
+
+    @Test
+    fun textScaleDoesNotChangeKeyboardHeight() {
+        var fontScale by mutableStateOf(1.0f)
+
+        composeRule.setContent {
+            CompositionLocalProvider(
+                LocalDensity provides Density(1f, fontScale = fontScale)
+            ) {
+                EnkShellTheme(ThemeId.Graphite, ThemeMode.Light) {
+                    EnkKeyboard(
+                        layout = layout,
+                        metrics = metrics,
+                        onFeedback = {},
+                        onApply = {},
+                        onAlternative = { _, _ -> },
+                        caretProvider = { 0 }
+                    )
+                }
+            }
+        }
+        val h1 = composeRule.onNodeWithTag("enk_keyboard").getUnclippedBoundsInRoot().height.value
+
+        fontScale = 2.0f
+        composeRule.waitForIdle()
+        val h2 = composeRule.onNodeWithTag("enk_keyboard").getUnclippedBoundsInRoot().height.value
+
+        assertEquals(h1, h2, 0.01f)
+    }
+
+    @Test
+    fun reduceEffectsNoCrossfadeDelay() {
+        composeRule.setContent {
+            CompositionLocalProvider(LocalReduceEffects provides true) {
+                EnkShellTheme(ThemeId.Graphite, ThemeMode.Light) {
+                    EnkKeyboard(
+                        layout = layout,
+                        metrics = metrics,
+                        onFeedback = {},
+                        onApply = {},
+                        onAlternative = { _, _ -> },
+                        caretProvider = { 0 }
+                    )
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag("key_page_numbers").performClick()
+        composeRule.waitForIdle()
+
         composeRule.onNodeWithTag("key_1").assertExists()
         composeRule.onNodeWithTag("key_q").assertDoesNotExist()
     }
