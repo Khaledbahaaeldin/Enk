@@ -52,6 +52,25 @@ class SettingsStoreTest {
         assertEquals(80, s.intensity)
         assertEquals(55, s.beam)
         assertFalse(s.hintDismissed)
+        assertEquals(KeyboardMode.Enk, s.keyboard)
+    }
+
+    @Test
+    fun keyboardDefaultsToEnkRoundTripsAndFallsBack() = runBlocking {
+        val file = File(tempFolder.root, "keyboard.preferences_pb")
+        val store = createStore(file)
+        assertEquals(KeyboardMode.Enk, store.settings.first().keyboard)
+
+        store.update { it.copy(keyboard = KeyboardMode.System) }
+        assertEquals(KeyboardMode.System, store.settings.first().keyboard)
+
+        val fileCorrupt = File(tempFolder.root, "corrupted_keyboard.preferences_pb")
+        val dataStore = PreferenceDataStoreFactory.create(produceFile = { fileCorrupt })
+        dataStore.edit { prefs ->
+            prefs[stringPreferencesKey("keyboard_mode")] = "UnknownKeyboard"
+        }
+        val storeCorrupt = SettingsStore(dataStore)
+        assertEquals(KeyboardMode.Enk, storeCorrupt.settings.first().keyboard)
     }
 
     @Test
@@ -100,7 +119,8 @@ class SettingsStoreTest {
                 warmth = 50,
                 intensity = 90,
                 beam = 70,
-                hintDismissed = true
+                hintDismissed = true,
+                keyboard = KeyboardMode.System
             )
         }
         scope1.cancel()
@@ -123,6 +143,7 @@ class SettingsStoreTest {
         assertEquals(90, s.intensity)
         assertEquals(70, s.beam)
         assertTrue(s.hintDismissed)
+        assertEquals(KeyboardMode.System, s.keyboard)
         scope2.cancel()
     }
 

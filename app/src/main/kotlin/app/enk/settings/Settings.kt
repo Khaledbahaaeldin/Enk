@@ -23,6 +23,11 @@ enum class DarkPaper {
     Lamp
 }
 
+enum class KeyboardMode {
+    Enk,
+    System
+}
+
 data class Settings(
     val correction: CorrectionMode = CorrectionMode.CleanErase,
     val autocorrect: Boolean = false,
@@ -37,5 +42,6 @@ data class Settings(
     val intensity: Int = 80,
     val beam: Int = 55,
     val hintDismissed: Boolean = false,
-    val darkPaper: DarkPaper = DarkPaper.Ask
+    val darkPaper: DarkPaper = DarkPaper.Ask,
+    val keyboard: KeyboardMode = KeyboardMode.Enk
 )
