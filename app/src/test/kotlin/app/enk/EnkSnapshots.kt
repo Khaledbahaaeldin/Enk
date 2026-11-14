@@ -29,7 +29,7 @@ class EnkSnapshots(
         currentDescription = description
         val statementWithQualifiers = object : Statement() {
             override fun evaluate() {
-                RuntimeEnvironment.setQualifiers("w${screenWidthDp}dp-h${screenHeightDp}dp-xxhdpi")
+                RuntimeEnvironment.setQualifiers("w${screenWidthDp}dp-h${screenHeightDp}dp-hdpi")
                 base.evaluate()
             }
         }
@@ -56,6 +56,7 @@ class EnkSnapshots(
     }
 
     companion object {
-        const val DEFAULT_THRESHOLD = 0.01f // 1.0% threshold
+        /** Share of pixels allowed to differ: none. Rendering is software and deterministic; a 2 dp caret that goes missing must fail. */
+        const val DEFAULT_THRESHOLD = 0f
     }
 }

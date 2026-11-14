@@ -52,3 +52,10 @@ dependencies {
 tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEach {
     exclude("**/*GoldenTest*")
 }
+
+// AGP 9 no longer creates the release unit tests unless asked; the gate runs both variants.
+androidComponents {
+    beforeVariants(selector().withBuildType("release")) { variant ->
+        variant.hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
+    }
+}

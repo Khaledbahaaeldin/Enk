@@ -68,8 +68,8 @@ android {
 
     // Pure helpers shared by unit tests and instrumented tests; never packaged in the app.
     sourceSets {
-        getByName("test").java.directories.add("src/sharedTest/kotlin")
-        getByName("androidTest").java.directories.add("src/sharedTest/kotlin")
+        getByName("test").kotlin.directories.add("src/sharedTest/kotlin")
+        getByName("androidTest").kotlin.directories.add("src/sharedTest/kotlin")
     }
 
     testOptions {
@@ -85,9 +85,11 @@ android {
     }
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-    if (name == "compileDebugUnitTestKotlin" || name == "compileDebugAndroidTestKotlin") {
-        source(file("src/sharedTest/kotlin"))
+// AGP 9 no longer creates the release unit tests unless asked. They are part of the gate: a class that
+// compiles for debug but not for release must fail here, as it did before the upgrade.
+androidComponents {
+    beforeVariants(selector().withBuildType("release")) { variant ->
+        variant.hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
     }
 }
 

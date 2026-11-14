@@ -24,3 +24,10 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
 }
+
+// AGP 9 no longer creates the release unit tests unless asked; the gate runs both variants.
+androidComponents {
+    beforeVariants(selector().withBuildType("release")) { variant ->
+        variant.hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
+    }
+}

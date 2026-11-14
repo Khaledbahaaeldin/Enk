@@ -36,7 +36,7 @@ import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = "w400dp-h533dp-xxhdpi")
+@Config(qualifiers = "w400dp-h533dp-hdpi")
 class LogoGoldenTest {
 
     @get:Rule

@@ -9,7 +9,11 @@ import java.net.URI
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
-/** Reads the real repository files (tests run in `app/`), so a stale or incomplete credit fails here. */
+/**
+ * Reads the real repository files (tests run in `app/`), so a stale or incomplete credit fails here.
+ * Robolectric runs it because the credits are parsed with `org.json`, which the plain JVM test classpath
+ * stubs out (every parse comes back empty).
+ */
 @RunWith(RobolectricTestRunner::class)
 class CreditsLoaderTest {
 
