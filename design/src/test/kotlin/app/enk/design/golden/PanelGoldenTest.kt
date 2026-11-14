@@ -7,8 +7,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
 import app.enk.design.ControlPanel
 import app.enk.design.ControlPanelMetrics
 import app.enk.design.EnkColors
@@ -18,22 +16,21 @@ import app.enk.design.LampSettings
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class PanelGoldenTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.NEXUS_5.copy(
-            screenWidth = 1200,
-            screenHeight = 2460
-        ),
-        maxPercentDifference = 2.0
-    )
+    val snapshots = EnkSnapshots(PanelGoldenTest::class.java)
 
     @Test
     fun panelAtRest() {
         val settings = LampSettings(warmth = 25, intensity = 80, beam = 55)
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Box(
                 modifier = Modifier
                     .size(400.dp, 820.dp)
@@ -53,7 +50,7 @@ class PanelGoldenTest {
     @Test
     fun panelFadersAt0Percent() {
         val settings = LampSettings(warmth = 0, intensity = 20, beam = 30)
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Box(
                 modifier = Modifier
                     .size(400.dp, 820.dp)
@@ -73,7 +70,7 @@ class PanelGoldenTest {
     @Test
     fun panelFadersAt25Percent() {
         val settings = LampSettings(warmth = 25, intensity = 40, beam = 48)
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Box(
                 modifier = Modifier
                     .size(400.dp, 820.dp)
@@ -93,7 +90,7 @@ class PanelGoldenTest {
     @Test
     fun panelFadersAt100Percent() {
         val settings = LampSettings(warmth = 100, intensity = 100, beam = 100)
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Box(
                 modifier = Modifier
                     .size(400.dp, 820.dp)
@@ -113,7 +110,7 @@ class PanelGoldenTest {
     @Test
     fun panelOneKnobLifted() {
         val settings = LampSettings(warmth = 25, intensity = 80, beam = 55)
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Box(
                 modifier = Modifier
                     .size(400.dp, 820.dp)
@@ -134,7 +131,7 @@ class PanelGoldenTest {
     @Test
     fun panelMidEnterAt280ms() {
         val settings = LampSettings(warmth = 25, intensity = 80, beam = 55)
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Box(
                 modifier = Modifier
                     .size(400.dp, 820.dp)
@@ -155,7 +152,7 @@ class PanelGoldenTest {
     @Test
     fun panelReduceEffectsMidEnterIsAFadeWithNoSlide() {
         val settings = LampSettings(warmth = 25, intensity = 80, beam = 55)
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Box(
                 modifier = Modifier
                     .size(400.dp, 820.dp)
@@ -179,7 +176,7 @@ class PanelGoldenTest {
         // Panel = 3 rows + 4 dp frame twice + 8/10 dp well padding + 30 dp bottom margin. If a row
         // were clamped below the fader's 48 dp, the panel would be shorter than this.
         var panelHeightDp = 0f
-        paparazzi.snapshot {
+        snapshots.snapshot {
             val density = LocalDensity.current
             Box(modifier = Modifier.size(400.dp, 820.dp).background(EnkColors.paperNight)) {
                 ControlPanel(
@@ -200,7 +197,7 @@ class PanelGoldenTest {
     @Test
     fun faderTouchHeightIs48Dp() {
         var measuredHeightDp = 0f
-        paparazzi.snapshot {
+        snapshots.snapshot {
             val density = LocalDensity.current
             Fader(
                 label = "WARMTH",

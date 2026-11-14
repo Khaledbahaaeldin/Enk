@@ -1,7 +1,6 @@
 package app.enk.writer
 
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
+import app.enk.EnkSnapshots
 import androidx.compose.runtime.CompositionLocalProvider
 import app.enk.design.LocalMonoFont
 import androidx.compose.ui.text.font.Font
@@ -10,20 +9,19 @@ import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class CarriageGoldenTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.NEXUS_5.copy(
-            screenWidth = 1200,
-            screenHeight = 2460
-        ),
-        maxPercentDifference = 2.0
-    )
+    val snapshots = EnkSnapshots(CarriageGoldenTest::class.java)
 
-    // Paparazzi cannot load res/font fonts, so the goldens load the real Courier Prime file directly
-    // (built on access: it needs layoutlib, which exists only after the rule has started).
+    // The goldens load the real Courier Prime file directly for consistent font rasterization
+    // across host environments.
     private val courier: FontFamily get() = FontFamily(Font(File("../design/src/main/res/font/courier_prime_bold.ttf")))
 
     private val referenceGeometry = WriterGeometry.compute(
@@ -34,14 +32,14 @@ class CarriageGoldenTest {
 
     @Test
     fun railAloneAcross400dpScreen() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Rail(railYDp = referenceGeometry.railYDp)
         }
     }
 
     @Test
     fun carriageAtRestDayMode() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Carriage(
                 railYDp = referenceGeometry.railYDp,
                 centerXDp = referenceGeometry.carriageCenterXDp(12),
@@ -56,7 +54,7 @@ class CarriageGoldenTest {
 
     @Test
     fun carriageSlugStrikePeak50ms() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 Carriage(
                     railYDp = referenceGeometry.railYDp,
@@ -74,7 +72,7 @@ class CarriageGoldenTest {
 
     @Test
     fun carriageAtNightLampGlow() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Carriage(
                 railYDp = referenceGeometry.railYDp,
                 centerXDp = referenceGeometry.carriageCenterXDp(12),
@@ -90,7 +88,7 @@ class CarriageGoldenTest {
 
     @Test
     fun carriageDraggingMode() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Carriage(
                 railYDp = referenceGeometry.railYDp,
                 centerXDp = referenceGeometry.carriageCenterXDp(12) + 20f,
@@ -107,7 +105,7 @@ class CarriageGoldenTest {
     fun hitAreaIs54By48Dp() {
         var w = 0f
         var h = 0f
-        paparazzi.snapshot {
+        snapshots.snapshot {
             Carriage(
                 railYDp = referenceGeometry.railYDp,
                 centerXDp = referenceGeometry.carriageCenterXDp(12),

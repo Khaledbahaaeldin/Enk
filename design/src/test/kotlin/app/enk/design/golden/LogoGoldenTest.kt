@@ -24,49 +24,52 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
 import app.enk.design.R
 import app.enk.design.logo.EnkSymbol
 import app.enk.design.logo.EnkWordmark
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "w400dp-h533dp-hdpi")
 class LogoGoldenTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.NEXUS_5.copy(
-            screenWidth = 1200,
-            screenHeight = 1600
-        ),
-        maxPercentDifference = 2.0
+    val snapshots = EnkSnapshots(
+        testClass = LogoGoldenTest::class.java,
+        screenWidthDp = 400,
+        screenHeightDp = 533
     )
 
     @Test
     fun foregroundMasks() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             ForegroundMasksScene()
         }
     }
 
     @Test
     fun monochromeTints() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             MonochromeTintsScene()
         }
     }
 
     @Test
     fun wordmarkVariants() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             WordmarkVariantsScene()
         }
     }
 
     @Test
     fun symbolSizes() {
-        paparazzi.snapshot {
+        snapshots.snapshot {
             SymbolSizesScene()
         }
     }

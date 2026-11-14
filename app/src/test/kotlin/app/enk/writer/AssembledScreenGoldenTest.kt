@@ -12,8 +12,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import app.cash.paparazzi.DeviceConfig
-import app.cash.paparazzi.Paparazzi
+import app.enk.EnkSnapshots
 import app.enk.design.ControlPanel
 import app.enk.design.LampColor
 import app.enk.design.LampSettings
@@ -24,15 +23,17 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 /** The writing screen's pieces laid out together, at full height and with the keyboard up. */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class AssembledScreenGoldenTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.NEXUS_5.copy(screenWidth = 1200, screenHeight = 2460),
-        maxPercentDifference = 2.0
-    )
+    val snapshots = EnkSnapshots(AssembledScreenGoldenTest::class.java)
 
     private val courier: FontFamily get() = FontFamily(Font(File("../design/src/main/res/font/courier_prime_regular.ttf")))
 
@@ -48,7 +49,7 @@ class AssembledScreenGoldenTest {
     private fun assemble(heightDp: Float): Pair<Float, Float> {
         val geometry = WriterGeometry.compute(400f, heightDp, 1.0f)
         var panelTopDp = 0f
-        paparazzi.snapshot {
+        snapshots.snapshot {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 // The snapshot root is fixed to the device size; the outer Box loosens it so the

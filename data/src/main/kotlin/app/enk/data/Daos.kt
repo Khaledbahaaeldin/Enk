@@ -88,7 +88,7 @@ interface NoteDao {
     @Query("SELECT * FROM NoteEntity WHERE trashedAt IS NOT NULL ORDER BY trashedAt DESC")
     fun observeTrashed(): Flow<List<NoteEntity>>
 
-    @Query("SELECT * FROM NoteEntity WHERE trashedAt IS NULL ORDER BY modifiedAt DESC LIMIT 1")
+    @Query("SELECT * FROM NoteEntity WHERE trashedAt IS NULL ORDER BY modifiedAt DESC, createdAt DESC, rowid DESC LIMIT 1")
     suspend fun recent(): NoteEntity?
 
     @Query("SELECT * FROM NoteEntity WHERE trashedAt IS NULL ORDER BY position ASC")

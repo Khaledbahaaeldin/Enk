@@ -40,6 +40,28 @@ class DaoTest {
     }
 
     @Test
+    fun recentBreaksATieOnModifiedAtByTheNoteCreatedLater() = runBlocking {
+        // Two notes touched in the same millisecond: the answer must not depend on storage order.
+        noteDao.upsert(NoteEntity("older", null, 0, createdAt = 1000L, modifiedAt = 5000L, trashedAt = null))
+        noteDao.upsert(NoteEntity("newer", null, 1, createdAt = 2000L, modifiedAt = 5000L, trashedAt = null))
+        assertEquals("newer", noteDao.recent()?.id)
+    }
+
+    @Test
+    fun recentBreaksAFullTieByInsertOrder() = runBlocking {
+        noteDao.upsert(NoteEntity("first", null, 0, createdAt = 1000L, modifiedAt = 5000L, trashedAt = null))
+        noteDao.upsert(NoteEntity("second", null, 1, createdAt = 1000L, modifiedAt = 5000L, trashedAt = null))
+        assertEquals("second", noteDao.recent()?.id)
+    }
+
+    @Test
+    fun recentIgnoresTrashedNotes() = runBlocking {
+        noteDao.upsert(NoteEntity("live", null, 0, createdAt = 1000L, modifiedAt = 1000L, trashedAt = null))
+        noteDao.upsert(NoteEntity("gone", null, 1, createdAt = 2000L, modifiedAt = 9000L, trashedAt = 9500L))
+        assertEquals("live", noteDao.recent()?.id)
+    }
+
+    @Test
     fun insertAndReadPages() = runBlocking {
         val note = NoteEntity(
             id = "note-1",

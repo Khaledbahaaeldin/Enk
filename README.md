@@ -15,13 +15,13 @@ Enk is architected into modular components:
 
 ### Prerequisites
 - **JDK 21** (`JAVA_HOME` pointing to a JDK 21 installation such as Eclipse Adoptium 21). Note: Backdrop and Android shaders utilize Java 21 bytecode.
-- Android SDK with platform API 35 installed (`minSdk = 31`, `targetSdk = 35`, `compileSdk = 35`).
+- Android SDK with platform API 37 installed (`minSdk = 31`, `targetSdk = 35`, `compileSdk = 37`).
 
 ### Verification Gate
 Enk enforces a strict verification gate on every change:
 ```bash
 # Full verification gate
-./gradlew clean build test :design:verifyPaparazziDebug :app:verifyPaparazziDebug \
+./gradlew clean build test :design:verifyRoborazziDebug :app:verifyRoborazziDebug \
   :app:processDebugManifest :app:checkDebugAarMetadata :app:checkReleaseAarMetadata \
   :app:assembleRelease :app:compileDebugAndroidTestKotlin
 
@@ -33,7 +33,7 @@ bash scripts/check-fdroid-rules.sh
 On Windows (PowerShell / Git Bash):
 ```powershell
 $env:JAVA_HOME = "D:\jdks\eclipse_adoptium-21-amd64-windows.2"
-.\gradlew.bat clean build test :design:verifyPaparazziDebug :app:verifyPaparazziDebug :app:processDebugManifest :app:checkDebugAarMetadata :app:checkReleaseAarMetadata :app:assembleRelease :app:compileDebugAndroidTestKotlin
+.\gradlew.bat clean build test :design:verifyRoborazziDebug :app:verifyRoborazziDebug :app:processDebugManifest :app:checkDebugAarMetadata :app:checkReleaseAarMetadata :app:assembleRelease :app:compileDebugAndroidTestKotlin
 & "C:\Program Files\Git\bin\bash.exe" scripts/check-no-network.sh
 & "C:\Program Files\Git\bin\bash.exe" scripts/check-fdroid-rules.sh
 ```

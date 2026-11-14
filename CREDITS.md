@@ -22,6 +22,6 @@ All audio samples included in Enk are dedicated to the public domain under Creat
 ## Third-Party Libraries
 
 - **AndroidX & Jetpack Compose** by Google LLC. Licensed under the Apache License, Version 2.0.
-- **Paparazzi** by Cash App. Licensed under the Apache License, Version 2.0.
+- **Roborazzi** by takahirom (`io.github.takahirom.roborazzi`). Licensed under the Apache License, Version 2.0.
 - **Backdrop** by Kyant (`io.github.kyant0:backdrop`). Licensed under the Apache License, Version 2.0.
 - **DataStore Preferences** by Google LLC (`androidx.datastore:datastore-preferences`). Licensed under the Apache License, Version 2.0.

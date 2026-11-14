@@ -5,8 +5,8 @@ Thank you for contributing to Enk. Enk is a focused, offline typewriter notebook
 ## Development Setup
 
 1. **JDK**: JDK 21 is required (`JAVA_HOME` pointing to JDK 21).
-2. **Android SDK**: Compile SDK 35, Min SDK 31.
-3. **Toolchain**: AGP 8.13.2, Kotlin 2.4.21, Gradle 8.13.
+2. **Android SDK**: Compile SDK 37, Min SDK 31.
+3. **Toolchain**: AGP 9.5.1, Kotlin 2.4.21, Gradle 9.9.1.
 
 ## Architectural Boundaries
 
@@ -39,7 +39,7 @@ Thank you for contributing to Enk. Enk is a focused, offline typewriter notebook
 Before opening a pull request, run the full verification gate:
 ```bash
 # 1. Full clean build and test suite
-./gradlew clean build test :design:verifyPaparazziDebug :app:verifyPaparazziDebug \
+./gradlew clean build test :design:verifyRoborazziDebug :app:verifyRoborazziDebug \
   :app:processDebugManifest :app:checkDebugAarMetadata :app:checkReleaseAarMetadata \
   :app:assembleRelease :app:compileDebugAndroidTestKotlin
 
