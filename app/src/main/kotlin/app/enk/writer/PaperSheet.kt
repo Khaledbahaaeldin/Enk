@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.lerp
 import app.enk.design.EnkColors
 import app.enk.design.EnkMaterials
 import app.enk.design.EnkShadows
@@ -106,10 +107,14 @@ fun PaperSheet(
     modifier: Modifier = Modifier,
     lamp: Rgb = LampColor.fromWarmth(25),
     typing: Boolean = false,
-    stampFrame: Float? = null
+    frozen: FrozenStrike? = null,
+    strikes: StrikeLog? = null,
+    clockMs: () -> Float = { 0f }
 ) {
     val page = state.pages.getOrElse(state.pageIndex) { StruckPage("") }
     val textColor = textColor(nightProgress, lamp)
+    val lampColor = Color(red = lamp.r, green = lamp.g, blue = lamp.b)
+    val flashColor = lerp(Color.White, lampColor, nightProgress)
 
     val lines = remember(page.text, geometry.cols) {
         GridLayout.wrap(page.text, geometry.cols)
@@ -126,12 +131,14 @@ fun PaperSheet(
         PaperText(
             page = page,
             caret = state.caret,
-            lastTypedIndex = state.lastTypedIndex,
             geometry = geometry,
             textColor = textColor,
             reduceMotion = reduceEffects,
             modifier = Modifier.fillMaxSize(),
-            stampFrame = stampFrame
+            strikes = strikes,
+            clockMs = clockMs,
+            frozen = frozen,
+            flashColor = flashColor
         )
         Caret(
             geometry = geometry,

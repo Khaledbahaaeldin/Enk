@@ -9,18 +9,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.enk.design.EnkMotion
 import app.enk.design.EnkType
 import app.enk.design.Jitter
-import app.enk.design.LampColor
 import app.enk.design.LocalMonoFont
-import app.enk.design.Rgb
 import app.enk.text.GridLayout
 import app.enk.text.StruckPage
 
@@ -30,6 +33,9 @@ data class TextCell(
     val col: Int,
     val codePoint: Int
 )
+
+/** Goldens only: draw the glyph at [index] as it looks [ageMs] after its key went down. */
+data class FrozenStrike(val index: Int, val ageMs: Float, val weight: Float = 1f, val fast: Boolean = false)
 
 /**
  * Calculates the range of line indices visible in the paper viewport.
@@ -73,13 +79,14 @@ fun cellsOfLine(lineText: String, lineStart: Int): List<TextCell> {
 fun PaperText(
     page: StruckPage,
     caret: Int,
-    lastTypedIndex: Int?,
     geometry: WriterGeometry,
     textColor: Color,
     reduceMotion: Boolean,
     modifier: Modifier = Modifier,
-    /** Freezes the stamp of the newest character at this progress (0..1) for goldens; null runs the animation. */
-    stampFrame: Float? = null
+    strikes: StrikeLog? = null,
+    clockMs: () -> Float = { 0f },
+    frozen: FrozenStrike? = null,
+    flashColor: Color = Color.White
 ) {
     val textMeasurer = rememberTextMeasurer()
     val lines = remember(page.text, geometry.cols) {
@@ -99,19 +106,6 @@ fun PaperText(
             targetValue = targetOffsetDp,
             animationSpec = tween(durationMillis = duration, easing = easing)
         )
-    }
-
-    val stampProgress = remember { Animatable(1f) }
-    LaunchedEffect(lastTypedIndex) {
-        if (lastTypedIndex != null) {
-            stampProgress.snapTo(0f)
-            val duration = if (reduceMotion) 100 else EnkMotion.stampMs
-            val easing = if (reduceMotion) LinearEasing else EnkMotion.stamp
-            stampProgress.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = duration, easing = easing)
-            )
-        }
     }
 
     val currentOffsetDp = feedAnim.value
@@ -137,6 +131,7 @@ fun PaperText(
     }
 
     Canvas(modifier = modifier) {
+        val now = clockMs()
         val densityVal = density
         val baselinePx = layoutFor("x").firstBaseline
         val viewportHeightDp = size.height / densityVal
@@ -146,6 +141,42 @@ fun PaperText(
             viewportHeightDp = viewportHeightDp,
             totalLines = lines.size
         )
+
+        val flashFrame: StrikeFrame?
+        val flashIndex: Int?
+        if (!reduceMotion) {
+            if (frozen != null) {
+                val f = strikeFrame(frozen.ageMs, frozen.weight, frozen.fast)
+                if (f.flashAlpha > 0f) {
+                    flashFrame = f
+                    flashIndex = frozen.index
+                } else {
+                    flashFrame = null
+                    flashIndex = null
+                }
+            } else if (strikes != null) {
+                val lk = strikes.latestKey(now)
+                if (lk != null) {
+                    val f = strikeFrame(now - lk.startMs, lk.weight, lk.fast)
+                    if (f.flashAlpha > 0f) {
+                        flashFrame = f
+                        flashIndex = lk.index
+                    } else {
+                        flashFrame = null
+                        flashIndex = null
+                    }
+                } else {
+                    flashFrame = null
+                    flashIndex = null
+                }
+            } else {
+                flashFrame = null
+                flashIndex = null
+            }
+        } else {
+            flashFrame = null
+            flashIndex = null
+        }
 
         for (lineIdx in visibleLines) {
             val lineSpan = lines[lineIdx]
@@ -157,50 +188,130 @@ fun PaperText(
             for (cell in cells) {
                 val colXDp = (geometry.textLeftDp - 12f) + cell.col * geometry.columnWidthDp
                 val colXPx = colXDp * densityVal
-
-                val jitter = Jitter.forIndex(cell.index)
-
-                val isNewest = cell.index == lastTypedIndex
-                val p = if (isNewest) (stampFrame ?: stampProgress.value) else 1f
-
-                val stampScale = if (isNewest && !reduceMotion) 1.35f - 0.35f * p else 1f
-                val stampDyDp = if (isNewest && !reduceMotion) -2f * (1f - p) else 0f
-                val stampAlpha = if (isNewest) 0.2f + 0.8f * p else 1f
-
-                val totalDyPx = (jitter.dyDp + stampDyDp) * densityVal
-                val totalAlpha = jitter.alpha * stampAlpha
-
                 val cellWidthPx = geometry.columnWidthDp * densityVal
                 val cellHeightPx = geometry.lineHeightDp * densityVal
                 val pivotXPx = colXPx + cellWidthPx / 2f
                 val pivotYPx = lineYPx + cellHeightPx / 2f
+
+                val jitter = Jitter.forIndex(cell.index)
+
+                val frame = if (reduceMotion) {
+                    null
+                } else when {
+                    frozen?.index == cell.index -> strikeFrame(frozen.ageMs, frozen.weight, frozen.fast)
+                    else -> strikes?.keyAt(cell.index, now)?.let { strikeFrame(now - it.startMs, it.weight, it.fast) }
+                }
+
+                if (frame != null && !frame.glyphVisible) {
+                    continue
+                }
+
+                if (flashIndex == cell.index && flashFrame != null && flashFrame.flashAlpha > 0f) {
+                    val rxPx = flashFrame.flashRadiusDp * densityVal
+                    val ryPx = StrikeTiming.FLASH_RY_DP * densityVal
+                    val flashCenterYPx = lineYPx + baselinePx
+                    drawOval(
+                        color = flashColor.copy(alpha = flashFrame.flashAlpha),
+                        topLeft = Offset(pivotXPx - rxPx, flashCenterYPx - ryPx),
+                        size = Size(rxPx * 2f, ryPx * 2f)
+                    )
+                }
+
+                val scale = frame?.glyphScale ?: 1f
+                val glyphColor = if (frame != null && frame.glyphDarken > 0f) {
+                    lerp(textColor, Color.Black, frame.glyphDarken)
+                } else {
+                    textColor
+                }
+                val haloShadow = if (frame != null && frame.haloDp > 0f) {
+                    Shadow(
+                        color = textColor.copy(alpha = 0.5f * jitter.alpha),
+                        offset = Offset.Zero,
+                        blurRadius = frame.haloDp * densityVal
+                    )
+                } else {
+                    null
+                }
+
+                val totalDyPx = jitter.dyDp * densityVal
+                val totalAlpha = jitter.alpha
 
                 withTransform({
                     translate(left = 0f, top = totalDyPx)
                     if (jitter.rotDeg != 0f) {
                         rotate(degrees = jitter.rotDeg, pivot = Offset(pivotXPx, pivotYPx))
                     }
-                    if (stampScale != 1f) {
-                        scale(scaleX = stampScale, scaleY = stampScale, pivot = Offset(pivotXPx, pivotYPx))
+                    if (scale != 1f) {
+                        scale(scaleX = scale, scaleY = scale, pivot = Offset(pivotXPx, pivotYPx))
                     }
                 }) {
                     if (!cell.text.first().isWhitespace()) {
                         drawText(
                             textLayoutResult = layoutFor(cell.text),
                             topLeft = Offset(colXPx, lineYPx),
-                            alpha = totalAlpha
+                            color = glyphColor,
+                            alpha = totalAlpha,
+                            shadow = haloShadow
                         )
                     }
 
-                    // Struck line: 1.5 dp line drawn across struck character cell
                     if (struckMask.getOrElse(cell.index) { false }) {
-                        // Through the middle of the lowercase letters: a quarter em above the baseline.
-                        val strikeY = lineYPx + baselinePx - 0.27f * geometry.fontSp * densityVal
-                        drawLine(
-                            color = textColor.copy(alpha = 0.9f),
-                            start = Offset(colXPx, strikeY),
-                            end = Offset(colXPx + cellWidthPx, strikeY),
-                            strokeWidth = 1.5f * densityVal
+                        val struckEntry = if (!reduceMotion) strikes?.struckAt(cell.index, now) else null
+                        val lineFraction = if (struckEntry != null) {
+                            val age = now - struckEntry.startMs
+                            val impact = if (struckEntry.fast) StrikeTiming.FAST_IMPACT_MS else StrikeTiming.IMPACT_MS
+                            ((age - impact) / StrikeTiming.STRUCK_LINE_MS).coerceIn(0f, 1f)
+                        } else {
+                            1f
+                        }
+
+                        if (lineFraction > 0f) {
+                            val strikeY = lineYPx + baselinePx - 0.27f * geometry.fontSp * densityVal
+                            drawLine(
+                                color = textColor.copy(alpha = 0.9f),
+                                start = Offset(colXPx, strikeY),
+                                end = Offset(colXPx + cellWidthPx * lineFraction, strikeY),
+                                strokeWidth = 1.5f * densityVal
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!reduceMotion && strikes != null) {
+            val erases = strikes.erases(now)
+            for (erase in erases) {
+                if (erase.line in visibleLines) {
+                    val lineYDp = currentOffsetDp + erase.line * geometry.lineHeightDp
+                    val lineYPx = lineYDp * densityVal
+                    val colXDp = (geometry.textLeftDp - 12f) + erase.col * geometry.columnWidthDp
+                    val colXPx = colXDp * densityVal
+                    val cellWidthPx = geometry.columnWidthDp * densityVal
+                    val cellHeightPx = geometry.lineHeightDp * densityVal
+
+                    val p = ((now - erase.startMs) / StrikeTiming.ERASE_WIPE_MS).coerceIn(0f, 1f)
+
+                    clipRect(
+                        left = colXPx + p * cellWidthPx,
+                        top = lineYPx,
+                        right = colXPx + cellWidthPx,
+                        bottom = lineYPx + cellHeightPx
+                    ) {
+                        drawText(
+                            textLayoutResult = layoutFor(erase.text),
+                            topLeft = Offset(colXPx, lineYPx),
+                            color = textColor
+                        )
+                    }
+
+                    if (p < 1f) {
+                        val barWidthPx = 3.dp.toPx()
+                        val barLeftPx = colXPx + p * cellWidthPx - 1.dp.toPx()
+                        drawRect(
+                            color = flashColor.copy(alpha = 0.55f),
+                            topLeft = Offset(barLeftPx, lineYPx),
+                            size = Size(barWidthPx, cellHeightPx)
                         )
                     }
                 }

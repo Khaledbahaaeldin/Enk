@@ -68,7 +68,6 @@ class AssembledScreenGoldenTest {
                         centerXDp = geometry.carriageCenterXDp(12),
                         mode = CarriageMotion.Rest,
                         slugChar = null,
-                        strikeKey = 0,
                         night = true,
                         reduceEffects = false
                     )

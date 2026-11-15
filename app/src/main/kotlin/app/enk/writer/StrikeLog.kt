@@ -10,12 +10,19 @@ class StrikeLog {
     private val eraseEntries = mutableListOf<Erase>()
     private var lastStrikeStartMs: Float? = null
 
+    var lastRecordedKey: Key? = null
+        private set
+    var lastRecordedStruck: Struck? = null
+        private set
+    var lastRecordedErase: Erase? = null
+        private set
+
     private fun prune(nowMs: Float) {
         if (nowMs.isNaN() || nowMs < 0f) return
 
         keyAndStruckEntries.removeAll { entry ->
             val age = nowMs - entry.startMs
-            age < 0f || age >= StrikeTiming.TOTAL_MS
+            age >= StrikeTiming.TOTAL_MS
         }
         while (keyAndStruckEntries.size > StrikeTiming.MAX_ANIMATING) {
             keyAndStruckEntries.removeAt(0)
@@ -23,9 +30,13 @@ class StrikeLog {
 
         eraseEntries.removeAll { entry ->
             val age = nowMs - entry.startMs
-            age < 0f || age >= StrikeTiming.ERASE_WIPE_MS
+            age >= StrikeTiming.ERASE_WIPE_MS
         }
     }
+
+    fun allKeys(): List<Key> = keyAndStruckEntries.filterIsInstance<Key>()
+    fun allStruck(): List<Struck> = keyAndStruckEntries.filterIsInstance<Struck>()
+    fun allErases(): List<Erase> = eraseEntries.toList()
 
     /** Records a strike. A Key or Struck entry's `fast` is NOT taken from the caller: pass the entry with fast = false and the log sets it. */
     fun recordKey(index: Int, weight: Float, nowMs: Float): Key {
@@ -36,6 +47,7 @@ class StrikeLog {
         val isFast = lastStrikeStartMs?.let { nowMs - it < StrikeTiming.FAST_GAP_MS } ?: false
         lastStrikeStartMs = nowMs
         val entry = Key(index, nowMs, weight, isFast)
+        lastRecordedKey = entry
         keyAndStruckEntries.add(entry)
         if (keyAndStruckEntries.size > StrikeTiming.MAX_ANIMATING) {
             keyAndStruckEntries.removeAt(0)
@@ -51,6 +63,7 @@ class StrikeLog {
         val isFast = lastStrikeStartMs?.let { nowMs - it < StrikeTiming.FAST_GAP_MS } ?: false
         lastStrikeStartMs = nowMs
         val entry = Struck(index, nowMs, weight, isFast)
+        lastRecordedStruck = entry
         keyAndStruckEntries.add(entry)
         if (keyAndStruckEntries.size > StrikeTiming.MAX_ANIMATING) {
             keyAndStruckEntries.removeAt(0)
@@ -61,7 +74,9 @@ class StrikeLog {
     fun recordErase(text: String, line: Int, col: Int, nowMs: Float) {
         if (nowMs.isNaN() || nowMs < 0f) return
         prune(nowMs)
-        eraseEntries.add(Erase(text, line, col, nowMs))
+        val entry = Erase(text, line, col, nowMs)
+        lastRecordedErase = entry
+        eraseEntries.add(entry)
     }
 
     fun keyAt(index: Int, nowMs: Float): Key? {
@@ -98,5 +113,8 @@ class StrikeLog {
         keyAndStruckEntries.clear()
         eraseEntries.clear()
         lastStrikeStartMs = null
+        lastRecordedKey = null
+        lastRecordedStruck = null
+        lastRecordedErase = null
     }
 }

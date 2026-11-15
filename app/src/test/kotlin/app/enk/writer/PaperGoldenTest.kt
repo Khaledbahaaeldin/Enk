@@ -197,24 +197,68 @@ class PaperGoldenTest {
     }
 
     @Test
-    fun stampedCharacterAt80ms() {
+    fun strikeAt14ms() {
         val state = WriterState(
             noteId = "test-note-9",
             pages = listOf(StruckPage("Stamp")),
             pageIndex = 0,
             caret = 5,
-            lastTypedIndex = 4,
             loaded = true
         )
         snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 PaperSheet(
-                state = state,
-                geometry = referenceGeometry,
-                nightProgress = 0f,
-                reduceEffects = false,
-                stampFrame = 80f / 160f
-            )
-            }}
+                    state = state,
+                    geometry = referenceGeometry,
+                    nightProgress = 0f,
+                    reduceEffects = false,
+                    frozen = FrozenStrike(index = 4, ageMs = 14f)
+                )
+            }
+        }
+    }
+
+    @Test
+    fun strikeAt30ms() {
+        val state = WriterState(
+            noteId = "test-note-10",
+            pages = listOf(StruckPage("Stamp")),
+            pageIndex = 0,
+            caret = 5,
+            loaded = true
+        )
+        snapshots.snapshot {
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
+                    state = state,
+                    geometry = referenceGeometry,
+                    nightProgress = 0f,
+                    reduceEffects = false,
+                    frozen = FrozenStrike(index = 4, ageMs = 30f)
+                )
+            }
+        }
+    }
+
+    @Test
+    fun strikeAt60ms() {
+        val state = WriterState(
+            noteId = "test-note-11",
+            pages = listOf(StruckPage("Stamp")),
+            pageIndex = 0,
+            caret = 5,
+            loaded = true
+        )
+        snapshots.snapshot {
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
+                    state = state,
+                    geometry = referenceGeometry,
+                    nightProgress = 0f,
+                    reduceEffects = false,
+                    frozen = FrozenStrike(index = 4, ageMs = 60f)
+                )
+            }
+        }
     }
 }

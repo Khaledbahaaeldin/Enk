@@ -62,7 +62,6 @@ class AccessibilityTest {
                 centerXDp = 100f,
                 mode = CarriageMotion.Rest,
                 slugChar = null,
-                strikeKey = 0,
                 night = false,
                 reduceEffects = false
             )

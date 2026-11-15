@@ -61,7 +61,6 @@ fun Carriage(
     centerXDp: Float,
     mode: CarriageMotion,
     slugChar: Char?,
-    strikeKey: Int,
     night: Boolean,
     reduceEffects: Boolean,
     lampIntensity: Float = 1f,
@@ -69,8 +68,8 @@ fun Carriage(
     /** The long press as an action a TalkBack user can run without the gesture. */
     onToggleLamp: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    /** Freezes the slug strike at this progress (0..1) for goldens and previews; null runs the animation. */
-    slugProgress: Float? = null,
+    /** Supplies the current strike frame; null = at rest. */
+    slugFrame: () -> StrikeFrame? = { null },
     /** Reports the measured size of the interactive area in dp (54 x 48); used by the layout test. */
     onHitAreaMeasured: ((widthDp: Float, heightDp: Float) -> Unit)? = null
 ) {
@@ -164,16 +163,14 @@ fun Carriage(
                     .enkShadow(slotShadowLayers, slotShape)
                     .clip(slotShape)
                     .background(if (night) lampColor else EnkColors.slotDark)
-            ) {
-                // Inside slot window: TypeSlug centred at x = 2 dp, y = 2 dp
-                TypeSlug(
-                    slugChar = slugChar,
-                    strikeKey = strikeKey,
-                    night = night,
-                    slugProgress = slugProgress,
-                    modifier = Modifier.offset(x = 2.dp, y = 2.dp)
-                )
-            }
+            )
+
+            TypeSlug(
+                slugChar = slugChar,
+                slugFrame = slugFrame,
+                night = night,
+                modifier = Modifier.offset(x = 20.dp, y = 11.dp)
+            )
 
             // 2. Body: 54 x 36 dp, top at y = 6 dp, left = 0 dp
             Box(

@@ -45,7 +45,6 @@ class CarriageGoldenTest {
                 centerXDp = referenceGeometry.carriageCenterXDp(12),
                 mode = CarriageMotion.Rest,
                 slugChar = null,
-                strikeKey = 0,
                 night = false,
                 reduceEffects = false
             )
@@ -53,7 +52,7 @@ class CarriageGoldenTest {
     }
 
     @Test
-    fun carriageSlugStrikePeak50ms() {
+    fun slugAtImpact() {
         snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 Carriage(
@@ -61,10 +60,26 @@ class CarriageGoldenTest {
                     centerXDp = referenceGeometry.carriageCenterXDp(12),
                     mode = CarriageMotion.Rest,
                     slugChar = 'k',
-                    strikeKey = 0,
                     night = false,
                     reduceEffects = false,
-                    slugProgress = 0.45f // 49.5 ms of 110 ms: the peak, 5 dp above rest
+                    slugFrame = { StrikeFrame.Rest.copy(slugRiseDp = 17f) }
+                )
+            }
+        }
+    }
+
+    @Test
+    fun slugReturning() {
+        snapshots.snapshot {
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                Carriage(
+                    railYDp = referenceGeometry.railYDp,
+                    centerXDp = referenceGeometry.carriageCenterXDp(12),
+                    mode = CarriageMotion.Rest,
+                    slugChar = 'k',
+                    night = false,
+                    reduceEffects = false,
+                    slugFrame = { StrikeFrame.Rest.copy(slugRiseDp = 8.5f) }
                 )
             }
         }
@@ -78,7 +93,6 @@ class CarriageGoldenTest {
                 centerXDp = referenceGeometry.carriageCenterXDp(12),
                 mode = CarriageMotion.Rest,
                 slugChar = null,
-                strikeKey = 0,
                 night = true,
                 reduceEffects = false,
                 lampIntensity = 1f
@@ -94,7 +108,6 @@ class CarriageGoldenTest {
                 centerXDp = referenceGeometry.carriageCenterXDp(12) + 20f,
                 mode = CarriageMotion.Dragging,
                 slugChar = null,
-                strikeKey = 0,
                 night = false,
                 reduceEffects = false
             )
@@ -111,7 +124,6 @@ class CarriageGoldenTest {
                 centerXDp = referenceGeometry.carriageCenterXDp(12),
                 mode = CarriageMotion.Rest,
                 slugChar = null,
-                strikeKey = 0,
                 night = false,
                 reduceEffects = false,
                 onHitAreaMeasured = { mw, mh -> w = mw; h = mh }
