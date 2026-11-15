@@ -1,84 +1,54 @@
 package app.enk.writer
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
-import app.enk.design.effects.LocalEffects
-import app.enk.design.effects.ResolvedEffects
-import app.enk.settings.CorrectionMode
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.platform.LocalConfiguration
-import app.enk.design.shell.glassSource
-import app.enk.design.shell.rememberGlassSource
-import app.enk.keyboard.EnkKeyboard
-import app.enk.keyboard.KeyAction
-import app.enk.keyboard.KeyboardLayout
-import app.enk.keyboard.KeyboardMetrics
-import app.enk.keyboard.KeyboardToWriter
-import app.enk.keyboard.hardwareKeyToAction
-import app.enk.settings.KeyboardMode
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import app.enk.design.logo.LogoSpec
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -98,12 +68,29 @@ import app.enk.design.EnkType
 import app.enk.design.LampColor
 import app.enk.design.LampLight
 import app.enk.design.LocalMonoFont
+import app.enk.design.effects.LocalEffects
 import app.enk.design.lampTextMask
+import app.enk.design.shell.glassSource
+import app.enk.design.shell.rememberGlassSource
+import app.enk.keyboard.EnkKeyboard
+import app.enk.keyboard.KeyAction
+import app.enk.keyboard.KeyboardLayout
+import app.enk.keyboard.KeyboardMetrics
+import app.enk.keyboard.KeyboardToWriter
+import app.enk.keyboard.hardwareKeyToAction
+import app.enk.settings.CorrectionMode
 import app.enk.settings.DarkPaper
+import app.enk.settings.KeyboardMode
 import app.enk.settings.Settings
-import androidx.compose.foundation.isSystemInDarkTheme
+import app.enk.shell.DingRing
+import app.enk.shell.LocalRailTransition
+import app.enk.shell.railCaret
+import app.enk.shell.railCarriage
+import app.enk.shell.railIsland
+import app.enk.shell.railKeyboard
+import app.enk.shell.railPaper
+import app.enk.shell.railSteel
 import app.enk.text.GridLayout
-import app.enk.text.LineSpan
 import app.enk.text.StruckPage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -193,12 +180,15 @@ fun WriterScreen(
         lampSettingsFromSettings(settings)
     }
 
-    val chassisBrush = Brush.verticalGradient(
-        colors = listOf(
-            lerpColor(EnkColors.chassisTop, EnkColors.chassisNightTop, nightProgress),
-            lerpColor(EnkColors.chassisBottom, EnkColors.chassisNightBottom, nightProgress)
-        )
-    )
+    val chassisTopColor = lerpColor(EnkColors.chassisTop, EnkColors.chassisNightTop, nightProgress)
+    val chassisBottomColor = lerpColor(EnkColors.chassisBottom, EnkColors.chassisNightBottom, nightProgress)
+    val chassisBrush = Brush.verticalGradient(colors = listOf(chassisTopColor, chassisBottomColor))
+
+    // The Rail transition (null in previews and tests that do not host one): the writer's beats read
+    // its progress in the draw phase; its chassis is painted behind the fading Box while it flies.
+    val rail = LocalRailTransition.current
+    rail?.chassisTop = chassisTopColor
+    rail?.chassisBottom = chassisBottomColor
 
     // Strike and typing feedback (Finding 6: TypingPolicy)
     var strikeKey by remember { mutableStateOf(0) }
@@ -405,6 +395,16 @@ fun WriterScreen(
         }
     }
 
+    // The ding of the Rail transition: the bell and a short pulse; the ring is drawn with the carriage.
+    val dingToken = rail?.dingToken ?: 0
+    val seenDing = remember { dingToken }
+    LaunchedEffect(dingToken) {
+        if (dingToken != seenDing) {
+            playSound(SoundEvent.Bell, latestSettings.bellVolume)
+            pulse(14)
+        }
+    }
+
     LaunchedEffect(useEnk) {
         if (useEnk) keyboardController?.hide()
     }
@@ -429,7 +429,16 @@ fun WriterScreen(
         modifier = modifier
             .fillMaxSize()
             // While the start animation runs, its backdrop paints the chassis.
-            .then(if (intro == null) Modifier.background(chassisBrush) else Modifier)
+            .then(
+                if (intro == null) {
+                    Modifier.drawBehind {
+                        // While the Rail transition flies, the host paints the chassis behind the Box.
+                        if (rail == null || !rail.flight || rail.writerP() >= 1f) drawRect(chassisBrush)
+                    }
+                } else {
+                    Modifier
+                }
+            )
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .focusRequester(rootFocus)
             .focusable()
@@ -468,7 +477,6 @@ fun WriterScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .glassSource(glassSource)
         ) {
             BoxWithConstraints(
                 modifier = Modifier.fillMaxSize()
@@ -594,6 +602,10 @@ fun WriterScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .onGloballyPositioned { coords ->
+                            rail?.railCenterYPx = coords.positionInRoot().y + railY * density.density
+                        }
+                        .glassSource(glassSource)
                         .markerGestures(
                             geometry = geometry,
                             pageLength = { state.currentPage.text.length },
@@ -622,7 +634,7 @@ fun WriterScreen(
                         drawChassis = false,
                         paperTopDp = geometry.paperTopDp,
                         fadeHeightDp = if (WriterGeometry.isCompact(screenHeightDp)) 8f else 70f,
-                        modifier = Modifier.fillMaxSize().introPaper(intro)
+                        modifier = Modifier.fillMaxSize().introPaper(intro).railPaper(rail, geometry.paperTopDp, railY)
                     ) {
                         Box(
                             modifier = Modifier
@@ -698,7 +710,7 @@ fun WriterScreen(
                                     pos = caretPos,
                                     typing = isTyping,
                                     reduceMotion = reduceMotion,
-                                    modifier = Modifier.introAlpha(intro?.ownPartsAlpha)
+                                    modifier = Modifier.introAlpha(intro?.ownPartsAlpha).railCaret(rail)
                                 )
                             }
                         }
@@ -714,7 +726,7 @@ fun WriterScreen(
                     )
 
                     // Rail
-                    Rail(railYDp = railY, modifier = Modifier.introAlpha(intro?.ownPartsAlpha))
+                    Rail(railYDp = railY, modifier = Modifier.introAlpha(intro?.ownPartsAlpha).railSteel(rail))
 
                     // Carriage
                     Carriage(
@@ -737,52 +749,14 @@ fun WriterScreen(
                         lampIntensity = settings.intensity / 100f,
                         lamp = lampRgb,
                         onToggleLamp = toggleLamp,
-                        modifier = Modifier.introAlpha(intro?.ownPartsAlpha)
+                        modifier = Modifier.introAlpha(intro?.ownPartsAlpha).railCarriage(rail)
                     )
 
-                    // TopIsland (replaces top bar and control panel)
-                    TopIsland(
-                        metaText = TopBarFormatter.formatMeta(state.pageIndex, page.text.length),
-                        lampOn = state.lampOn,
-                        lampColor = lampColor,
-                        onToggleKeyboard = { systemOverride = !systemOverride },
-                        onOpenBox = onOpenBox,
-                        onToggleLamp = toggleLamp,
-                        warmth = settings.warmth,
-                        onWarmthChange = { w -> onSettingsChange { it.copy(warmth = w) } },
-                        intensity = settings.intensity,
-                        onIntensityChange = { i -> onSettingsChange { it.copy(intensity = i) } },
-                        beam = settings.beam,
-                        onBeamChange = { b -> onSettingsChange { it.copy(beam = b) } },
-                        onDetent = { pos ->
-                            if (!latestSettings.muted) player.playTick(pos, 1f)
-                            pulse(4)
-                        },
-                        lastKeyMs = lastKeyMs,
-                        modifier = Modifier.introAlpha(intro?.topBarAlpha),
-                        glassSource = glassSource
-                    )
-
-                    // Hint text (DS 6.9, Finding 5): hidden when paper is short (landscape keyboard, etc.)
-                    val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
-                    if (showAsk) {
-                        DarkPaperAsk(
-                            onLamp = { onSettingsChange { it.copy(darkPaper = DarkPaper.Lamp) } },
-                            onNormal = { onSettingsChange { it.copy(darkPaper = DarkPaper.Normal) } },
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(horizontal = 20.dp, vertical = 16.dp)
-                        )
-                    }
-
-                    if (!showAsk && !isShortPaper && !hintPolicy.isDismissed && !settings.hintDismissed && !state.lampOn) {
-                        Text(
-                            text = stringResource(R.string.writer_hint),
-                            style = EnkType.hint.copy(fontFamily = LocalMonoFont.current),
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .introAlpha(intro?.textAlpha)
-                                .padding(bottom = 22.dp)
+                    if (!reduceMotion) {
+                        DingRing(
+                            token = dingToken,
+                            centerX = { currentCarriageX * density.density },
+                            centerY = { (railY + 12f) * density.density }
                         )
                     }
 
@@ -856,11 +830,60 @@ fun WriterScreen(
                         )
                     }
                 }
+
+                // TopIsland (replaces top bar and control panel)
+                TopIsland(
+                    metaText = TopBarFormatter.formatMeta(state.pageIndex, page.text.length),
+                    lampOn = state.lampOn,
+                    lampColor = lampColor,
+                    onToggleKeyboard = { systemOverride = !systemOverride },
+                    onOpenBox = onOpenBox,
+                    onToggleLamp = toggleLamp,
+                    warmth = settings.warmth,
+                    onWarmthChange = { w -> onSettingsChange { it.copy(warmth = w) } },
+                    intensity = settings.intensity,
+                    onIntensityChange = { i -> onSettingsChange { it.copy(intensity = i) } },
+                    beam = settings.beam,
+                    onBeamChange = { b -> onSettingsChange { it.copy(beam = b) } },
+                    onDetent = { pos ->
+                        if (!latestSettings.muted) player.playTick(pos, 1f)
+                        pulse(4)
+                    },
+                    lastKeyMs = lastKeyMs,
+                    modifier = Modifier.introAlpha(intro?.topBarAlpha).railIsland(rail),
+                    glassSource = glassSource,
+                    interactive = rail?.islandInteractive() ?: true
+                )
+
+                // Hint text (DS 6.9, Finding 5): hidden when paper is short (landscape keyboard, etc.)
+                val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
+                if (showAsk) {
+                    DarkPaperAsk(
+                        onLamp = { onSettingsChange { it.copy(darkPaper = DarkPaper.Lamp) } },
+                        onNormal = { onSettingsChange { it.copy(darkPaper = DarkPaper.Normal) } },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                    )
+                }
+
+                if (!showAsk && !isShortPaper && !hintPolicy.isDismissed && !settings.hintDismissed && !state.lampOn) {
+                    Text(
+                        text = stringResource(R.string.writer_hint),
+                        style = EnkType.hint.copy(fontFamily = LocalMonoFont.current),
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .introAlpha(intro?.textAlpha)
+                            .railCaret(rail)
+                            .padding(bottom = 22.dp)
+                    )
+                }
             }
         }
 
         if (useEnk) {
             EnkKeyboard(
+                modifier = Modifier.railKeyboard(rail),
                 layout = keyboardLayout,
                 metrics = keyboardMetrics,
                 onFeedback = { action ->

@@ -22,15 +22,16 @@ data class WriterGeometry(
         if (columnWidthDp <= 0f) 0f else (xDp - textLeftDp) / columnWidthDp - 0.5f
 
     companion object {
-        /** Paper sheet insets inside the chassis; PaperSheet and tap mapping share them. */
-        const val PAPER_TOP_DP = 64f
+        /** Paper sheet insets inside the chassis; PaperSheet and tap mapping share them. The top is 8 dp
+         *  under the safe area: the glass island floats over the paper, the text fades under it. */
+        const val PAPER_TOP_DP = 8f
         const val PAPER_SIDE_DP = 12f
 
         /** Carriage below the rail (25) + 8 gap. */
         const val CARRIAGE_CLEARANCE_DP = 33f
 
         /** Floor so a short window (keyboard up, landscape) still leaves room for text. */
-        const val MIN_RAIL_Y_DP = PAPER_TOP_DP + 60f
+        const val MIN_RAIL_Y_DP = 124f
 
         /** Windows shorter than this (landscape, keyboard up) use the compact layout. */
         const val COMPACT_HEIGHT_DP = 360f

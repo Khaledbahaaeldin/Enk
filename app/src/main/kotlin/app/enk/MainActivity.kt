@@ -13,12 +13,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.splashscreen.SplashScreenViewProvider
+import androidx.lifecycle.Lifecycle
 import app.enk.design.effects.EffectsLevel
 import app.enk.design.effects.FrameGovernor
 import app.enk.design.effects.LocalEffects
@@ -53,8 +55,9 @@ class MainActivity : ComponentActivity() {
     private var frameHandler: Handler? = null
     private var frameMetricsListener: Window.OnFrameMetricsAvailableListener? = null
     private var framesToSkip = 60
-    private var currentEffectsChoice: EffectsLevel = EffectsLevel.Auto
-    private var currentResolved: ResolvedEffects = ResolvedEffects.Full
+    // Written on the main thread, read on the frame-metrics thread.
+    @Volatile private var currentEffectsChoice: EffectsLevel = EffectsLevel.Auto
+    @Volatile private var currentResolved: ResolvedEffects = ResolvedEffects.Full
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -98,10 +101,17 @@ class MainActivity : ComponentActivity() {
             val restoredNote by mainViewModel.restoredNote.collectAsState()
             val slowFrames by slowFramesFlow.collectAsState()
 
-            currentEffectsChoice = settings.effects
             val env = rememberEffectsEnvironment(slowFrames)
             val resolved = resolveEffects(settings.effects, env)
-            currentResolved = resolved
+            SideEffect {
+                currentResolved = resolved
+                // Choosing Auto again while the app is in front must start the governor now, and
+                // choosing a fixed level must stop it, not wait for the next resume.
+                if (currentEffectsChoice != settings.effects) {
+                    currentEffectsChoice = settings.effects
+                    if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) updateFrameMetricsListener()
+                }
+            }
             val isLight = resolved == ResolvedEffects.Light
 
             CompositionLocalProvider(

@@ -127,4 +127,114 @@ class RailTransitionTest {
         assertEquals(0f, state.progress.value, 0.001f)
         assertFalse(state.landed)
     }
+
+    // ---- the host: gates, rest values, flights
+
+    private fun runHost(host: RailTransitionHost, target: Float) {
+        rule.setContent {
+            LaunchedEffect(Unit) { host.run(target, reduceEffects = false) }
+        }
+    }
+
+    @Test
+    fun typeOnGateIsClosedUntilTheDingThenOpenForGood() {
+        val host = RailTransitionHost(initialP = 0f)
+        host.begin(RailKind.Forward)
+        assertFalse("closed at the start of a forward flight", host.typeOnGate())
+        rule.mainClock.autoAdvance = false
+        runHost(host, 1f)
+        rule.mainClock.advanceTimeBy(16)
+        assertTrue(host.state.progress.value < RailTransitionMath.DING_AT)
+        var guard = 0
+        while (host.state.progress.value < RailTransitionMath.DING_AT && guard++ < 400) {
+            assertFalse("closed before the ding at p=${host.state.progress.value}", host.typeOnGate())
+            rule.mainClock.advanceTimeBy(16)
+        }
+        rule.mainClock.advanceTimeBy(32)
+        assertTrue("open from the ding on", host.typeOnGate())
+        assertEquals(1, host.dingToken)
+        rule.mainClock.advanceTimeBy(3000)
+        rule.waitForIdle()
+        assertTrue(host.typeOnGate())
+        assertEquals("one ding, also across the overshoot", 1, host.dingToken)
+    }
+
+    @Test
+    fun aKeyPressMidFlightDoesNotStopTheFlightAndTheTextIsCompleteAfterIt() {
+        val host = RailTransitionHost(initialP = 0f)
+        host.begin(RailKind.Forward)
+        rule.mainClock.autoAdvance = false
+        runHost(host, 1f)
+        // A key press never touches the host: the flight runs on to 1 and the gate opens at the ding.
+        var guard = 0
+        while (host.state.progress.value < 0.7f && guard++ < 400) rule.mainClock.advanceTimeBy(16)
+        assertFalse(host.typeOnGate())
+        rule.mainClock.advanceTimeBy(3000)
+        rule.waitForIdle()
+        assertEquals(1f, host.state.progress.value, 0.01f)
+        assertTrue(host.typeOnGate())
+    }
+
+    @Test
+    fun leavingTheWriterNeverClosesTheGateAndNeverDings() {
+        val host = RailTransitionHost(initialP = 1f)
+        host.begin(RailKind.Reverse)
+        assertTrue("the text stays drawn while the paper is pulled back", host.typeOnGate())
+        rule.mainClock.autoAdvance = false
+        runHost(host, 0f)
+        rule.mainClock.advanceTimeBy(3000)
+        rule.waitForIdle()
+        assertTrue(host.typeOnGate())
+        assertEquals(0, host.dingToken)
+        assertEquals(0f, host.state.progress.value, 0.01f)
+    }
+
+    @Test
+    fun outsideAFlightEachScreenSitsAtItsRestValue() {
+        val host = RailTransitionHost(initialP = 0.4f)
+        assertEquals("the writer at rest is fully there", 1f, host.writerP(), 0f)
+        assertEquals("a tab screen at rest is untouched", 0f, host.boxP(), 0f)
+        assertEquals(null, host.flightP())
+        assertTrue(host.islandInteractive())
+    }
+
+    @Test
+    fun aFinishedFlightKeepsItsEndValueSoTheExitingScreenDoesNotFlashBack() {
+        val host = RailTransitionHost(initialP = 1f)
+        host.begin(RailKind.Reverse)
+        rule.mainClock.autoAdvance = false
+        runHost(host, 0f)
+        rule.mainClock.advanceTimeBy(3000)
+        rule.waitForIdle()
+        // The writer is still composed for a moment after the flight; it must stay at p = 0, not jump to 1.
+        assertEquals(0f, host.writerP(), 0.01f)
+        assertEquals(0f, host.boxP(), 0.01f)
+        // The next route change that is not a Rail pair ends the flight.
+        host.begin(RailKind.None)
+        assertEquals(1f, host.writerP(), 0f)
+    }
+
+    @Test
+    fun theIslandIsNotTappableBeforeNinetyFivePercent() {
+        val host = RailTransitionHost(initialP = 0f)
+        host.begin(RailKind.Forward)
+        assertFalse(host.islandInteractive())
+        rule.mainClock.autoAdvance = false
+        runHost(host, 1f)
+        rule.mainClock.advanceTimeBy(3000)
+        rule.waitForIdle()
+        assertTrue(host.islandInteractive())
+    }
+
+    @Test
+    fun railPairsAreWriteFromATabAndTheIslandsBoxButton() {
+        assertEquals(RailKind.Forward, railKind(Route.Box, Route.Writer))
+        assertEquals(RailKind.Forward, railKind(Route.Find, Route.Writer))
+        assertEquals(RailKind.Forward, railKind(Route.Setup, Route.Writer))
+        assertEquals(RailKind.Reverse, railKind(Route.Writer, Route.Box))
+        assertEquals("a card tap opens the writer with the slide", RailKind.None, railKind(Route.Box, Route.Note("a", 0)))
+        assertEquals(RailKind.None, railKind(Route.Note("a", 0), Route.Box))
+        assertEquals(RailKind.None, railKind(Route.Box, Route.Find))
+        assertEquals(RailKind.None, railKind(Route.Writer, Route.Find))
+    }
 }

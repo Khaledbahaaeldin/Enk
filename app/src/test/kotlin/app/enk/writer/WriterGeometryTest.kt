@@ -15,9 +15,9 @@ class WriterGeometryTest {
         assertEquals(11.7143f, g.columnWidthDp, 0.001f)
         assertEquals(33.19f, g.lineHeightDp, 0.01f)
         assertEquals(508f, g.railYDp, 0.001f)
-        assertEquals(387.81f, g.textTopOffsetDp(0), 0.01f)
+        assertEquals(443.81f, g.textTopOffsetDp(0), 0.01f)
         assertEquals(41.857f, g.carriageCenterXDp(0), 0.01f)
-        assertEquals(64f, g.paperTopDp, 0.001f)
+        assertEquals(8f, g.paperTopDp, 0.001f)
         assertEquals(36f, g.textLeftDp, 0.001f)
         assertEquals(328f, g.textWidthDp, 0.001f)
     }

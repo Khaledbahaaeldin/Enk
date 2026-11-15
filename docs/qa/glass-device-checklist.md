@@ -28,3 +28,8 @@
 | Font scale 200% | All | Physical / Emulator | PENDING-DEVICE | Accessibility scaling does not clip text or buttons |
 | Landscape orientation | All | Physical / Emulator | PENDING-DEVICE | TopIsland and lamp popup layout in landscape |
 | TalkBack on lamp pop-up and sliders | All | Physical Device | PENDING-DEVICE | Accessible slider ranges and detents announced |
+| Rail transition, Box to Write (G5.5): nav bar becomes the rail, paper fed, carriage drops, ding, island arrives | Full, Balanced | Physical | PENDING-DEVICE | Emulator pass done in the batch 14 audit (plays, no crash, no flash-back); feel and frame time need a phone |
+| Rail transition reversed (island Box button) | Full, Balanced | Physical | PENDING-DEVICE | Writer parts retract, Box un-dims, bar returns; no ding |
+| Rail transition frame time (p95 at most 16.7 ms) | Full, Balanced | Physical | PENDING-DEVICE | The Box blur (8 dp) and the dim are the costly parts; Light drops both |
+| Ding: bell, 14 ms pulse, ring around the carriage | All | Physical | PENDING-DEVICE | Bell follows the sound switch, the pulse follows the haptics switch |
+| Island tap-outside, typing and Back fold it | All | Physical / Emulator | PENDING-DEVICE | Covered by Compose tests; confirm by hand with the real keyboard |

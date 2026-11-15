@@ -2,7 +2,6 @@ package app.enk.shell
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -33,20 +32,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
@@ -61,8 +57,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.enk.design.ShadowLayer
-import app.enk.design.enkShadow
 import app.enk.design.glass.GlassInteraction
 import app.enk.design.glass.GlassLensMath
 import app.enk.design.glass.GlassSpecs
@@ -76,10 +70,9 @@ import app.enk.design.shell.rememberGlassBackend
 import app.enk.design.shell.rememberGlassSource
 import app.enk.design.theme.LocalShellColors
 import app.enk.design.theme.LocalShellMaterial
-import kotlinx.coroutines.launch
 import kotlin.math.abs
-import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 @Composable
 fun GlassNavBar(
@@ -95,14 +88,22 @@ fun GlassNavBar(
     val reduceEffects = rememberGlassBackend() == GlassBackendKind.Solid
 
     val dests = remember { listOf(Dest.Write, Dest.Box, Dest.Find, Dest.Setup) }
+    val rail = LocalRailTransition.current
 
     BoxWithConstraints(
         modifier = modifier
             .testTag("glass_nav_bar")
             .fillMaxWidth()
             .height(64.dp)
-            .glassSurface(spec = GlassSpecs.NavBody, shape = RoundedCornerShape(32.dp), source = glassSource)
+            .onGloballyPositioned { rail?.navBounds = it.boundsInRoot() }
     ) {
+        // The glass body. While the Rail transition flies, the overlay draws the morphing pill instead.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer { alpha = if (rail?.flightP() != null) 0f else 1f }
+                .glassSurface(spec = GlassSpecs.NavBody, shape = RoundedCornerShape(32.dp), source = glassSource)
+        )
         val totalWidthPx = constraints.maxWidth.toFloat()
         val paddingPx = with(density) { 5.dp.toPx() }
         val availableWidthPx = totalWidthPx - 2 * paddingPx
@@ -283,6 +284,8 @@ fun GlassNavBar(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                // Beat 2: the tab row and the lens fade out first.
+                .graphicsLayer { if (rail != null) alpha = RailTransitionMath.navContentAlpha(rail.boxP()) }
                 .then(gestureModifier)
         ) {
             lensInteraction.pressScale = lensPressAnim.value

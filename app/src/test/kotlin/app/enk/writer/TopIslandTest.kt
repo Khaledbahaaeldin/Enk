@@ -275,7 +275,8 @@ class TopIslandTest {
         rule.mainClock.advanceTimeBy(4400)
         rule.onNodeWithTag("keyboard_switch").assertExists()
 
-        // Advance 200 ms more (4600 ms total): folds
+        // Advance 200 ms more (4600 ms total): it has folded; the old content is gone once its fade ends
+        rule.mainClock.advanceTimeBy(200)
         rule.mainClock.advanceTimeBy(200)
         rule.mainClock.advanceTimeByFrame()
         rule.onNodeWithTag("keyboard_switch").assertDoesNotExist()

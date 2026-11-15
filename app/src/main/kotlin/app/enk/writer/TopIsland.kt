@@ -1,9 +1,15 @@
 package app.enk.writer
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,8 +40,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -46,7 +51,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -55,19 +60,22 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import app.enk.design.EnkColors
 import app.enk.design.LocalMonoFont
+import app.enk.design.glass.GlassInteraction
+import app.enk.design.glass.GlassLensMath
 import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.glassSurface
+import app.enk.design.motion.ShellMotion
 import app.enk.design.shell.GlassSource
 import app.enk.design.shell.LocalReduceEffects
-import app.enk.design.glass.glassSurface
 import app.enk.design.shell.rememberGlassSource
-import app.enk.design.logo.LogoSpec
-import app.enk.design.motion.ShellMotion
 import app.enk.design.theme.LocalShellColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -96,11 +104,12 @@ fun TopIsland(
     initialState: IslandState = IslandState.Rest,
     safeTop: Dp = 0.dp,
     glassSource: GlassSource = rememberGlassSource(),
-    accent: Color = EnkColors.accent
+    accent: Color = EnkColors.accent,
+    /** False while the Rail transition is still landing: the island does not react to touch. */
+    interactive: Boolean = true
 ) {
     val colors = LocalShellColors.current
     val monoFont = LocalMonoFont.current
-    val density = LocalDensity.current
     val reduceEffects = LocalReduceEffects.current
     val scope = rememberCoroutineScope()
 
@@ -154,17 +163,13 @@ fun TopIsland(
         state = IslandState.Rest
     }
 
-    val currentW = widthAnim.value.dp
-    val currentH = heightAnim.value.dp
-    val currentRadius = if (state == IslandState.Rest) {
-        (minOf(widthAnim.value, heightAnim.value) / 2f).dp
-    } else {
-        28.dp
-    }
+    val interaction = remember { GlassInteraction() }
+    val pressAnim = remember { Animatable(1f) }
 
     Box(
         modifier = modifier
-            .fillMaxWidth()
+            // Open, the container covers the writer so a tap outside the island folds it.
+            .then(if (state != IslandState.Rest) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
             .zIndex(10f),
         contentAlignment = Alignment.TopCenter
     ) {
@@ -184,7 +189,13 @@ fun TopIsland(
         Box(
             modifier = Modifier
                 .padding(top = safeTop + 10.dp)
-                .size(currentW, currentH)
+                // The animated size is read in the layout phase: no recomposition per frame.
+                .layout { measurable, constraints ->
+                    val w = widthAnim.value.dp.roundToPx().coerceAtMost(constraints.maxWidth)
+                    val h = heightAnim.value.dp.roundToPx()
+                    val placeable = measurable.measure(Constraints.fixed(w, h))
+                    layout(w, h) { placeable.place(0, 0) }
+                }
                 .testTag("top_island")
                 .semantics {
                     role = Role.Button
@@ -193,11 +204,29 @@ fun TopIsland(
                 }
                 .glassSurface(
                     spec = GlassSpecs.Floating,
-                    shape = RoundedCornerShape(currentRadius),
-                    source = glassSource
+                    shape = IslandShape,
+                    source = glassSource,
+                    interaction = interaction
                 )
-                .pointerInput(state) {
-                    detectTapGestures {
+                .pointerInput(state, interactive, reduceEffects) {
+                    if (!interactive) return@pointerInput
+                    detectTapGestures(
+                        onPress = {
+                            if (state == IslandState.Rest && !reduceEffects) {
+                                scope.launch {
+                                    pressAnim.animateTo(GlassLensMath.BUTTON_PRESS, ShellMotion.press.toSpec()) {
+                                        interaction.pressScale = value
+                                    }
+                                }
+                                tryAwaitRelease()
+                                scope.launch {
+                                    pressAnim.animateTo(1f, ShellMotion.release.toSpec()) {
+                                        interaction.pressScale = value
+                                    }
+                                }
+                            }
+                        }
+                    ) {
                         lastInteractionMs = System.currentTimeMillis()
                         if (state == IslandState.Rest) {
                             state = IslandState.Actions
@@ -205,7 +234,19 @@ fun TopIsland(
                     }
                 }
         ) {
-            when (state) {
+            AnimatedContent(
+                targetState = state,
+                modifier = Modifier.fillMaxSize(),
+                transitionSpec = {
+                    val inMs = if (reduceEffects) 100 else 120
+                    val delayMs = if (reduceEffects) 0 else 80
+                    val outMs = if (reduceEffects) 100 else 90
+                    (fadeIn(tween(inMs, delayMillis = delayMs)) togetherWith fadeOut(tween(outMs)))
+                        .using(SizeTransform(clip = false) { _, _ -> snap() })
+                },
+                label = "island_content"
+            ) { shown ->
+            when (shown) {
                 IslandState.Rest -> {
                     // Rest Content: page meta, centred, Courier 11 sp
                     Box(
@@ -270,7 +311,7 @@ fun TopIsland(
                                 },
                                 contentDescription = "Switch keyboard"
                             ) {
-                                KeyboardSwitchGlyph(modifier = Modifier.size(24.dp))
+                                KeyboardSwitchGlyph(ink = colors.t1, modifier = Modifier.size(24.dp))
                             }
 
                             // Column 2: Lamp
@@ -287,6 +328,7 @@ fun TopIsland(
                                 LampGlyph(
                                     lampOn = lampOn,
                                     lampColor = lampColor,
+                                    ink = colors.t1,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -302,7 +344,7 @@ fun TopIsland(
                                 },
                                 contentDescription = "Open the Box"
                             ) {
-                                BoxGlyph(modifier = Modifier.size(24.dp))
+                                BoxGlyph(ink = colors.t1, modifier = Modifier.size(24.dp))
                             }
                         }
                     }
@@ -340,9 +382,18 @@ fun TopIsland(
                     )
                 }
             }
+            }
         }
     }
 }
+
+/** 28 dp when open; never more than half the shorter side, so the resting 150 x 40 pill is fully round. */
+private val IslandShape = RoundedCornerShape(
+    object : CornerSize {
+        override fun toPx(shapeSize: Size, density: Density): Float =
+            minOf(28f * density.density, minOf(shapeSize.width, shapeSize.height) / 2f)
+    }
+)
 
 @Composable
 private fun ActionItem(
@@ -394,13 +445,13 @@ private fun ActionItem(
 private fun LampGlyph(
     lampOn: Boolean,
     lampColor: Color,
+    ink: Color,
     modifier: Modifier = Modifier
 ) {
-    val density = LocalDensity.current
     val parsedPath = remember {
         PathParser().parsePathString("M9 18h6M10 21h4M8.5 14.5A6 6 0 1 1 15.5 14.5c-.6.5-1 1.2-1 2h-5c0-.8-.4-1.5-1-2z").toPath()
     }
-    val ink = if (lampOn) lampColor else LogoSpec.CREAM
+    val glyphInk = if (lampOn) lampColor else ink
 
     Canvas(modifier = modifier) {
         val stroke = Stroke(
@@ -417,14 +468,13 @@ private fun LampGlyph(
             )
         }
         scale(scale = size.minDimension / 24f, pivot = Offset.Zero) {
-            drawPath(parsedPath, color = ink, style = stroke)
+            drawPath(parsedPath, color = glyphInk, style = stroke)
         }
     }
 }
 
 @Composable
-private fun KeyboardSwitchGlyph(modifier: Modifier = Modifier) {
-    val ink = LogoSpec.CREAM
+private fun KeyboardSwitchGlyph(ink: Color, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val w = 22.dp.toPx()
         val h = 14.dp.toPx()
@@ -459,8 +509,7 @@ private fun KeyboardSwitchGlyph(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun BoxGlyph(modifier: Modifier = Modifier) {
-    val ink = LogoSpec.CREAM
+private fun BoxGlyph(ink: Color, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val stroke = Stroke(width = 1.7.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         val w = size.width
