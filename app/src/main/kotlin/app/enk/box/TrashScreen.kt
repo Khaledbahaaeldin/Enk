@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -32,11 +33,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.enk.data.TrashedSummary
@@ -65,7 +70,9 @@ fun TrashContent(
     onDeleteAllForever: () -> Unit = {},
     listState: LazyListState = rememberLazyListState(),
     contentPadding: PaddingValues = PaddingValues(top = 124.dp, bottom = 120.dp),
-    glassSource: GlassSource = rememberGlassSource()
+    glassSource: GlassSource = rememberGlassSource(),
+    overlayCoordinates: LayoutCoordinates? = null,
+    onButtonPositioned: ((DpRect) -> Unit)? = null
 ) {
     val colors = LocalShellColors.current
     val material = LocalShellMaterial.current
@@ -214,7 +221,18 @@ fun TrashContent(
                     ) {
                         GlassButton(
                             onClick = onDeleteAllForever,
-                            glassSource = glassSource
+                            glassSource = glassSource,
+                            modifier = Modifier.onGloballyPositioned { coords ->
+                                val root = overlayCoordinates
+                                if (root != null && root.isAttached && coords.isAttached) {
+                                    val rel = root.localBoundingBoxOf(coords)
+                                    onButtonPositioned?.invoke(
+                                        with(density) {
+                                            DpRect(rel.left.toDp(), rel.top.toDp(), rel.right.toDp(), rel.bottom.toDp())
+                                        }
+                                    )
+                                }
+                            }
                         ) {
                             Text(
                                 text = "Delete all forever",
@@ -241,12 +259,21 @@ fun TrashScreen(
     modifier: Modifier = Modifier
 ) {
     var alertOpen by remember { mutableStateOf(false) }
+    var buttonBoundsInOverlay by remember { mutableStateOf<DpRect?>(null) }
+    var overlayCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
     BackHandler { onNavigateBack() }
     // Registered after the one above, so it wins while the alert is open.
     BackHandler(enabled = alertOpen) { alertOpen = false }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .onGloballyPositioned { overlayCoordinates = it }
+    ) {
+        val containerWidth = maxWidth.value
+        val containerHeight = maxHeight.value
+
         ShellScaffold(
             title = "Trash",
             meta = null,
@@ -259,11 +286,20 @@ fun TrashScreen(
                 onRestore = onRestore,
                 onDeleteAllForever = { alertOpen = true },
                 listState = listState,
-                contentPadding = contentPadding
+                contentPadding = contentPadding,
+                overlayCoordinates = overlayCoordinates,
+                onButtonPositioned = { buttonBoundsInOverlay = it }
             )
         }
 
-        // Above the scaffold, so the alert and its scrim cover the navigation bar.
+        val anchor = buttonBoundsInOverlay
+        val target = if (anchor != null) {
+            DpOffset(
+                (containerWidth / 2f - 150f - anchor.left.value).dp,
+                (containerHeight / 2f - 100f - anchor.top.value).dp
+            )
+        } else null
+
         if (alertOpen) {
             DeleteForeverAlert(
                 count = trashed.size,
@@ -271,7 +307,10 @@ fun TrashScreen(
                     alertOpen = false
                     onDeleteAllForever()
                 },
-                onDismiss = { alertOpen = false }
+                onDismiss = { alertOpen = false },
+                anchor = anchor,
+                target = target,
+                expanded = alertOpen
             )
         }
     }

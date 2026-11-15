@@ -18,6 +18,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
@@ -37,6 +38,7 @@ fun GlassButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     glassSource: GlassSource = rememberGlassSource(),
+    solidColor: Color? = null,
     content: @Composable RowScope.() -> Unit
 ) {
     val currentOnClick by rememberUpdatedState(onClick)
@@ -98,7 +100,8 @@ fun GlassButton(
                     spec = GlassSpecs.Button,
                     shape = shape,
                     source = glassSource,
-                    interaction = interaction
+                    interaction = interaction,
+                    solidColor = solidColor
                 )
                 .padding(horizontal = 18.dp),
             contentAlignment = Alignment.Center

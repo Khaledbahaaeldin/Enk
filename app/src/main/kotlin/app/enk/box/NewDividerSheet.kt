@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
@@ -52,13 +53,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.glassSurface
 import app.enk.design.motion.ShellMotion
-import app.enk.design.shell.GlassLevel
 import app.enk.design.shell.GlassSource
-import app.enk.design.shell.glass
 import app.enk.design.shell.rememberGlassSource
 import app.enk.design.theme.LocalShellColors
 import app.enk.design.theme.LocalShellMaterial
+import app.enk.writer.AndroidHaptics
 import kotlin.math.roundToInt
 
 @Composable
@@ -72,6 +74,13 @@ fun NewDividerSheet(
     val colors = LocalShellColors.current
     val material = LocalShellMaterial.current
     val density = LocalDensity.current
+    val context = LocalContext.current
+    val haptics = remember(context) { AndroidHaptics(context) }
+
+    val handleDismiss = {
+        haptics.pulse(14)
+        onDismiss()
+    }
 
     var text by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
@@ -96,7 +105,7 @@ fun NewDividerSheet(
     }
     val isValid = validationResult is DividerValidationResult.Valid
 
-    val sheetShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
+    val sheetShape = RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp)
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -110,7 +119,7 @@ fun NewDividerSheet(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = onDismiss
+                    onClick = handleDismiss
                 )
         )
 
@@ -129,13 +138,13 @@ fun NewDividerSheet(
                         val dismissThresholdPx = with(density) { 160.dp.toPx() }
                         val projected = dragY + (velocity / 1000f) * 300f
                         if (projected > dismissThresholdPx || dragY > dismissThresholdPx || velocity > 300f) {
-                            onDismiss()
+                            handleDismiss()
                         } else {
                             dragY = 0f
                         }
                     }
                 )
-                .glass(GlassLevel.Thick, sheetShape, glassSource)
+                .glassSurface(GlassSpecs.Floating, sheetShape, glassSource)
                 .clip(sheetShape)
                 // Above the keyboard when it is up, above the navigation bar when it is not.
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
@@ -185,7 +194,7 @@ fun NewDividerSheet(
                     keyboardActions = KeyboardActions(onDone = {
                         if (validationResult is DividerValidationResult.Valid) {
                             onAdd(validationResult.name)
-                            onDismiss()
+                            handleDismiss()
                         }
                     }),
                     textStyle = TextStyle(

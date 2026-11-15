@@ -50,6 +50,7 @@ import app.enk.design.ShadowLayer
 import app.enk.design.enkShadow
 import app.enk.design.motion.ShellMotion
 import app.enk.design.paperGrain
+import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.theme.LocalShellMaterial
 import app.enk.search.matchStyled
 import kotlinx.coroutines.coroutineScope
@@ -90,9 +91,10 @@ fun NoteCard(
         isPressed -> 0.985f
         else -> 1.0f
     }
+    val reduceEffects = LocalReduceEffects.current
     val animatedScale by animateFloatAsState(
         targetValue = targetScale,
-        animationSpec = tween(durationMillis = 120),
+        animationSpec = if (reduceEffects) tween(100) else ShellMotion.press.toSpec(),
         label = "card_scale"
     )
 
