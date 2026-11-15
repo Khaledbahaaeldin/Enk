@@ -160,6 +160,8 @@ tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEa
     exclude("**/CarriageStrikeTest*")
     exclude("**/CarriageMotionTest*")
     exclude("**/WriterStrikeTest*")
+    exclude("**/PaperTextTypeOnTest*")
+    exclude("**/WriterTypeOnTest*")
     exclude("**/*GoldenTest*")
 }
 

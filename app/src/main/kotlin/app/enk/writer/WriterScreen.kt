@@ -135,8 +135,10 @@ fun WriterScreen(
     /** Non-null only while the start animation runs; see [WriterIntro]. */
     intro: WriterIntro? = null,
     keyboardLayout: KeyboardLayout? = null,
-    strikes: StrikeLog = remember { StrikeLog() }
+    strikes: StrikeLog = remember { StrikeLog() },
+    onTypeOnActiveChange: ((Boolean) -> Unit)? = null
 ) {
+    fun updateSettings(block: Settings.() -> Settings) = onSettingsChange(block)
     val state by viewModel.state.collectAsState()
     val page = state.currentPage
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -207,6 +209,15 @@ fun WriterScreen(
     var dragCarriageXDp by remember { mutableStateOf<Float?>(null) }
     var motionToken by remember { mutableIntStateOf(0) }
 
+    // Type-on state
+    var typeOnActive by remember { mutableStateOf(false) }
+    var typeOnToken by remember { mutableIntStateOf(0) }
+    var typeOnElapsedMs by remember { mutableFloatStateOf(-1f) }
+
+    LaunchedEffect(typeOnActive) {
+        onTypeOnActiveChange?.invoke(typeOnActive)
+    }
+
     val thump = remember { Spring1D(StrikeTiming.THUMP_RESPONSE_S, StrikeTiming.THUMP_DAMPING) }
     val clockMs = remember { mutableFloatStateOf(0f) }
     var pendingThumpAtMs by remember { mutableFloatStateOf(-1f) }
@@ -262,7 +273,7 @@ fun WriterScreen(
     LaunchedEffect(showAsk, lastKeyMs) {
         if (showAsk && lastKeyMs != 0L) {
             delay(4000)
-            onSettingsChange { this.copy(darkPaper = DarkPaper.Normal) }
+            updateSettings { copy(darkPaper = DarkPaper.Normal) }
         }
     }
 
@@ -372,6 +383,8 @@ fun WriterScreen(
             carriageMotion = carriageModeFor(event, before, after, columnsForKeys)
             motionToken++
         }
+        typeOnActive = false
+        typeOnElapsedMs = -1f
         strikeKey++
     }
 
@@ -464,8 +477,90 @@ fun WriterScreen(
 
                 val lines = remember(page.text, geometry.cols) { GridLayout.wrap(page.text, geometry.cols) }
                 val caretPos = remember(lines, state.caret, geometry.cols) { GridLayout.caret(lines, state.caret, geometry.cols) }
+                val visibleLines = remember(lines, caretPos.line, geometry) {
+                    visibleLineRange(
+                        textTopOffsetDp = geometry.textTopOffsetDp(caretPos.line),
+                        lineHeightDp = geometry.lineHeightDp,
+                        viewportHeightDp = screenHeightDp,
+                        totalLines = lines.size
+                    )
+                }
+                val visibleCount = visibleLines.count()
+                val visibleLineLengths = remember(visibleLines, lines) {
+                    visibleLines.map { lines[it].end - lines[it].start }
+                }
+                val visibleChars = remember(visibleLineLengths) { visibleLineLengths.sum() }
+                val skipTypeOn = TypeOn.skip(visibleChars, visibleCount) || page.text.isEmpty()
+
+                LaunchedEffect(state.loaded, state.pageIndex) {
+                    if (state.loaded && !reduceMotion && !skipTypeOn && intro == null) {
+                        typeOnActive = true
+                        typeOnToken++
+                    }
+                }
+
+                LaunchedEffect(typeOnToken) {
+                    if (typeOnActive) {
+                        typeOnElapsedMs = 0f
+                        var startMs = -1f
+                        while (typeOnActive) {
+                            val now = withFrameNanos { it / 1_000_000f }
+                            if (startMs < 0f) startMs = now
+                            val elapsed = now - startMs
+                            typeOnElapsedMs = elapsed
+                            clockMs.floatValue = now
+                            val stagger = TypeOn.staggerMs(visibleCount)
+                            val total = TypeOn.totalMs(visibleCount, stagger)
+                            if (elapsed > total) {
+                                typeOnActive = false
+                                typeOnElapsedMs = -1f
+                                break
+                            }
+                        }
+                    } else {
+                        typeOnElapsedMs = -1f
+                    }
+                }
+
+                val typeOnBudget = if (intro != null) 400f else TypeOn.BUDGET_MS
+                val typeOnMs: (() -> Float?)? = if (reduceMotion || skipTypeOn) {
+                    null
+                } else if (intro != null) {
+                    {
+                        val t = intro.textRevealMs()
+                        val stagger = TypeOn.staggerMs(visibleCount, typeOnBudget)
+                        val tot = TypeOn.totalMs(visibleCount, stagger)
+                        if (t > tot) null else t
+                    }
+                } else if (typeOnActive && typeOnElapsedMs >= 0f) {
+                    {
+                        typeOnElapsedMs
+                    }
+                } else {
+                    null
+                }
+
+                val carriageSweepXDp: (() -> Float?)? = if (reduceMotion || skipTypeOn) {
+                    null
+                } else if (intro != null) {
+                    {
+                        val t = intro.textRevealMs()
+                        val stagger = TypeOn.staggerMs(visibleCount, typeOnBudget)
+                        val col = TypeOn.carriageColumn(t, visibleLineLengths, geometry.cols, stagger)
+                        if (col != null) geometry.carriageCenterXDp(col) else null
+                    }
+                } else if (typeOnActive && typeOnElapsedMs >= 0f) {
+                    {
+                        val stagger = TypeOn.staggerMs(visibleCount, typeOnBudget)
+                        val col = TypeOn.carriageColumn(typeOnElapsedMs, visibleLineLengths, geometry.cols, stagger)
+                        if (col != null) geometry.carriageCenterXDp(col) else null
+                    }
+                } else {
+                    null
+                }
+
                 val restingCarriageX = geometry.carriageCenterXDp(caretPos.col)
-                val currentCarriageX = dragCarriageXDp ?: restingCarriageX
+                val currentCarriageX = dragCarriageXDp ?: (carriageSweepXDp?.invoke() ?: restingCarriageX)
 
                 val toggleLamp: () -> Unit = {
                     viewModel.dispatch(WriterEvent.ToggleLamp)
@@ -473,7 +568,7 @@ fun WriterScreen(
                     pulse(14)
                     hintPolicy = hintPolicy.onLongPress()
                     if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                        onSettingsChange { this.copy(hintDismissed = true) }
+                        updateSettings { copy(hintDismissed = true) }
                     }
                 }
 
@@ -493,7 +588,7 @@ fun WriterScreen(
                                 if (motion == CarriageMotion.Dragging) {
                                     hintPolicy = hintPolicy.onScrub()
                                     if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                                        onSettingsChange { this.copy(hintDismissed = true) }
+                                        updateSettings { copy(hintDismissed = true) }
                                     }
                                 }
                             },
@@ -550,6 +645,12 @@ fun WriterScreen(
                                         translationY = if (reduceMotion) 0f else thump.x * density.density
                                     }
                             ) {
+                                val paperTextIntroAlpha: (() -> Float)? = if (intro != null && reduceMotion) {
+                                    { if (intro.textAlpha() > 0.5f) 1f else 0f }
+                                } else {
+                                    null
+                                }
+
                                 PaperText(
                                     page = page,
                                     caret = state.caret,
@@ -558,7 +659,7 @@ fun WriterScreen(
                                     reduceMotion = reduceMotion,
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .introAlpha(intro?.textAlpha)
+                                        .introAlpha(paperTextIntroAlpha)
                                         .lampTextMask(
                                             carriageXDp = currentCarriageX,
                                             railYDp = railY,
@@ -568,7 +669,9 @@ fun WriterScreen(
                                         ),
                                     strikes = strikes,
                                     clockMs = { clockMs.floatValue },
-                                    flashColor = lerp(Color.White, lampColor, nightProgress)
+                                    flashColor = lerp(Color.White, lampColor, nightProgress),
+                                    typeOnMs = typeOnMs,
+                                    typeOnBudgetMs = typeOnBudget
                                 )
                                 Caret(
                                     geometry = geometry,
@@ -604,6 +707,7 @@ fun WriterScreen(
                                 strikeFrame(clockMs.floatValue - it.startMs, it.weight, it.fast)
                             }
                         },
+                        carriageSweepXDp = carriageSweepXDp,
                         night = state.lampOn,
                         reduceEffects = reduceMotion,
                         lampIntensity = settings.intensity / 100f,
@@ -701,8 +805,8 @@ fun WriterScreen(
                         lampColor = lampColor,
                         settings = lampSettings,
                         onChange = { lamp ->
-                            onSettingsChange {
-                                this.copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
+                            updateSettings {
+                                copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
                             }
                         },
                         onDetent = { pos ->
@@ -717,8 +821,8 @@ fun WriterScreen(
                     val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
                     if (showAsk) {
                         DarkPaperAsk(
-                            onLamp = { onSettingsChange { this.copy(darkPaper = DarkPaper.Lamp) } },
-                            onNormal = { onSettingsChange { this.copy(darkPaper = DarkPaper.Normal) } },
+                            onLamp = { updateSettings { copy(darkPaper = DarkPaper.Lamp) } },
+                            onNormal = { updateSettings { copy(darkPaper = DarkPaper.Normal) } },
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .padding(horizontal = 20.dp, vertical = 16.dp)

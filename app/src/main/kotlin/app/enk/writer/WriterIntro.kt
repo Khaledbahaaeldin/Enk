@@ -15,7 +15,8 @@ class WriterIntro(
     val paperOffsetDp: () -> Float,
     val textAlpha: () -> Float,
     val topBarAlpha: () -> Float,
-    val ownPartsAlpha: () -> Float
+    val ownPartsAlpha: () -> Float,
+    val textRevealMs: () -> Float = { 0f }
 )
 
 fun Modifier.introPaper(intro: WriterIntro?): Modifier =

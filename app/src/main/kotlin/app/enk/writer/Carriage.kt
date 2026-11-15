@@ -71,6 +71,8 @@ fun Carriage(
     modifier: Modifier = Modifier,
     /** Supplies the current strike frame; null = at rest. */
     slugFrame: () -> StrikeFrame? = { null },
+    /** When non-null, overrides carriage x directly without springs (type-on sweep). */
+    carriageSweepXDp: (() -> Float?)? = null,
     /** Reports the measured size of the interactive area in dp (54 x 48); used by the layout test. */
     onHitAreaMeasured: ((widthDp: Float, heightDp: Float) -> Unit)? = null
 ) {
@@ -161,7 +163,7 @@ fun Carriage(
         }
     }
 
-    val currentCenterXDp = xAnim.value
+    val currentCenterXDp = carriageSweepXDp?.invoke() ?: xAnim.value
 
     // Interactive area bounds: 54 x 48 dp, centred on body (body top = railYDp - 17, center = railYDp + 1)
     val interactiveLeftDp = currentCenterXDp - (CarriageGeometry.interactiveWidthDp / 2f)

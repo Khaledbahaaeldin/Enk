@@ -261,4 +261,48 @@ class PaperGoldenTest {
             }
         }
     }
+
+    @Test
+    fun typeOnMidSweep() {
+        val state = WriterState(
+            noteId = "test-note-12",
+            pages = listOf(StruckPage("First line of text\nSecond line of text\nThird line of text")),
+            pageIndex = 0,
+            caret = 0,
+            loaded = true
+        )
+        snapshots.snapshot {
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
+                    state = state,
+                    geometry = referenceGeometry,
+                    nightProgress = 0f,
+                    reduceEffects = false,
+                    typeOnMs = { 190f }
+                )
+            }
+        }
+    }
+
+    @Test
+    fun typeOnDone() {
+        val state = WriterState(
+            noteId = "test-note-13",
+            pages = listOf(StruckPage("First line of text\nSecond line of text\nThird line of text")),
+            pageIndex = 0,
+            caret = 0,
+            loaded = true
+        )
+        snapshots.snapshot {
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
+                    state = state,
+                    geometry = referenceGeometry,
+                    nightProgress = 0f,
+                    reduceEffects = false,
+                    typeOnMs = { 800f }
+                )
+            }
+        }
+    }
 }

@@ -87,7 +87,9 @@ fun PaperText(
     strikes: StrikeLog? = null,
     clockMs: () -> Float = { 0f },
     frozen: FrozenStrike? = null,
-    flashColor: Color = Color.White
+    flashColor: Color = Color.White,
+    typeOnMs: (() -> Float?)? = null,
+    typeOnBudgetMs: Float = TypeOn.BUDGET_MS
 ) {
     val textMeasurer = rememberTextMeasurer()
     val lines = remember(page.text, geometry.cols) {
@@ -184,7 +186,13 @@ fun PaperText(
             flashIndex = null
         }
 
+        val typeOn = if (reduceMotion) null else typeOnMs?.invoke()
+        val visibleFirst = visibleLines.firstOrNull() ?: 0
+        val visibleCount = visibleLines.count()
+        val stagger = TypeOn.staggerMs(visibleCount, typeOnBudgetMs)
+
         for (lineIdx in visibleLines) {
+            val lineInView = lineIdx - visibleFirst
             val lineSpan = lines[lineIdx]
             val lineText = page.text.substring(lineSpan.start, lineSpan.end)
             val cells = cellsOfLine(lineText, lineSpan.start)
@@ -201,7 +209,27 @@ fun PaperText(
 
                 val jitter = Jitter.forIndex(cell.index)
 
-                val frame = if (reduceMotion) {
+                var typeOnScale = 1f
+                var typeOnDarken = 0f
+                if (typeOn != null) {
+                    val revealMs = TypeOn.glyphRevealMs(
+                        lineInView = lineInView,
+                        col = cell.col,
+                        cols = geometry.cols,
+                        staggerMs = stagger
+                    )
+                    if (typeOn < revealMs) {
+                        continue
+                    }
+                    val age = typeOn - revealMs
+                    if (age < StrikeTiming.DARKEN_MS) {
+                        val p = (age / StrikeTiming.DARKEN_MS).coerceIn(0f, 1f)
+                        typeOnScale = 1.08f - 0.08f * p
+                        typeOnDarken = StrikeTiming.DARKEN_AMOUNT * (1f - p)
+                    }
+                }
+
+                val frame = if (reduceMotion || typeOn != null) {
                     null
                 } else when {
                     frozen?.index == cell.index -> strikeFrame(frozen.ageMs, frozen.weight, frozen.fast)
@@ -212,7 +240,7 @@ fun PaperText(
                     continue
                 }
 
-                if (flashIndex == cell.index && flashFrame != null && flashFrame.flashAlpha > 0f) {
+                if (flashIndex == cell.index && flashFrame != null && flashFrame.flashAlpha > 0f && typeOn == null) {
                     val rxPx = flashFrame.flashRadiusDp * densityVal
                     val ryPx = StrikeTiming.FLASH_RY_DP * densityVal
                     val flashCenterYPx = lineYPx + baselinePx
@@ -223,13 +251,15 @@ fun PaperText(
                     )
                 }
 
-                val scale = frame?.glyphScale ?: 1f
-                val glyphColor = if (frame != null && frame.glyphDarken > 0f) {
+                val scale = if (typeOn != null) typeOnScale else (frame?.glyphScale ?: 1f)
+                val glyphColor = if (typeOn != null) {
+                    if (typeOnDarken > 0f) lerp(textColor, Color.Black, typeOnDarken) else textColor
+                } else if (frame != null && frame.glyphDarken > 0f) {
                     lerp(textColor, Color.Black, frame.glyphDarken)
                 } else {
                     textColor
                 }
-                val haloShadow = if (frame != null && frame.haloDp > 0f) {
+                val haloShadow = if (typeOn == null && frame != null && frame.haloDp > 0f) {
                     Shadow(
                         color = textColor.copy(alpha = 0.5f * jitter.alpha),
                         offset = Offset.Zero,

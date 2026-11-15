@@ -109,7 +109,9 @@ fun PaperSheet(
     typing: Boolean = false,
     frozen: FrozenStrike? = null,
     strikes: StrikeLog? = null,
-    clockMs: () -> Float = { 0f }
+    clockMs: () -> Float = { 0f },
+    typeOnMs: (() -> Float?)? = null,
+    typeOnBudgetMs: Float = TypeOn.BUDGET_MS
 ) {
     val page = state.pages.getOrElse(state.pageIndex) { StruckPage("") }
     val textColor = textColor(nightProgress, lamp)
@@ -138,7 +140,9 @@ fun PaperSheet(
             strikes = strikes,
             clockMs = clockMs,
             frozen = frozen,
-            flashColor = flashColor
+            flashColor = flashColor,
+            typeOnMs = typeOnMs,
+            typeOnBudgetMs = typeOnBudgetMs
         )
         Caret(
             geometry = geometry,
