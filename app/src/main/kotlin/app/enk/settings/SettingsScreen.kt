@@ -12,6 +12,7 @@ import java.time.LocalDate
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,17 +33,29 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.enk.design.EnkColors
+import app.enk.design.LocalMonoFont
 import app.enk.design.effects.EffectsLevel
+import app.enk.design.effects.FrostTuning
+import app.enk.design.effects.GlassLook
+import app.enk.design.effects.LiquidTuning
+import app.enk.design.effects.resolveGlassLook
 import app.enk.design.glass.GlassButton
+import app.enk.design.glass.GlassSlider
+import kotlin.math.roundToInt
 import app.enk.design.shell.GroupedDivider
 import app.enk.design.shell.GroupedRow
 import app.enk.design.shell.GroupedSection
@@ -246,7 +259,37 @@ fun SettingsContent(
 
             // 4. Display Group
             item(key = "group_display") {
+                val isBelowApi33 = Build.VERSION.SDK_INT < 33
+                val effectiveLook = resolveGlassLook(settings.glassLook, Build.VERSION.SDK_INT)
+                var advancedExpanded by remember { mutableStateOf(false) }
+
                 GroupedSection(title = "Display", footer = DISPLAY_FOOTER) {
+                    GroupedRow(
+                        title = "Glass",
+                        subtitle = "Choose how glass reflects and refracts."
+                    )
+                    Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp)) {
+                        ShellSegmented(
+                            items = listOf("Liquid", "Frost"),
+                            selected = if (effectiveLook == GlassLook.Liquid) 0 else 1,
+                            enabled = { idx -> if (idx == 0) !isBelowApi33 else true },
+                            onSelect = { idx ->
+                                val chosen = if (idx == 0) GlassLook.Liquid else GlassLook.Frost
+                                onSettingsChange { it.copy(glassLook = chosen) }
+                            }
+                        )
+                    }
+                    if (isBelowApi33) {
+                        Text(
+                            text = "Liquid glass needs Android 13 or later.",
+                            fontSize = 12.sp,
+                            color = colors.t2,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp)
+                        )
+                    }
+
+                    GroupedDivider()
+
                     GroupedRow(
                         title = "Effects",
                         subtitle = "Auto picks what your phone can draw."
@@ -259,6 +302,146 @@ fun SettingsContent(
                                 onSettingsChange { it.copy(effects = EffectsLevel.entries[idx]) }
                             }
                         )
+                    }
+
+                    GroupedDivider()
+
+                    GroupedRow(
+                        title = "Advanced",
+                        onClick = { advancedExpanded = !advancedExpanded },
+                        trailing = {
+                            Text(
+                                text = "›",
+                                color = colors.t2,
+                                fontSize = 18.sp,
+                                modifier = Modifier.graphicsLayer { rotationZ = if (advancedExpanded) 90f else 0f }
+                            )
+                        }
+                    )
+
+                    if (advancedExpanded) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            if (effectiveLook == GlassLook.Liquid) {
+                                // Liquid sliders: Refraction, Lens depth, Colour fringe, Frost, Tint, Edge light
+                                val refPct = ((settings.liquidTuning.refraction - 0f) / 2f * 100).roundToInt().coerceIn(0, 100)
+                                AdvancedSliderRow(
+                                    label = "Refraction",
+                                    value = refPct,
+                                    onValueChange = { pct ->
+                                        onSettingsChange {
+                                            it.copy(liquidTuning = it.liquidTuning.copy(refraction = pct / 100f * 2f))
+                                        }
+                                    }
+                                )
+
+                                val depthPct = ((settings.liquidTuning.lensDepth - 0.5f) / 1.5f * 100).roundToInt().coerceIn(0, 100)
+                                AdvancedSliderRow(
+                                    label = "Lens depth",
+                                    value = depthPct,
+                                    onValueChange = { pct ->
+                                        onSettingsChange {
+                                            it.copy(liquidTuning = it.liquidTuning.copy(lensDepth = 0.5f + (pct / 100f) * 1.5f))
+                                        }
+                                    }
+                                )
+
+                                val fringePct = ((settings.liquidTuning.fringe - 0f) / 2f * 100).roundToInt().coerceIn(0, 100)
+                                AdvancedSliderRow(
+                                    label = "Colour fringe",
+                                    value = fringePct,
+                                    onValueChange = { pct ->
+                                        onSettingsChange {
+                                            it.copy(liquidTuning = it.liquidTuning.copy(fringe = pct / 100f * 2f))
+                                        }
+                                    }
+                                )
+
+                                val frostPct = ((settings.liquidTuning.frostDp - 0f) / 12f * 100).roundToInt().coerceIn(0, 100)
+                                AdvancedSliderRow(
+                                    label = "Frost",
+                                    value = frostPct,
+                                    onValueChange = { pct ->
+                                        onSettingsChange {
+                                            it.copy(liquidTuning = it.liquidTuning.copy(frostDp = pct / 100f * 12f))
+                                        }
+                                    }
+                                )
+
+                                val tintPct = ((settings.liquidTuning.tint - 0f) / 0.4f * 100).roundToInt().coerceIn(0, 100)
+                                AdvancedSliderRow(
+                                    label = "Tint",
+                                    value = tintPct,
+                                    onValueChange = { pct ->
+                                        onSettingsChange {
+                                            it.copy(liquidTuning = it.liquidTuning.copy(tint = pct / 100f * 0.4f))
+                                        }
+                                    }
+                                )
+
+                                val edgePct = ((settings.liquidTuning.edgeLight - 0f) / 1.5f * 100).roundToInt().coerceIn(0, 100)
+                                AdvancedSliderRow(
+                                    label = "Edge light",
+                                    value = edgePct,
+                                    onValueChange = { pct ->
+                                        onSettingsChange {
+                                            it.copy(liquidTuning = it.liquidTuning.copy(edgeLight = pct / 100f * 1.5f))
+                                        }
+                                    }
+                                )
+                            } else {
+                                // Frost sliders: Frost, Tint, Edge light
+                                val frostPct = ((settings.frostTuning.blur - 0.5f) / 1f * 100).roundToInt().coerceIn(0, 100)
+                                AdvancedSliderRow(
+                                    label = "Frost",
+                                    value = frostPct,
+                                    onValueChange = { pct ->
+                                        onSettingsChange {
+                                            it.copy(frostTuning = it.frostTuning.copy(blur = 0.5f + (pct / 100f) * 1f))
+                                        }
+                                    }
+                                )
+
+                                val tintPct = ((settings.frostTuning.tint - 0.5f) / 1f * 100).roundToInt().coerceIn(0, 100)
+                                AdvancedSliderRow(
+                                    label = "Tint",
+                                    value = tintPct,
+                                    onValueChange = { pct ->
+                                        onSettingsChange {
+                                            it.copy(frostTuning = it.frostTuning.copy(tint = 0.5f + (pct / 100f) * 1f))
+                                        }
+                                    }
+                                )
+
+                                val edgePct = ((settings.frostTuning.edgeLight - 0f) / 1.5f * 100).roundToInt().coerceIn(0, 100)
+                                AdvancedSliderRow(
+                                    label = "Edge light",
+                                    value = edgePct,
+                                    onValueChange = { pct ->
+                                        onSettingsChange {
+                                            it.copy(frostTuning = it.frostTuning.copy(edgeLight = pct / 100f * 1.5f))
+                                        }
+                                    }
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Reset to default",
+                                color = EnkColors.accent,
+                                fontSize = 14.sp,
+                                modifier = Modifier
+                                    .clickable {
+                                        if (effectiveLook == GlassLook.Liquid) {
+                                            onSettingsChange { it.copy(liquidTuning = LiquidTuning()) }
+                                        } else {
+                                            onSettingsChange { it.copy(frostTuning = FrostTuning()) }
+                                        }
+                                    }
+                                    .padding(vertical = 8.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -379,6 +562,9 @@ fun SettingsScreen(
                 if (updated.bellVolume != settings.bellVolume) viewModel.setBellVolume(updated.bellVolume)
                 if (updated.haptics != settings.haptics) viewModel.setHaptics(updated.haptics)
                 if (updated.effects != settings.effects) viewModel.setEffects(updated.effects)
+                if (updated.glassLook != settings.glassLook) viewModel.setGlassLook(updated.glassLook)
+                if (updated.liquidTuning != settings.liquidTuning) viewModel.setLiquidTuning(updated.liquidTuning)
+                if (updated.frostTuning != settings.frostTuning) viewModel.setFrostTuning(updated.frostTuning)
                 if (updated.darkPaper != settings.darkPaper) viewModel.setDarkPaper(updated.darkPaper)
                 if (updated.keyboard != settings.keyboard) viewModel.setKeyboard(updated.keyboard)
             },
@@ -420,4 +606,35 @@ internal const val TRANSFER_MESSAGE_MS = 4_000L
 internal const val APPEARANCE_FOOTER =
     "Themes colour menus and controls. The writing page keeps its paper and steel; the lamp is its night mode. Dynamic follows your Android wallpaper."
 internal const val WRITING_FOOTER = "Strike-through keeps deleted letters on the paper, as a typewriter would."
-internal const val DISPLAY_FOOTER = "Light is solid and still. Balanced blurs without bending. Full bends the picture behind glass."
+internal const val DISPLAY_FOOTER =
+    "Liquid bends light like a drop of water; Frost blurs it. Effects sets how much the phone may spend: Light is solid and still."
+
+@Composable
+private fun AdvancedSliderRow(
+    label: String,
+    value: Int,
+    onValueChange: (Int) -> Unit
+) {
+    val colors = LocalShellColors.current
+    val monoFont = LocalMonoFont.current
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = label, color = colors.t2, fontSize = 13.sp)
+            Text(text = "$value%", color = colors.t1, fontSize = 12.sp, fontFamily = monoFont)
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        GlassSlider(
+            value = value,
+            min = 0,
+            max = 100,
+            onValueChange = onValueChange,
+            onDetent = {},
+            accent = EnkColors.accent,
+            label = label
+        )
+    }
+}

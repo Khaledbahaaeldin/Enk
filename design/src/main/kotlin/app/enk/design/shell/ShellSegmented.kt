@@ -31,6 +31,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -81,12 +82,14 @@ fun ShellSegmented(
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: (Int) -> Boolean = { true },
     glassSource: GlassSource = rememberGlassSource()
 ) {
     val colors = LocalShellColors.current
     val density = LocalDensity.current
     val reduceEffects = LocalReduceEffects.current
     val currentOnSelect by rememberUpdatedState(onSelect)
+    val currentEnabled by rememberUpdatedState(enabled)
     val scope = rememberCoroutineScope()
 
     var controlWidthPx by remember { mutableIntStateOf(0) }
@@ -180,7 +183,9 @@ fun ShellSegmented(
                                     pressScaleAnim.animateTo(1f, ShellMotion.release.toSpec())
                                 }
                                 val nearest = ShellSegmentedMath.nearestItem(dragXPx, centers)
-                                currentOnSelect(nearest)
+                                if (currentEnabled(nearest)) {
+                                    currentOnSelect(nearest)
+                                }
                                 break
                             }
                             dragXPx = change.position.x
@@ -215,17 +220,22 @@ fun ShellSegmented(
             ) {
                 items.forEachIndexed { index, label ->
                     val isSelected = index == selected
+                    val isItemEnabled = currentEnabled(index)
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
                             .testTag("shell_segment_$index")
-                            .semantics {
+                            .semantics(mergeDescendants = true) {
                                 role = Role.RadioButton
                                 this.selected = isSelected
-                                onClick {
-                                    currentOnSelect(index)
-                                    true
+                                if (!isItemEnabled) {
+                                    disabled()
+                                } else {
+                                    onClick {
+                                        currentOnSelect(index)
+                                        true
+                                    }
                                 }
                             },
                         contentAlignment = Alignment.Center
@@ -234,7 +244,7 @@ fun ShellSegmented(
                             text = label,
                             fontSize = 13.sp,
                             fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                            color = if (isSelected) colors.t1 else colors.t2,
+                            color = if (!isItemEnabled) colors.t3 else if (isSelected) colors.t1 else colors.t2,
                             textAlign = TextAlign.Center
                         )
                     }

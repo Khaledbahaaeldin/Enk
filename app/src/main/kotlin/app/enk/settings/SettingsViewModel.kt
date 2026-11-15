@@ -11,6 +11,9 @@ import app.enk.data.Exporter
 import app.enk.data.ImportResult
 import app.enk.data.Importer
 import app.enk.design.effects.EffectsLevel
+import app.enk.design.effects.FrostTuning
+import app.enk.design.effects.GlassLook
+import app.enk.design.effects.LiquidTuning
 import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 import app.enk.widget.EnkWidgetManager
@@ -162,6 +165,24 @@ class SettingsViewModel(
     fun setEffects(level: EffectsLevel) {
         scope.launch(ioDispatcher) {
             store.update { it.copy(effects = level) }
+        }
+    }
+
+    fun setGlassLook(look: GlassLook) {
+        scope.launch(ioDispatcher) {
+            store.update { it.copy(glassLook = look) }
+        }
+    }
+
+    fun setLiquidTuning(t: LiquidTuning) {
+        scope.launch(ioDispatcher) {
+            store.update { it.copy(liquidTuning = t) }
+        }
+    }
+
+    fun setFrostTuning(t: FrostTuning) {
+        scope.launch(ioDispatcher) {
+            store.update { it.copy(frostTuning = t) }
         }
     }
 
