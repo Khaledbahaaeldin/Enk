@@ -42,7 +42,7 @@ import app.enk.design.Rgb
 import app.enk.design.ShadowLayer
 import app.enk.design.enkShadow
 
-enum class CarriageMotion { Rest, Glide, Dragging, Snap }
+enum class CarriageMotion { Rest, Glide, Dragging, Snap, Tick, TickSoft, Return, WrapReturn }
 
 object CarriageGeometry {
     const val interactiveWidthDp = 54f
@@ -105,7 +105,11 @@ fun Carriage(
                     animationSpec = tween(durationMillis = duration, easing = easing)
                 )
             }
-            CarriageMotion.Rest -> xAnim.snapTo(targetX)
+            CarriageMotion.Rest,
+            CarriageMotion.Tick,
+            CarriageMotion.TickSoft,
+            CarriageMotion.Return,
+            CarriageMotion.WrapReturn -> xAnim.snapTo(targetX)
         }
     }
 
