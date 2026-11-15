@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.ResolvedEffects
 import app.enk.design.EnkColors
 import app.enk.design.ShadowLayer
 import app.enk.design.enkShadow
@@ -56,8 +58,10 @@ class GlassGoldenTest {
     @Test
     fun graphiteDark() {
         snapshots.snapshot {
-            EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                GlassSampleScene()
+            CompositionLocalProvider(LocalEffects provides ResolvedEffects.Light) {
+                EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
+                    GlassSampleScene()
+                }
             }
         }
     }
@@ -65,8 +69,10 @@ class GlassGoldenTest {
     @Test
     fun graphiteLight() {
         snapshots.snapshot {
-            EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Light) {
-                GlassSampleScene()
+            CompositionLocalProvider(LocalEffects provides ResolvedEffects.Light) {
+                EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Light) {
+                    GlassSampleScene()
+                }
             }
         }
     }
@@ -74,8 +80,10 @@ class GlassGoldenTest {
     @Test
     fun slateDark() {
         snapshots.snapshot {
-            EnkShellTheme(theme = ThemeId.Slate, mode = ThemeMode.Dark) {
-                GlassSampleScene()
+            CompositionLocalProvider(LocalEffects provides ResolvedEffects.Light) {
+                EnkShellTheme(theme = ThemeId.Slate, mode = ThemeMode.Dark) {
+                    GlassSampleScene()
+                }
             }
         }
     }
@@ -83,8 +91,10 @@ class GlassGoldenTest {
     @Test
     fun slateLight() {
         snapshots.snapshot {
-            EnkShellTheme(theme = ThemeId.Slate, mode = ThemeMode.Light) {
-                GlassSampleScene()
+            CompositionLocalProvider(LocalEffects provides ResolvedEffects.Light) {
+                EnkShellTheme(theme = ThemeId.Slate, mode = ThemeMode.Light) {
+                    GlassSampleScene()
+                }
             }
         }
     }
@@ -92,8 +102,10 @@ class GlassGoldenTest {
     @Test
     fun scrollEdgeBars() {
         snapshots.snapshot {
-            EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Light) {
-                ScrollEdgeScene()
+            CompositionLocalProvider(LocalEffects provides ResolvedEffects.Light) {
+                EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Light) {
+                    ScrollEdgeScene()
+                }
             }
         }
     }
@@ -101,7 +113,10 @@ class GlassGoldenTest {
     @Test
     fun solidBackendReduceEffects() {
         snapshots.snapshot {
-            CompositionLocalProvider(LocalReduceEffects provides true) {
+            CompositionLocalProvider(
+                LocalEffects provides ResolvedEffects.Light,
+                LocalReduceEffects provides true
+            ) {
                 EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
                     GlassSampleScene()
                 }
