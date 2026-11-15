@@ -314,6 +314,9 @@ New tests: `RailTransitionTest` (the type-on gate is closed until the ding and o
 - During the morph the pill is drawn as a tinted pill without blur or refraction (the prompt's "no refraction during beat 2"); the glass blur returns when the bar is back at rest.
 - The reverse transition is only from `Route.Writer`; the island's Box button from a note opened by a card tap keeps the G6 slide.
 
+- **A flaky existing test:** `WriterScreenTest.hintHiddenWhileLampOn` failed once in a full debug run (the hint was still there after the lamp toggle) and passed in two isolated reruns and in the final gate; it was not touched.
+- `RailNavigationTest` and `TopIslandDismissTest` need `ComponentActivity`, so they are excluded from the release unit tests like the other Compose UI tests (`app/build.gradle.kts`).
+
 ## 8. Gate
 
 ```
