@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,19 +43,18 @@ fun LampPopupContent(
     onSliderTouchChange: (Boolean) -> Unit = {}
 ) {
     val colors = LocalShellColors.current
-    val monoFont = LocalMonoFont.current
 
     Column(
         modifier = modifier
             .testTag("lamp_popup")
-            .padding(top = 14.dp, start = 18.dp, end = 18.dp, bottom = 8.dp)
-            .fillMaxWidth()
+            .requiredSize(280.dp, 230.dp)
+            .padding(horizontal = 18.dp)
     ) {
-        // Row 1: 44 dp: "Lamp" + ShellToggle
+        // Row 1: "Lamp" + ShellToggle (32 dp)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(44.dp),
+                .height(32.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -150,17 +150,16 @@ private fun SliderBlock(
             Text(
                 text = caption,
                 color = colors.t2,
-                fontSize = 12.sp,
-                letterSpacing = 0.06.sp * 12
+                fontSize = 11.sp,
+                letterSpacing = 0.06.sp * 11
             )
             Text(
                 text = valueText,
                 color = colors.t1,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 fontFamily = monoFont
             )
         }
-        Spacer(modifier = Modifier.height(2.dp))
         GlassSlider(
             value = value,
             min = min,

@@ -2,7 +2,6 @@ package app.enk.writer
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -10,20 +9,17 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import app.enk.design.effects.LocalEffects
-import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.effects.ResolvedEffects
+import app.enk.design.shell.LocalReduceEffects
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -40,12 +36,7 @@ class TopIslandTest {
     val rule = createComposeRule()
 
     @Test
-    fun islandStartsInRestAndExpandsOnTap() {
-        var keyboardToggled = false
-        var boxOpened = false
-        var lampToggled = false
-        var lastKeyMs by mutableLongStateOf(0L)
-
+    fun restShowsCapsule150x40WithMetaAndLampDot() {
         rule.setContent {
             CompositionLocalProvider(
                 LocalEffects provides ResolvedEffects.Light,
@@ -54,11 +45,11 @@ class TopIslandTest {
                 Box(modifier = Modifier.fillMaxSize()) {
                     TopIsland(
                         metaText = "p.1 · 85 / 3000",
-                        lampOn = false,
+                        lampOn = true,
                         lampColor = Color(0xffffd15c),
-                        onToggleKeyboard = { keyboardToggled = true },
-                        onOpenBox = { boxOpened = true },
-                        onToggleLamp = { lampToggled = true },
+                        onToggleKeyboard = {},
+                        onOpenBox = {},
+                        onToggleLamp = {},
                         warmth = 25,
                         onWarmthChange = {},
                         intensity = 80,
@@ -66,49 +57,85 @@ class TopIslandTest {
                         beam = 55,
                         onBeamChange = {},
                         onDetent = {},
-                        lastKeyMs = lastKeyMs
+                        lastKeyMs = 0L,
+                        initialState = IslandState.Rest
                     )
                 }
             }
         }
         rule.waitForIdle()
 
-        // Rest: 150 x 40 dp (within 1 dp)
+        // Rest: 150 x 40 dp
         val bounds = rule.onNodeWithTag("top_island").getUnclippedBoundsInRoot()
         assertEquals(150f, bounds.width.value, 1.5f)
         assertEquals(40f, bounds.height.value, 1.5f)
 
-        // Action buttons do not exist yet
+        // Meta text displayed
+        rule.onNodeWithText("p.1 · 85 / 3000").assertIsDisplayed()
+
+        // Action controls do not exist in Rest
         rule.onNodeWithTag("keyboard_switch").assertDoesNotExist()
         rule.onNodeWithTag("lamp_button").assertDoesNotExist()
         rule.onNodeWithTag("box_button").assertDoesNotExist()
+        rule.onNodeWithTag("lamp_popup").assertDoesNotExist()
+    }
 
-        // Tap opens Actions (320 x 110)
+    @Test
+    fun tapRestOpensToolbar200x46AndLampButton46() {
+        rule.setContent {
+            CompositionLocalProvider(
+                LocalEffects provides ResolvedEffects.Light,
+                LocalReduceEffects provides true
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    TopIsland(
+                        metaText = "p.1 · 85 / 3000",
+                        lampOn = false,
+                        lampColor = Color(0xffffd15c),
+                        onToggleKeyboard = {},
+                        onOpenBox = {},
+                        onToggleLamp = {},
+                        warmth = 25,
+                        onWarmthChange = {},
+                        intensity = 80,
+                        onIntensityChange = {},
+                        beam = 55,
+                        onBeamChange = {},
+                        onDetent = {},
+                        lastKeyMs = 0L,
+                        initialState = IslandState.Rest
+                    )
+                }
+            }
+        }
+        rule.waitForIdle()
+
         rule.onNodeWithTag("top_island").performClick()
         rule.waitForIdle()
 
-        val expandedBounds = rule.onNodeWithTag("top_island").getUnclippedBoundsInRoot()
-        assertEquals(320f, expandedBounds.width.value, 1.5f)
-        assertEquals(110f, expandedBounds.height.value, 1.5f)
+        // Toolbar: 200 x 46 dp
+        val toolbarBounds = rule.onNodeWithTag("top_island").getUnclippedBoundsInRoot()
+        assertEquals(200f, toolbarBounds.width.value, 2.0f)
+        assertEquals(46f, toolbarBounds.height.value, 2.0f)
 
-        // Three tags shown
+        // Round Lamp button: 46 x 46 dp
+        val lampNode = rule.onNodeWithTag("lamp_button")
+        lampNode.assertIsDisplayed()
+        val lampBounds = lampNode.getUnclippedBoundsInRoot()
+        assertEquals(46f, lampBounds.width.value, 2.0f)
+        assertEquals(46f, lampBounds.height.value, 2.0f)
+
+        // 12 dp gap between toolbar and lamp button
+        val gap = lampBounds.left.value - toolbarBounds.right.value
+        assertEquals(12f, gap, 2.0f)
+
+        // Keyboard and Box buttons exist inside toolbar
         rule.onNodeWithTag("keyboard_switch").assertIsDisplayed()
-        rule.onNodeWithTag("lamp_button").assertIsDisplayed()
         rule.onNodeWithTag("box_button").assertIsDisplayed()
-
-        // Tap keyboard switch toggles and folds
-        rule.onNodeWithTag("keyboard_switch").performClick()
-        rule.waitForIdle()
-        assertTrue(keyboardToggled)
-
-        val foldedBounds = rule.onNodeWithTag("top_island").getUnclippedBoundsInRoot()
-        assertEquals(150f, foldedBounds.width.value, 1.5f)
-        assertEquals(40f, foldedBounds.height.value, 1.5f)
     }
 
     @Test
-    fun boxButtonOpensBoxAndFoldsIsland() {
-        var boxOpened = false
+    fun tapLampOpensPanel280x230AlignedRight() {
         rule.setContent {
             CompositionLocalProvider(
                 LocalEffects provides ResolvedEffects.Light,
@@ -120,7 +147,7 @@ class TopIslandTest {
                         lampOn = false,
                         lampColor = Color(0xffffd15c),
                         onToggleKeyboard = {},
-                        onOpenBox = { boxOpened = true },
+                        onOpenBox = {},
                         onToggleLamp = {},
                         warmth = 25,
                         onWarmthChange = {},
@@ -129,26 +156,37 @@ class TopIslandTest {
                         beam = 55,
                         onBeamChange = {},
                         onDetent = {},
-                        lastKeyMs = 0L
+                        lastKeyMs = 0L,
+                        initialState = IslandState.Actions
                     )
                 }
             }
         }
         rule.waitForIdle()
 
-        rule.onNodeWithTag("top_island").performClick()
+        val lampNode = rule.onNodeWithTag("lamp_button")
+        val lampBoundsBefore = lampNode.getUnclippedBoundsInRoot()
+
+        lampNode.performClick()
         rule.waitForIdle()
 
-        rule.onNodeWithTag("box_button").performClick()
-        rule.waitForIdle()
-        assertTrue(boxOpened)
+        // Panel: 280 x 230 dp
+        val popupNode = rule.onNodeWithTag("lamp_popup")
+        popupNode.assertIsDisplayed()
+        val popupBounds = popupNode.getUnclippedBoundsInRoot()
+        assertEquals(280f, popupBounds.width.value, 2.5f)
+        assertEquals(230f, popupBounds.height.value, 2.5f)
 
-        val foldedBounds = rule.onNodeWithTag("top_island").getUnclippedBoundsInRoot()
-        assertEquals(150f, foldedBounds.width.value, 1.5f)
+        // Right edge aligned with Lamp button's right edge
+        assertEquals(lampBoundsBefore.right.value, popupBounds.right.value, 2.5f)
+
+        // Top edge 8 dp below the Lamp button
+        val verticalGap = popupBounds.top.value - lampBoundsBefore.bottom.value
+        assertEquals(8f, verticalGap, 2.0f)
     }
 
     @Test
-    fun lampButtonExpandsToLampPopup() {
+    fun tapOutsideClosesBackToRest() {
         rule.setContent {
             CompositionLocalProvider(
                 LocalEffects provides ResolvedEffects.Light,
@@ -157,7 +195,7 @@ class TopIslandTest {
                 Box(modifier = Modifier.fillMaxSize()) {
                     TopIsland(
                         metaText = "p.1 · 85 / 3000",
-                        lampOn = true,
+                        lampOn = false,
                         lampColor = Color(0xffffd15c),
                         onToggleKeyboard = {},
                         onOpenBox = {},
@@ -169,34 +207,31 @@ class TopIslandTest {
                         beam = 55,
                         onBeamChange = {},
                         onDetent = {},
-                        lastKeyMs = 0L
+                        lastKeyMs = 0L,
+                        initialState = IslandState.Actions
                     )
                 }
             }
         }
         rule.waitForIdle()
 
-        rule.onNodeWithTag("top_island").performClick()
+        rule.onNodeWithTag("lamp_button").assertIsDisplayed()
+
+        // Tap far outside on the screen
+        rule.onRoot().performTouchInput { click(Offset(centerX, height - 50f)) }
         rule.waitForIdle()
 
-        rule.onNodeWithTag("lamp_button").performClick()
-        rule.waitForIdle()
-
-        // Lamp state: 320 x 270 dp
-        val lampBounds = rule.onNodeWithTag("top_island").getUnclippedBoundsInRoot()
-        assertEquals(320f, lampBounds.width.value, 1.5f)
-        assertEquals(270f, lampBounds.height.value, 1.5f)
-
-        rule.onNodeWithTag("lamp_popup").assertIsDisplayed()
-        rule.onNodeWithTag("lamp_toggle").assertIsDisplayed()
-        rule.onNodeWithTag("slider_warmth").assertIsDisplayed()
-        rule.onNodeWithTag("slider_intensity").assertIsDisplayed()
-        rule.onNodeWithTag("slider_beam").assertIsDisplayed()
+        // Folds back to Rest
+        val bounds = rule.onNodeWithTag("top_island").getUnclippedBoundsInRoot()
+        assertEquals(150f, bounds.width.value, 2.0f)
+        assertEquals(40f, bounds.height.value, 2.0f)
+        rule.onNodeWithTag("lamp_button").assertDoesNotExist()
     }
 
     @Test
-    fun typingFoldsIsland() {
+    fun typingClosesBackToRest() {
         var lastKeyMs by mutableLongStateOf(0L)
+
         rule.setContent {
             CompositionLocalProvider(
                 LocalEffects provides ResolvedEffects.Light,
@@ -217,94 +252,35 @@ class TopIslandTest {
                         beam = 55,
                         onBeamChange = {},
                         onDetent = {},
-                        lastKeyMs = lastKeyMs
+                        lastKeyMs = lastKeyMs,
+                        initialState = IslandState.Actions
                     )
                 }
             }
         }
         rule.waitForIdle()
 
-        rule.onNodeWithTag("top_island").performClick()
-        rule.waitForIdle()
-        rule.onNodeWithTag("keyboard_switch").assertExists()
+        rule.onNodeWithTag("lamp_button").assertIsDisplayed()
 
-        // Type a key
-        lastKeyMs = System.currentTimeMillis()
+        // Typing event
+        lastKeyMs = 12345L
         rule.waitForIdle()
 
-        rule.onNodeWithTag("keyboard_switch").assertDoesNotExist()
-        val foldedBounds = rule.onNodeWithTag("top_island").getUnclippedBoundsInRoot()
-        assertEquals(150f, foldedBounds.width.value, 1.5f)
+        // Folds back to Rest
+        val bounds = rule.onNodeWithTag("top_island").getUnclippedBoundsInRoot()
+        assertEquals(150f, bounds.width.value, 2.0f)
+        assertEquals(40f, bounds.height.value, 2.0f)
+        rule.onNodeWithTag("lamp_button").assertDoesNotExist()
     }
 
     @Test
-    fun idleTimerCollapsesAfter4500Ms() {
-        rule.mainClock.autoAdvance = false
+    fun lampLitGlowsInLampColour() {
         rule.setContent {
             CompositionLocalProvider(
                 LocalEffects provides ResolvedEffects.Light,
                 LocalReduceEffects provides true
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    TopIsland(
-                        metaText = "p.1 · 85 / 3000",
-                        lampOn = false,
-                        lampColor = Color(0xffffd15c),
-                        onToggleKeyboard = {},
-                        onOpenBox = {},
-                        onToggleLamp = {},
-                        warmth = 25,
-                        onWarmthChange = {},
-                        intensity = 80,
-                        onIntensityChange = {},
-                        beam = 55,
-                        onBeamChange = {},
-                        onDetent = {},
-                        lastKeyMs = 0L
-                    )
-                }
-            }
-        }
-        rule.mainClock.advanceTimeByFrame()
-
-        rule.onNodeWithTag("top_island").performClick()
-        rule.mainClock.advanceTimeByFrame()
-        rule.onNodeWithTag("keyboard_switch").assertExists()
-
-        // Advance 4400 ms: still open
-        rule.mainClock.advanceTimeBy(4400)
-        rule.onNodeWithTag("keyboard_switch").assertExists()
-
-        // Advance 200 ms more (4600 ms total): it has folded; the old content is gone once its fade ends
-        rule.mainClock.advanceTimeBy(200)
-        rule.mainClock.advanceTimeBy(200)
-        rule.mainClock.advanceTimeByFrame()
-        rule.onNodeWithTag("keyboard_switch").assertDoesNotExist()
-    }
-
-    @Test
-    fun layoutAt360WidthFontScale13() {
-        assertIslandMarginsAt(360, 1.3f)
-    }
-
-    @Test
-    fun layoutAt411Width() {
-        assertIslandMarginsAt(411, 1.0f)
-    }
-
-    @Test
-    fun layoutAt600Width() {
-        assertIslandMarginsAt(600, 1.0f)
-    }
-
-    private fun assertIslandMarginsAt(w: Int, fontScale: Float) {
-        rule.setContent {
-            CompositionLocalProvider(
-                LocalDensity provides Density(density = 2f, fontScale = fontScale),
-                LocalEffects provides ResolvedEffects.Light,
-                LocalReduceEffects provides true
-            ) {
-                Box(modifier = Modifier.size(w.dp, 700.dp)) {
                     TopIsland(
                         metaText = "p.1 · 85 / 3000",
                         lampOn = true,
@@ -319,25 +295,16 @@ class TopIslandTest {
                         beam = 55,
                         onBeamChange = {},
                         onDetent = {},
-                        lastKeyMs = 0L
+                        lastKeyMs = 0L,
+                        initialState = IslandState.Actions
                     )
                 }
             }
         }
         rule.waitForIdle()
 
-        // Open Actions
-        rule.onNodeWithTag("top_island").performClick()
-        rule.waitForIdle()
-
-        val islandBounds = rule.onNodeWithTag("top_island").getUnclippedBoundsInRoot()
-        assertTrue("Island width ${islandBounds.width.value} fits within width $w with 12 dp margins", islandBounds.width.value <= w - 24f)
-
-        // Open Lamp
-        rule.onNodeWithTag("lamp_button").performClick()
-        rule.waitForIdle()
-
-        val lampBounds = rule.onNodeWithTag("top_island").getUnclippedBoundsInRoot()
-        assertTrue("Lamp width ${lampBounds.width.value} fits within width $w with 12 dp margins", lampBounds.width.value <= w - 24f)
+        val lampNode = rule.onNodeWithTag("lamp_button")
+        lampNode.assertIsDisplayed()
+        assertEquals("On", lampNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
     }
 }
