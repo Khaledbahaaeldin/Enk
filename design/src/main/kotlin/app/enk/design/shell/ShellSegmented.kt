@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -44,9 +46,17 @@ import androidx.compose.ui.unit.sp
 import app.enk.design.glass.GlassInteraction
 import app.enk.design.glass.GlassLensMath
 import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.LiquidControlsMath
+import app.enk.design.glass.LiquidGroup
+import app.enk.design.glass.LiquidShape
+import app.enk.design.glass.LiquidSpecs
 import app.enk.design.glass.glassSurface
+import app.enk.design.glass.rememberLiquidGroupState
+import app.enk.design.glass.rememberLiquidPressState
 import app.enk.design.motion.ShellMotion
 import app.enk.design.theme.LocalShellColors
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -70,12 +80,6 @@ object ShellSegmentedMath {
     }
 }
 
-/**
- * Shell segmented control on the glass kit:
- * Track with SegmentedBody, draggable lens with SegmentedLens.
- * SEGMENTED_PRESS = 1.08f, stretch with velocity, specular angle following touch.
- * Touch height is at least 48 dp.
- */
 @Composable
 fun ShellSegmented(
     items: List<String>,
@@ -95,6 +99,7 @@ fun ShellSegmented(
     var controlWidthPx by remember { mutableIntStateOf(0) }
     var isDragging by remember { mutableStateOf(false) }
     var dragXPx by remember { mutableStateOf(0f) }
+    var lensVelocityPx by remember { mutableFloatStateOf(0f) }
 
     val itemCount = maxOf(1, items.size)
     val itemWidthPx = if (controlWidthPx > 0) controlWidthPx.toFloat() / itemCount else 0f
@@ -118,7 +123,12 @@ fun ShellSegmented(
     val lensShape = RoundedCornerShape(16.dp)
 
     val lensInteraction = remember { GlassInteraction() }
+    val lensPressState = rememberLiquidPressState()
     val pressScaleAnim = remember { Animatable(1f) }
+    val bodyBackdrop = rememberLayerBackdrop()
+    val meltGroupState = rememberLiquidGroupState()
+
+    val isMoving = isDragging || abs(animatedXPx - targetXPx) > 0.5f || abs(lensVelocityPx) > 5f
 
     Box(
         modifier = modifier
@@ -132,8 +142,10 @@ fun ShellSegmented(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(ShellSegmentedMath.controlHeightDp.dp)
+                .layerBackdrop(bodyBackdrop)
                 .glassSurface(
                     spec = GlassSpecs.SegmentedBody,
+                    liquid = LiquidSpecs.Bar,
                     shape = trackShape,
                     source = glassSource
                 )
@@ -144,6 +156,7 @@ fun ShellSegmented(
                         val centers = List(items.size) { i -> (i + 0.5f) * itemWidthPx }
                         isDragging = true
                         dragXPx = down.position.x
+                        lensPressState.pressProgress = 1f
 
                         var lastX = down.position.x
                         var lastTime = System.currentTimeMillis()
@@ -160,6 +173,7 @@ fun ShellSegmented(
                             val now = System.currentTimeMillis()
                             val dtSec = maxOf(0.001f, (now - lastTime) / 1000f)
                             val vx = (change.position.x - lastX) / dtSec / density.density
+                            lensVelocityPx = (change.position.x - lastX) / dtSec
                             lastX = change.position.x
                             lastTime = now
 
@@ -176,6 +190,8 @@ fun ShellSegmented(
 
                             if (!change.pressed) {
                                 isDragging = false
+                                lensPressState.pressProgress = 0f
+                                lensVelocityPx = 0f
                                 lensInteraction.stretchX = 1f
                                 lensInteraction.stretchY = 1f
                                 lensInteraction.specularAngleDeg = null
@@ -195,6 +211,37 @@ fun ShellSegmented(
         ) {
             lensInteraction.pressScale = pressScaleAnim.value
 
+            val movingShapes: () -> List<LiquidShape> = {
+                val hPx = with(density) { (ShellSegmentedMath.controlHeightDp - 4f).dp.toPx() }
+                val halfW = itemWidthPx / 2f
+                val halfH = hPx / 2f
+                val cx = animatedXPx + halfW
+                val cy = with(density) { (ShellSegmentedMath.controlHeightDp / 2f).dp.toPx() }
+                val mainShape = LiquidShape(cx, cy, halfW, halfH, with(density) { 16.dp.toPx() })
+
+                if (isMoving) {
+                    val trailOffset = LiquidControlsMath.segmentTrailOffset(lensVelocityPx, itemWidthPx)
+                    val trailShape = LiquidShape(
+                        cx = cx - trailOffset,
+                        cy = cy,
+                        halfW = halfW * 0.8f,
+                        halfH = halfH * 0.8f,
+                        radius = with(density) { 12.dp.toPx() }
+                    )
+                    listOf(mainShape, trailShape)
+                } else {
+                    listOf(mainShape)
+                }
+            }
+
+            LiquidGroup(
+                state = meltGroupState,
+                shapes = movingShapes,
+                spec = LiquidSpecs.BarLens,
+                source = glassSource,
+                pressed = { isDragging }
+            )
+
             // Lens behind selected item with SegmentedLens
             if (controlWidthPx > 0 && items.isNotEmpty()) {
                 val itemWidthDp = with(density) { itemWidthPx.toDp() }
@@ -204,11 +251,17 @@ fun ShellSegmented(
                         .width(itemWidthDp)
                         .fillMaxHeight()
                         .padding(2.dp)
+                        .graphicsLayer {
+                            alpha = if (meltGroupState.merging) 0f else 1f
+                        }
                         .glassSurface(
                             spec = GlassSpecs.SegmentedLens,
+                            liquid = LiquidSpecs.BarLens,
                             shape = lensShape,
                             source = glassSource,
-                            interaction = lensInteraction
+                            interaction = lensInteraction,
+                            press = lensPressState,
+                            extraSource = GlassSource(bodyBackdrop)
                         )
                 )
             }

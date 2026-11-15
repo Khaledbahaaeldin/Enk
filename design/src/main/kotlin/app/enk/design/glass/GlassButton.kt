@@ -45,6 +45,7 @@ fun GlassButton(
     val reduceEffects = LocalReduceEffects.current
     val scope = rememberCoroutineScope()
     val interaction = remember { GlassInteraction() }
+    val pressState = rememberLiquidPressState()
     val scaleAnim = remember { Animatable(1f) }
 
     val shape = RoundedCornerShape(23.dp)
@@ -61,6 +62,7 @@ fun GlassButton(
                     } else false
                 }
             }
+            .liquidPress(pressState, enabled = enabled)
             .pointerInput(enabled, reduceEffects) {
                 if (!enabled) return@pointerInput
                 awaitEachGesture {
@@ -98,12 +100,14 @@ fun GlassButton(
                 .height(46.dp)
                 .glassSurface(
                     spec = GlassSpecs.Button,
+                    liquid = LiquidSpecs.Button,
                     shape = shape,
                     source = glassSource,
                     interaction = interaction,
-                    solidColor = solidColor
+                    solidColor = solidColor,
+                    press = pressState
                 )
-                .padding(horizontal = 18.dp),
+                .padding(horizontal = 24.dp),
             contentAlignment = Alignment.Center
         ) {
             Row(

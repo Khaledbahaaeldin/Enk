@@ -50,6 +50,7 @@ fun GlassToast(
         anim.animateTo(target, animationSpec = spec)
     }
 
+    val pressState = rememberLiquidPressState()
     val progress = anim.value
     if (progress > 0.001f || visible) {
         val riseDp = (1f - progress.coerceIn(0f, 1f)) * 16f
@@ -58,7 +59,14 @@ fun GlassToast(
                 .testTag(tag)
                 .offset(y = riseDp.dp)
                 .graphicsLayer { alpha = progress.coerceIn(0f, 1f) }
-                .glassSurface(spec = GlassSpecs.Toast, shape = shape, source = source)
+                .liquidPress(pressState)
+                .glassSurface(
+                    spec = GlassSpecs.Toast,
+                    liquid = LiquidSpecs.Bar,
+                    shape = shape,
+                    source = source,
+                    press = pressState
+                )
                 .clip(shape)
                 .padding(horizontal = 18.dp, vertical = 12.dp)
         ) {
