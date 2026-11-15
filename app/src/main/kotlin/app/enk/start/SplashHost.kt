@@ -81,7 +81,11 @@ fun SplashHost(
                 paperOffsetDp = { frame.value.paperOffsetY },
                 textAlpha = { frame.value.textAlpha },
                 topBarAlpha = { frame.value.topBarAlpha },
-                ownPartsAlpha = { frame.value.ownPartsAlpha }
+                ownPartsAlpha = { frame.value.ownPartsAlpha },
+                textRevealMs = {
+                    val tMs = progressMs ?: (progress.value * StartTimeline.DURATION_MS)
+                    kotlin.math.max(0f, tMs - 450f)
+                }
             )
         }
         val moving = playing && !reduceMotion

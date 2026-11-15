@@ -16,7 +16,8 @@ data class WriterGeometry(
 ) {
     fun textTopOffsetDp(line: Int): Float = railYDp - paperTopDp - 23f - (line + 1) * lineHeightDp
 
-    fun carriageCenterXDp(col: Int): Float = textLeftDp + (col + 0.5f) * columnWidthDp
+    fun carriageCenterXDp(col: Int): Float = carriageCenterXDp(col.toFloat())
+    fun carriageCenterXDp(col: Float): Float = textLeftDp + (col + 0.5f) * columnWidthDp
 
     fun colFromX(xDp: Float): Float =
         if (columnWidthDp <= 0f) 0f else (xDp - textLeftDp) / columnWidthDp - 0.5f

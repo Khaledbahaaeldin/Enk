@@ -197,24 +197,112 @@ class PaperGoldenTest {
     }
 
     @Test
-    fun stampedCharacterAt80ms() {
+    fun strikeAt14ms() {
         val state = WriterState(
             noteId = "test-note-9",
             pages = listOf(StruckPage("Stamp")),
             pageIndex = 0,
             caret = 5,
-            lastTypedIndex = 4,
             loaded = true
         )
         snapshots.snapshot {
             CompositionLocalProvider(LocalMonoFont provides courier) {
                 PaperSheet(
-                state = state,
-                geometry = referenceGeometry,
-                nightProgress = 0f,
-                reduceEffects = false,
-                stampFrame = 80f / 160f
-            )
-            }}
+                    state = state,
+                    geometry = referenceGeometry,
+                    nightProgress = 0f,
+                    reduceEffects = false,
+                    frozen = FrozenStrike(index = 4, ageMs = 14f)
+                )
+            }
+        }
+    }
+
+    @Test
+    fun strikeAt30ms() {
+        val state = WriterState(
+            noteId = "test-note-10",
+            pages = listOf(StruckPage("Stamp")),
+            pageIndex = 0,
+            caret = 5,
+            loaded = true
+        )
+        snapshots.snapshot {
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
+                    state = state,
+                    geometry = referenceGeometry,
+                    nightProgress = 0f,
+                    reduceEffects = false,
+                    frozen = FrozenStrike(index = 4, ageMs = 30f)
+                )
+            }
+        }
+    }
+
+    @Test
+    fun strikeAt60ms() {
+        val state = WriterState(
+            noteId = "test-note-11",
+            pages = listOf(StruckPage("Stamp")),
+            pageIndex = 0,
+            caret = 5,
+            loaded = true
+        )
+        snapshots.snapshot {
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
+                    state = state,
+                    geometry = referenceGeometry,
+                    nightProgress = 0f,
+                    reduceEffects = false,
+                    frozen = FrozenStrike(index = 4, ageMs = 60f)
+                )
+            }
+        }
+    }
+
+    @Test
+    fun typeOnMidSweep() {
+        val state = WriterState(
+            noteId = "test-note-12",
+            pages = listOf(StruckPage("First line of text\nSecond line of text\nThird line of text")),
+            pageIndex = 0,
+            caret = 0,
+            loaded = true
+        )
+        snapshots.snapshot {
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
+                    state = state,
+                    geometry = referenceGeometry,
+                    nightProgress = 0f,
+                    reduceEffects = false,
+                    typeOnMs = { 150f }
+                )
+            }
+        }
+    }
+
+    @Test
+    fun typeOnDone() {
+        val state = WriterState(
+            noteId = "test-note-13",
+            pages = listOf(StruckPage("First line of text\nSecond line of text\nThird line of text")),
+            pageIndex = 0,
+            caret = 0,
+            loaded = true
+        )
+        snapshots.snapshot {
+            CompositionLocalProvider(LocalMonoFont provides courier) {
+                PaperSheet(
+                    state = state,
+                    geometry = referenceGeometry,
+                    nightProgress = 0f,
+                    reduceEffects = false,
+                    typeOnMs = { 800f }
+                )
+            }
+        }
     }
 }

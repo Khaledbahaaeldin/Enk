@@ -118,7 +118,6 @@ private fun StandInWriter(intro: WriterIntro?, text: String) {
             PaperText(
                 page = page,
                 caret = text.length,
-                lastTypedIndex = null,
                 geometry = geometry,
                 textColor = textColor(0f, app.enk.design.LampColor.fromWarmth(25)),
                 reduceMotion = true,
@@ -132,7 +131,6 @@ private fun StandInWriter(intro: WriterIntro?, text: String) {
             centerXDp = geometry.carriageCenterXDp(caretPos.col),
             mode = CarriageMotion.Rest,
             slugChar = null,
-            strikeKey = 0,
             night = false,
             reduceEffects = true,
             modifier = Modifier.introAlpha(intro?.ownPartsAlpha)
