@@ -209,12 +209,16 @@ class WriterKeyboardTest {
         composeTestRule.onNodeWithTag("enk_keyboard").assertExists()
         composeTestRule.onNodeWithTag("writer_input").assertDoesNotExist()
 
+        composeTestRule.onNodeWithTag("top_island").performClick()
+        composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("keyboard_switch").performClick()
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithTag("enk_keyboard").assertDoesNotExist()
         composeTestRule.onNodeWithTag("writer_input").assertExists()
 
+        composeTestRule.onNodeWithTag("top_island").performClick()
+        composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("keyboard_switch").performClick()
         composeTestRule.waitForIdle()
 

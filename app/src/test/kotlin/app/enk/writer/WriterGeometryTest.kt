@@ -118,6 +118,23 @@ class WriterGeometryTest {
     }
 
     @Test
+    fun railYFormulaHeights() {
+        val testCases = listOf(
+            480f to 298f,
+            640f to 397f,
+            720f to 446f,
+            820f to 508f,
+            1000f to 620f,
+            2400f to 1488f,
+            Float.NaN to 124f
+        )
+        for ((h, expectedRailY) in testCases) {
+            val g = WriterGeometry.compute(widthDp = 400f, heightDp = h, fontScale = 1.0f)
+            assertEquals("railYDp for height $h", expectedRailY, g.railYDp, 0.001f)
+        }
+    }
+
+    @Test
     fun compactPhoneGeometry() {
         val g = WriterGeometry.compute(widthDp = 360f, heightDp = 640f, fontScale = 1.0f)
         assertEquals(28, g.cols)

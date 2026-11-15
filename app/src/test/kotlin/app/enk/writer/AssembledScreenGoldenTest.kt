@@ -13,7 +13,6 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import app.enk.EnkSnapshots
-import app.enk.design.ControlPanel
 import app.enk.design.LampColor
 import app.enk.design.LampSettings
 import app.enk.design.LocalMonoFont
@@ -46,9 +45,8 @@ class AssembledScreenGoldenTest {
         lampOn = true
     )
 
-    private fun assemble(heightDp: Float): Pair<Float, Float> {
+    private fun assemble(heightDp: Float): Float {
         val geometry = WriterGeometry.compute(400f, heightDp, 1.0f)
-        var panelTopDp = 0f
         snapshots.snapshot {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalMonoFont provides courier) {
@@ -71,33 +69,38 @@ class AssembledScreenGoldenTest {
                         night = true,
                         reduceEffects = false
                     )
-                    ControlPanel(
-                        visible = true,
-                        lampColor = LampColor.fromWarmth(25),
-                        settings = LampSettings(warmth = 25, intensity = 80, beam = 55),
-                        onChange = {},
+                    TopIsland(
+                        metaText = "p.1 · 35 / 3000",
+                        lampOn = true,
+                        lampColor = androidx.compose.ui.graphics.Color(0xffffd15c),
+                        onToggleKeyboard = {},
+                        onOpenBox = {},
+                        onToggleLamp = {},
+                        warmth = 25,
+                        onWarmthChange = {},
+                        intensity = 80,
+                        onIntensityChange = {},
+                        beam = 55,
+                        onBeamChange = {},
                         onDetent = {},
-                        modifier = Modifier.onGloballyPositioned { coords ->
-                            panelTopDp = with(density) { coords.positionInRoot().y.toDp().value }
-                        }
+                        lastKeyMs = 0L
                     )
                 }
                 }
             }
         }
-        return geometry.railYDp to panelTopDp
+        return geometry.railYDp
     }
 
     @Test
     fun nightScreenAtFullHeight() {
-        val (railY, panelTop) = assemble(820f)
+        val railY = assemble(820f)
         assertEquals("rail keeps its 62% position when there is room", 508f, railY, 0.5f)
-        assertTrue("panel top $panelTop must clear the carriage bottom ${railY + 25f}", panelTop >= railY + 25f)
     }
 
     @Test
     fun nightScreenWithTheKeyboardUpKeepsThePanelBelowTheCarriage() {
-        val (railY, panelTop) = assemble(420f)
-        assertTrue("panel top $panelTop must clear the carriage bottom ${railY + 25f}", panelTop >= railY + 25f)
+        val railY = assemble(420f)
+        assertTrue("carriage clears the bottom of the window", railY <= 420f - 33f)
     }
 }

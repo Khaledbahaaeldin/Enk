@@ -1,6 +1,5 @@
 package app.enk.writer
 
-import app.enk.design.ControlPanelMetrics
 import kotlin.math.round
 import kotlin.math.roundToInt
 
@@ -27,8 +26,8 @@ data class WriterGeometry(
         const val PAPER_TOP_DP = 64f
         const val PAPER_SIDE_DP = 12f
 
-        /** Panel footprint (see ControlPanelMetrics) + carriage below the rail (25) + 8 gap. */
-        const val PANEL_CLEARANCE_DP = ControlPanelMetrics.FOOTPRINT_DP + 33f
+        /** Carriage below the rail (25) + 8 gap. */
+        const val CARRIAGE_CLEARANCE_DP = 33f
 
         /** Floor so a short window (keyboard up, landscape) still leaves room for text. */
         const val MIN_RAIL_Y_DP = PAPER_TOP_DP + 60f
@@ -80,7 +79,7 @@ data class WriterGeometry(
                 round(safeHeight * 0.62f).coerceAtMost(carriageFits).coerceAtLeast(caretLineFits)
             } else {
                 round(safeHeight * 0.62f)
-                    .coerceAtMost(safeHeight - PANEL_CLEARANCE_DP)
+                    .coerceAtMost(safeHeight - CARRIAGE_CLEARANCE_DP)
                     .coerceAtLeast(MIN_RAIL_Y_DP)
             }
 

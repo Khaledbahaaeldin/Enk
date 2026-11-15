@@ -126,7 +126,7 @@ class WriterCompactLayoutTest {
         val g = WriterGeometry.compute(400f, 820f, 1f)
         assertEquals((400f - 72f) / (28 * 0.6f), g.fontSp, 0.001f)
         assertEquals(Math.round(820f * 0.62f).toFloat(), g.railYDp, 0.001f)
-        assertTrue(g.railYDp <= 820f - WriterGeometry.PANEL_CLEARANCE_DP)
+        assertTrue(g.railYDp <= 820f - WriterGeometry.CARRIAGE_CLEARANCE_DP)
         assertTrue(!WriterGeometry.isCompact(820f))
         assertTrue(!WriterGeometry.isCompact(Float.NaN))
         assertTrue(WriterGeometry.isCompact(359f))

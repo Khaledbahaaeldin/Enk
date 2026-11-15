@@ -23,7 +23,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import app.enk.design.Fader
+import app.enk.design.glass.GlassSlider
 import app.enk.design.LocalMonoFont
 import app.enk.settings.Settings
 import app.enk.settings.reduceMotion
@@ -75,19 +75,19 @@ class AccessibilityTest {
     @Test
     fun faderExposesRangeAndAction() {
         composeRule.setContent {
-            Fader(
+            GlassSlider(
                 label = "Warmth",
                 value = 25,
                 min = 0,
                 max = 100,
-                lampColor = Color.Yellow,
+                accent = Color.Yellow,
                 onValueChange = {},
                 onDetent = {}
             )
         }
 
         composeRule.onNodeWithContentDescription("Warmth")
-            .assertRangeInfoEquals(ProgressBarRangeInfo(current = 25f, range = 0f..100f, steps = 20))
+            .assertRangeInfoEquals(ProgressBarRangeInfo(current = 25f, range = 0f..100f))
             .assert(SemanticsMatcher.keyIsDefined(SemanticsActions.SetProgress))
     }
 

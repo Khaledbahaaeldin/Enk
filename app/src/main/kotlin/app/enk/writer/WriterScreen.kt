@@ -93,14 +93,12 @@ import app.enk.audio.Sample
 import app.enk.audio.SoundEvent
 import app.enk.audio.SoundPlayer
 import app.enk.audio.SoundSet
-import app.enk.design.ControlPanel
 import app.enk.design.EnkColors
 import app.enk.design.EnkType
 import app.enk.design.LampColor
 import app.enk.design.LampLight
 import app.enk.design.LocalMonoFont
 import app.enk.design.lampTextMask
-import app.enk.design.logo.EnkWordmark
 import app.enk.settings.DarkPaper
 import app.enk.settings.Settings
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -138,7 +136,8 @@ fun WriterScreen(
     intro: WriterIntro? = null,
     keyboardLayout: KeyboardLayout? = null,
     strikes: StrikeLog = remember { StrikeLog() },
-    onTypeOnActiveChange: ((Boolean) -> Unit)? = null
+    onTypeOnActiveChange: ((Boolean) -> Unit)? = null,
+    typeOnGate: () -> Boolean = { true }
 ) {
     val state by viewModel.state.collectAsState()
     val page = state.currentPage
@@ -282,7 +281,7 @@ fun WriterScreen(
     LaunchedEffect(showAsk, lastKeyMs) {
         if (showAsk && lastKeyMs != 0L) {
             delay(4000)
-            onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Normal) }
+            onSettingsChange { copy(darkPaper = DarkPaper.Normal) }
         }
     }
 
@@ -503,11 +502,11 @@ fun WriterScreen(
 
                 // Remembered across rotation and other recreation: the text is typed on once per page.
                 var typedOnPage by rememberSaveable { mutableIntStateOf(-1) }
-                LaunchedEffect(state.loaded, state.pageIndex, intro == null) {
+                LaunchedEffect(state.loaded, state.pageIndex, intro == null, typeOnGate()) {
                     if (state.loaded && intro != null) {
                         // The start animation does its own type-on for this page.
                         typedOnPage = state.pageIndex
-                    } else if (state.loaded && !reduceMotion && !skipTypeOn && typedOnPage != state.pageIndex) {
+                    } else if (state.loaded && !reduceMotion && !skipTypeOn && typedOnPage != state.pageIndex && typeOnGate()) {
                         typedOnPage = state.pageIndex
                         typeOnActive = true
                         typeOnToken++
@@ -588,7 +587,7 @@ fun WriterScreen(
                     pulse(14)
                     hintPolicy = hintPolicy.onLongPress()
                     if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                        onSettingsChange { s -> s.copy(hintDismissed = true) }
+                        onSettingsChange { copy(hintDismissed = true) }
                     }
                 }
 
@@ -608,7 +607,7 @@ fun WriterScreen(
                                 if (motion == CarriageMotion.Dragging) {
                                     hintPolicy = hintPolicy.onScrub()
                                     if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                                        onSettingsChange { s -> s.copy(hintDismissed = true) }
+                                        onSettingsChange { copy(hintDismissed = true) }
                                     }
                                 }
                             },
@@ -671,8 +670,9 @@ fun WriterScreen(
                                     null
                                 }
 
+                                val effectivePage = if (typeOnGate()) page else page.copy(text = "")
                                 PaperText(
-                                    page = page,
+                                    page = effectivePage,
                                     caret = state.caret,
                                     geometry = geometry,
                                     textColor = textColor(nightProgress, lampRgb),
@@ -740,113 +740,35 @@ fun WriterScreen(
                         modifier = Modifier.introAlpha(intro?.ownPartsAlpha)
                     )
 
-                    // Top bar (DS 6.1, Finding 11)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(if (WriterGeometry.isCompact(screenHeightDp)) WriterGeometry.COMPACT_TOP_BAR_DP.dp else 60.dp)
-                            .introAlpha(intro?.topBarAlpha)
-                            .padding(horizontal = 26.dp)
-                    ) {
-                        // Left: dot + gap + wordmark
-                        Row(
-                            modifier = Modifier.align(Alignment.CenterStart),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .background(EnkColors.accent, CircleShape)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                                    .testTag("wordmark")
-                                    .semantics {
-                                        role = Role.Button
-                                        contentDescription = "Open the Box"
-                                    }
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = onOpenBox
-                                    ),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                EnkWordmark(
-                                    modifier = Modifier.height(18.dp),
-                                    onDark = true
-                                )
-                            }
-                        }
-
-                        // Right: Meta line (Finding 11) and the visible way into the Box
-                        Row(
-                            modifier = Modifier.align(Alignment.CenterEnd),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = TopBarFormatter.formatMeta(state.pageIndex, page.text.length),
-                                style = EnkType.meta.copy(fontFamily = LocalMonoFont.current)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            if (keyboardLayout != null) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clickable(role = Role.Button) {
-                                            systemOverride = !systemOverride
-                                        }
-                                        .semantics {
-                                            contentDescription = "Switch keyboard"
-                                        }
-                                        .testTag("keyboard_switch"),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    KeyboardSwitchGlyph(modifier = Modifier.size(24.dp))
-                                }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .testTag("box_button")
-                                    .semantics {
-                                        role = Role.Button
-                                        contentDescription = "Open the Box"
-                                    }
-                                    .clickable(onClick = onOpenBox),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                BoxGlyph(modifier = Modifier.size(26.dp))
-                            }
-                        }
-                    }
-
-                    // ControlPanel
-                    ControlPanel(
-                        visible = state.lampOn,
+                    // TopIsland (replaces top bar and control panel)
+                    TopIsland(
+                        metaText = TopBarFormatter.formatMeta(state.pageIndex, page.text.length),
+                        lampOn = state.lampOn,
                         lampColor = lampColor,
-                        settings = lampSettings,
-                        onChange = { lamp ->
-                            onSettingsChange { s ->
-                                s.copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
-                            }
-                        },
+                        onToggleKeyboard = { systemOverride = !systemOverride },
+                        onOpenBox = onOpenBox,
+                        onToggleLamp = toggleLamp,
+                        warmth = settings.warmth,
+                        onWarmthChange = { w -> onSettingsChange { copy(warmth = w) } },
+                        intensity = settings.intensity,
+                        onIntensityChange = { i -> onSettingsChange { copy(intensity = i) } },
+                        beam = settings.beam,
+                        onBeamChange = { b -> onSettingsChange { copy(beam = b) } },
                         onDetent = { pos ->
                             if (!latestSettings.muted) player.playTick(pos, 1f)
                             pulse(4)
                         },
-                        reduceEffects = reduceMotion,
-                        modifier = Modifier.testTag("control_panel")
+                        lastKeyMs = lastKeyMs,
+                        modifier = Modifier.introAlpha(intro?.topBarAlpha),
+                        glassSource = glassSource
                     )
 
                     // Hint text (DS 6.9, Finding 5): hidden when paper is short (landscape keyboard, etc.)
                     val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
                     if (showAsk) {
                         DarkPaperAsk(
-                            onLamp = { onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Lamp) } },
-                            onNormal = { onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Normal) } },
+                            onLamp = { onSettingsChange { copy(darkPaper = DarkPaper.Lamp) } },
+                            onNormal = { onSettingsChange { copy(darkPaper = DarkPaper.Normal) } },
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .padding(horizontal = 20.dp, vertical = 16.dp)
@@ -972,67 +894,6 @@ fun WriterScreen(
                 glassSource = glassSource
             )
         }
-    }
-}
-
-/** A keyboard glyph for the switch chip. */
-@Composable
-private fun KeyboardSwitchGlyph(modifier: Modifier = Modifier) {
-    val ink = LogoSpec.CREAM
-    Canvas(modifier = modifier) {
-        val w = 22.dp.toPx()
-        val h = 14.dp.toPx()
-        val strokeWidth = 1.7.dp.toPx()
-        val left = (size.width - w) / 2f
-        val top = (size.height - h) / 2f
-        val cornerRadius = CornerRadius(2.5.dp.toPx(), 2.5.dp.toPx())
-        drawRoundRect(
-            color = ink,
-            topLeft = Offset(left, top),
-            size = Size(w, h),
-            cornerRadius = cornerRadius,
-            style = Stroke(width = strokeWidth)
-        )
-        // Three small dots in a row inside
-        val dotRadius = 1.dp.toPx()
-        val dotY = top + h * 0.38f
-        val dotSpacing = w * 0.22f
-        val centerX = left + w / 2f
-        drawCircle(color = ink, radius = dotRadius, center = Offset(centerX - dotSpacing, dotY))
-        drawCircle(color = ink, radius = dotRadius, center = Offset(centerX, dotY))
-        drawCircle(color = ink, radius = dotRadius, center = Offset(centerX + dotSpacing, dotY))
-        // Short bar under them
-        val barY = top + h * 0.72f
-        val barHalfWidth = w * 0.25f
-        drawLine(
-            color = ink,
-            start = Offset(centerX - barHalfWidth, barY),
-            end = Offset(centerX + barHalfWidth, barY),
-            strokeWidth = 1.4.dp.toPx(),
-            cap = StrokeCap.Round
-        )
-    }
-}
-
-/** A tray of notes: the Box. Drawn, so it needs no icon library. */
-@Composable
-private fun BoxGlyph(modifier: Modifier = Modifier) {
-    val ink = LogoSpec.CREAM
-    Canvas(modifier = modifier) {
-        val stroke = Stroke(width = size.minDimension * 0.09f, cap = StrokeCap.Round, join = StrokeJoin.Round)
-        val w = size.width
-        val h = size.height
-        // Two cards sticking out of the tray, then the tray itself.
-        drawLine(ink.copy(alpha = 0.55f), Offset(w * 0.28f, h * 0.12f), Offset(w * 0.72f, h * 0.12f), stroke.width, StrokeCap.Round)
-        drawLine(ink.copy(alpha = 0.8f), Offset(w * 0.18f, h * 0.30f), Offset(w * 0.82f, h * 0.30f), stroke.width, StrokeCap.Round)
-        val tray = Path().apply {
-            moveTo(w * 0.08f, h * 0.46f)
-            lineTo(w * 0.92f, h * 0.46f)
-            lineTo(w * 0.82f, h * 0.90f)
-            lineTo(w * 0.18f, h * 0.90f)
-            close()
-        }
-        drawPath(tray, ink, style = stroke)
     }
 }
 
