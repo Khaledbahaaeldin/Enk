@@ -28,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.enk.design.motion.PressDepth
+import app.enk.design.motion.pressFeedback
 import app.enk.design.theme.LocalShellColors
 import app.enk.design.theme.ThemeId
 
@@ -97,6 +99,7 @@ fun ThemeTile(
     Column(
         modifier = modifier
             .testTag("theme_tile_${theme.name.lowercase()}")
+            .pressFeedback(depth = PressDepth.Row)
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

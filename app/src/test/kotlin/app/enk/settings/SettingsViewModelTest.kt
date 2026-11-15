@@ -11,6 +11,7 @@ import app.enk.audio.SoundSet
 import app.enk.data.Exporter
 import app.enk.data.ImportResult
 import app.enk.data.Importer
+import app.enk.design.effects.EffectsLevel
 import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 import app.enk.testContainer
@@ -125,11 +126,11 @@ class SettingsViewModelTest {
         vm.setMuted(true)
         vm.setBellVolume(0.85f)
         vm.setHaptics(false)
-        vm.setReduceEffects(true)
+        vm.setEffects(EffectsLevel.Balanced)
 
         val persisted = container.settingsStore.settings.first {
             it.correction == CorrectionMode.StrikeThrough && it.autocorrect && it.muted &&
-                it.bellVolume == 0.85f && !it.haptics && it.reduceEffects
+                it.bellVolume == 0.85f && !it.haptics && it.effects == EffectsLevel.Balanced
         }
         assertEquals(0.85f, persisted.bellVolume, 0.001f)
     }

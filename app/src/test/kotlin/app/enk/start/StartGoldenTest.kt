@@ -1,35 +1,21 @@
 package app.enk.start
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
 import app.enk.EnkSnapshots
-import app.enk.design.EnkColors
 import app.enk.design.EnkMaterials
-import app.enk.design.EnkType
 import app.enk.design.LocalMonoFont
-import app.enk.design.logo.EnkWordmark
 import app.enk.text.GridLayout
 import app.enk.text.StruckPage
 import app.enk.writer.Caret
@@ -39,6 +25,7 @@ import app.enk.writer.PaperSheet
 import app.enk.writer.PaperText
 import app.enk.writer.Rail
 import app.enk.writer.TopBarFormatter
+import app.enk.writer.TopIsland
 import app.enk.writer.WriterGeometry
 import app.enk.writer.WriterIntro
 import app.enk.writer.introAlpha
@@ -135,23 +122,23 @@ private fun StandInWriter(intro: WriterIntro?, text: String) {
             reduceEffects = true,
             modifier = Modifier.introAlpha(intro?.ownPartsAlpha)
         )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp)
-                .introAlpha(intro?.topBarAlpha)
-                .padding(horizontal = 26.dp)
-        ) {
-            Row(modifier = Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(10.dp).background(EnkColors.accent, CircleShape))
-                Spacer(modifier = Modifier.width(8.dp))
-                EnkWordmark(modifier = Modifier.height(18.dp), onDark = true)
-            }
-            Text(
-                text = TopBarFormatter.formatMeta(0, text.length),
-                style = EnkType.meta.copy(fontFamily = LocalMonoFont.current),
-                modifier = Modifier.align(Alignment.CenterEnd)
-            )
-        }
+        // The writer's top is the glass island since batch 14; the start animation fades it in last.
+        TopIsland(
+            metaText = TopBarFormatter.formatMeta(0, text.length),
+            lampOn = false,
+            lampColor = Color(0xffffd15c),
+            onToggleKeyboard = {},
+            onOpenBox = {},
+            onToggleLamp = {},
+            warmth = 25,
+            onWarmthChange = {},
+            intensity = 80,
+            onIntensityChange = {},
+            beam = 55,
+            onBeamChange = {},
+            onDetent = {},
+            lastKeyMs = 0L,
+            modifier = Modifier.introAlpha(intro?.topBarAlpha)
+        )
     }
 }

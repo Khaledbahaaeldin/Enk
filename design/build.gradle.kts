@@ -51,6 +51,9 @@ dependencies {
 
 tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEach {
     exclude("**/*GoldenTest*")
+    exclude("**/GlassSurfaceTest*")
+    exclude("**/PressFeedbackTest*")
+    exclude("**/GlassControlsTest*")
 }
 
 // AGP 9 no longer creates the release unit tests unless asked; the gate runs both variants.

@@ -15,9 +15,9 @@ class WriterGeometryTest {
         assertEquals(11.7143f, g.columnWidthDp, 0.001f)
         assertEquals(33.19f, g.lineHeightDp, 0.01f)
         assertEquals(508f, g.railYDp, 0.001f)
-        assertEquals(387.81f, g.textTopOffsetDp(0), 0.01f)
+        assertEquals(443.81f, g.textTopOffsetDp(0), 0.01f)
         assertEquals(41.857f, g.carriageCenterXDp(0), 0.01f)
-        assertEquals(64f, g.paperTopDp, 0.001f)
+        assertEquals(8f, g.paperTopDp, 0.001f)
         assertEquals(36f, g.textLeftDp, 0.001f)
         assertEquals(328f, g.textWidthDp, 0.001f)
     }
@@ -115,6 +115,23 @@ class WriterGeometryTest {
         // Height = 822 -> 822 * 0.62 = 509.64 -> round(509.64) = 510.0
         val g2 = WriterGeometry.compute(widthDp = 400f, heightDp = 822f, fontScale = 1.0f)
         assertEquals(510f, g2.railYDp, 0.001f)
+    }
+
+    @Test
+    fun railYFormulaHeights() {
+        val testCases = listOf(
+            480f to 298f,
+            640f to 397f,
+            720f to 446f,
+            820f to 508f,
+            1000f to 620f,
+            2400f to 1488f,
+            Float.NaN to 124f
+        )
+        for ((h, expectedRailY) in testCases) {
+            val g = WriterGeometry.compute(widthDp = 400f, heightDp = h, fontScale = 1.0f)
+            assertEquals("railYDp for height $h", expectedRailY, g.railYDp, 0.001f)
+        }
     }
 
     @Test

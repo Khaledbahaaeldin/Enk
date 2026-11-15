@@ -15,6 +15,10 @@ object ShellMotion {
     val flick = ShellSpring(0.35f, 0.8f)
     val toggle = ShellSpring(0.28f, 1f)
     val sheet = ShellSpring(0.38f, 0.82f)
+    val press = ShellSpring(0.20f, 1f)
+    val release = ShellSpring(0.35f, 0.8f)
+    val page = ShellSpring(0.40f, 1f)
+    val railPage = ShellSpring(0.72f, 0.76f)
 
     const val LONG_PRESS_MS = 420L
     const val DRAG_SLOP_DP = 8f

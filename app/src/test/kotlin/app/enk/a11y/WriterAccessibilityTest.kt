@@ -7,6 +7,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import app.enk.box.NoteCard
 import app.enk.data.NoteSummary
@@ -88,7 +89,10 @@ class WriterAccessibilityTest {
         var opened = 0
         showWriter("hello") { opened++ }
 
-        val node = composeRule.onNodeWithTag("wordmark").fetchSemanticsNode()
+        composeRule.onNodeWithTag("top_island").performClick()
+        composeRule.waitForIdle()
+
+        val node = composeRule.onNodeWithTag("box_button").fetchSemanticsNode()
         assertEquals(Role.Button, node.config.getOrNull(SemanticsProperties.Role))
         assertEquals(listOf("Open the Box"), node.config.getOrNull(SemanticsProperties.ContentDescription))
         composeRule.runOnUiThread { node.config[SemanticsActions.OnClick].action?.invoke() }

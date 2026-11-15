@@ -3,6 +3,7 @@ package app.enk.settings
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.emptyPreferences
+import app.enk.design.effects.EffectsLevel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -34,11 +35,11 @@ class CorruptionHandlerTest {
         // Reading settings from corrupted file must return defaults without crashing
         val initialSettings = store.settings.first()
         assertEquals(Settings(), initialSettings)
-        assertFalse(initialSettings.reduceEffects)
+        assertEquals(EffectsLevel.Auto, initialSettings.effects)
 
         // Writing updates after corruption replaces the corrupt file cleanly
-        store.update { it.copy(reduceEffects = true) }
+        store.update { it.copy(effects = EffectsLevel.Light) }
         val updated = store.settings.first()
-        assertEquals(true, updated.reduceEffects)
+        assertEquals(EffectsLevel.Light, updated.effects)
     }
 }

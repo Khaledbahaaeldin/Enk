@@ -60,10 +60,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import app.enk.design.shell.GlassLevel
+import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.glassSurface
 import app.enk.design.shell.GlassSource
 import app.enk.design.shell.LocalReduceEffects
-import app.enk.design.shell.glass
 import app.enk.design.theme.LocalShellColors
 import app.enk.design.theme.LocalShellMaterial
 import kotlinx.coroutines.delay
@@ -97,7 +97,7 @@ fun EnkKeyboard(
 
     val trayShape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
     val trayModifier = if (glassSource != null) {
-        Modifier.glass(GlassLevel.Thick, trayShape, glassSource)
+        Modifier.glassSurface(GlassSpecs.KeyboardTray, trayShape, glassSource)
     } else {
         Modifier.background(colors.thick, trayShape)
     }

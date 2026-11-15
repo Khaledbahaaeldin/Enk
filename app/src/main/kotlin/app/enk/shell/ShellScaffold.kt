@@ -22,7 +22,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import app.enk.design.shell.GlassSource
 import app.enk.design.shell.ShellBackground
 import app.enk.design.shell.collapseProgress
 import app.enk.design.shell.glassSource
@@ -68,40 +67,44 @@ fun ShellScaffold(
     val topPaddingDp = if (largeTitleHeightPx > 0) with(density) { largeTitleHeightPx.toDp() } else 124.dp
     val contentPadding = PaddingValues(top = topPaddingDp, bottom = 120.dp)
 
-    ShellBackground(modifier = modifier.fillMaxSize()) {
-        // Scrolling content layer, registered as glass backdrop source
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .glassSource(glassSource)
-        ) {
-            content(listState, contentPadding)
+    // The nav bar sits beside the background, not in it: the Rail transition recedes the screen
+    // (beats 1 and 7) while the bar morphs into the rail on its own.
+    Box(modifier = modifier.fillMaxSize()) {
+        ShellBackground(modifier = Modifier.fillMaxSize().railRecede()) {
+            // Scrolling content layer, registered as glass backdrop source
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .glassSource(glassSource)
+            ) {
+                content(listState, contentPadding)
+            }
+
+            // Large title scrolls with content
+            LargeTitle(
+                title = title,
+                meta = meta,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .graphicsLayer {
+                        translationY = -with(density) { scrollYDp.dp.toPx() }
+                    }
+                    // Measured outside the status bar padding, so the content below starts under the
+                    // whole title including the bar; measured inside it, titles and content overlapped.
+                    .onSizeChanged { largeTitleHeightPx = it.height }
+                    .windowInsetsPadding(WindowInsets.statusBars)
+            )
+
+            // Compact bar pinned at top
+            CompactBar(
+                title = title,
+                progress = progress,
+                glassSource = glassSource,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+            )
         }
-
-        // Large title scrolls with content
-        LargeTitle(
-            title = title,
-            meta = meta,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .graphicsLayer {
-                    translationY = -with(density) { scrollYDp.dp.toPx() }
-                }
-                // Measured outside the status bar padding, so the content below starts under the
-                // whole title including the bar; measured inside it, titles and content overlapped.
-                .onSizeChanged { largeTitleHeightPx = it.height }
-                .windowInsetsPadding(WindowInsets.statusBars)
-        )
-
-        // Compact bar pinned at top
-        CompactBar(
-            title = title,
-            progress = progress,
-            glassSource = glassSource,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .windowInsetsPadding(WindowInsets.statusBars)
-        )
 
         // Floating GlassNavBar at bottom
         if (showNav) {

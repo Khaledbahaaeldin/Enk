@@ -1,33 +1,22 @@
 package app.enk.settings
 
 import android.content.Context
-import android.provider.Settings as AndroidSettings
+import app.enk.design.effects.EffectsLevel
+import app.enk.design.effects.ResolvedEffects
+import app.enk.design.effects.resolveEffects
+import app.enk.design.isReducedMotion
 
-/**
- * Single source of truth for motion reduction per Task 26:
- * Returns true if the user's `settings.reduceEffects` is true, or if the system animator scale is 0.
- */
+fun reduceMotion(effects: ResolvedEffects): Boolean = effects == ResolvedEffects.Light
+
 fun reduceMotion(context: Context, settings: Settings): Boolean {
-    if (settings.reduceEffects) return true
-    return isSystemAnimatorScaleZero(context)
+    val env = readEffectsEnvironment(context)
+    return resolveEffects(settings.effects, env) == ResolvedEffects.Light
 }
 
-/**
- * Pure overload for testing or when animator duration scale is already resolved.
- */
+fun reduceMotion(effectsLevel: EffectsLevel, isReducedMotion: Boolean): Boolean {
+    return effectsLevel == EffectsLevel.Light || isReducedMotion
+}
+
 fun reduceMotion(settingsReduceEffects: Boolean, animatorDurationScale: Float): Boolean {
     return settingsReduceEffects || animatorDurationScale == 0f
-}
-
-internal fun isSystemAnimatorScaleZero(context: Context): Boolean {
-    val scale = try {
-        AndroidSettings.Global.getFloat(
-            context.contentResolver,
-            AndroidSettings.Global.ANIMATOR_DURATION_SCALE,
-            1.0f
-        )
-    } catch (_: Exception) {
-        1.0f
-    }
-    return scale == 0f
 }

@@ -5,26 +5,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.ResolvedEffects
 import app.enk.design.isHighContrastTextEnabled
-import app.enk.design.isReducedMotion
-
-enum class GlassLevel { Regular, Thick }
 
 enum class GlassBackendKind { Refraction, Blur, Solid }
 
 val LocalReduceEffects = compositionLocalOf { false }
 
-fun chooseGlassBackend(
+fun resolveGlassBackend(
+    level: ResolvedEffects,
     sdkInt: Int,
-    reduceEffects: Boolean,
     highContrastText: Boolean
 ): GlassBackendKind {
-    return if (reduceEffects || highContrastText) {
+    return if (highContrastText || level == ResolvedEffects.Light) {
         GlassBackendKind.Solid
-    } else if (sdkInt >= 33) {
-        GlassBackendKind.Refraction
-    } else {
+    } else if (level == ResolvedEffects.Balanced || sdkInt < 33) {
         GlassBackendKind.Blur
+    } else {
+        GlassBackendKind.Refraction
     }
 }
 
@@ -32,11 +31,11 @@ fun chooseGlassBackend(
 @Composable
 fun rememberGlassBackend(): GlassBackendKind {
     val context = LocalContext.current
-    val reduceEffects = LocalReduceEffects.current
-    return remember(context, reduceEffects) {
-        chooseGlassBackend(
+    val level = LocalEffects.current
+    return remember(context, level) {
+        resolveGlassBackend(
+            level = level,
             sdkInt = Build.VERSION.SDK_INT,
-            reduceEffects = reduceEffects || isReducedMotion(context),
             highContrastText = isHighContrastTextEnabled(context)
         )
     }

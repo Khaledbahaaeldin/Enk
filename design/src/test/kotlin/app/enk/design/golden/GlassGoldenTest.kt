@@ -23,15 +23,17 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.ResolvedEffects
 import app.enk.design.EnkColors
 import app.enk.design.ShadowLayer
 import app.enk.design.enkShadow
 import app.enk.design.paperGrain
+import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.glassSurface
 import app.enk.design.shell.EdgeKind
-import app.enk.design.shell.GlassLevel
 import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.shell.ShellBackground
-import app.enk.design.shell.glass
 import app.enk.design.shell.glassSource
 import app.enk.design.shell.rememberGlassSource
 import app.enk.design.shell.scrollEdge
@@ -56,8 +58,10 @@ class GlassGoldenTest {
     @Test
     fun graphiteDark() {
         snapshots.snapshot {
-            EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                GlassSampleScene()
+            CompositionLocalProvider(LocalEffects provides ResolvedEffects.Light) {
+                EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
+                    GlassSampleScene()
+                }
             }
         }
     }
@@ -65,8 +69,10 @@ class GlassGoldenTest {
     @Test
     fun graphiteLight() {
         snapshots.snapshot {
-            EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Light) {
-                GlassSampleScene()
+            CompositionLocalProvider(LocalEffects provides ResolvedEffects.Light) {
+                EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Light) {
+                    GlassSampleScene()
+                }
             }
         }
     }
@@ -74,8 +80,10 @@ class GlassGoldenTest {
     @Test
     fun slateDark() {
         snapshots.snapshot {
-            EnkShellTheme(theme = ThemeId.Slate, mode = ThemeMode.Dark) {
-                GlassSampleScene()
+            CompositionLocalProvider(LocalEffects provides ResolvedEffects.Light) {
+                EnkShellTheme(theme = ThemeId.Slate, mode = ThemeMode.Dark) {
+                    GlassSampleScene()
+                }
             }
         }
     }
@@ -83,8 +91,10 @@ class GlassGoldenTest {
     @Test
     fun slateLight() {
         snapshots.snapshot {
-            EnkShellTheme(theme = ThemeId.Slate, mode = ThemeMode.Light) {
-                GlassSampleScene()
+            CompositionLocalProvider(LocalEffects provides ResolvedEffects.Light) {
+                EnkShellTheme(theme = ThemeId.Slate, mode = ThemeMode.Light) {
+                    GlassSampleScene()
+                }
             }
         }
     }
@@ -92,8 +102,10 @@ class GlassGoldenTest {
     @Test
     fun scrollEdgeBars() {
         snapshots.snapshot {
-            EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Light) {
-                ScrollEdgeScene()
+            CompositionLocalProvider(LocalEffects provides ResolvedEffects.Light) {
+                EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Light) {
+                    ScrollEdgeScene()
+                }
             }
         }
     }
@@ -101,7 +113,10 @@ class GlassGoldenTest {
     @Test
     fun solidBackendReduceEffects() {
         snapshots.snapshot {
-            CompositionLocalProvider(LocalReduceEffects provides true) {
+            CompositionLocalProvider(
+                LocalEffects provides ResolvedEffects.Light,
+                LocalReduceEffects provides true
+            ) {
                 EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
                     GlassSampleScene()
                 }
@@ -157,8 +172,8 @@ fun GlassSampleScene() {
                 .align(Alignment.TopCenter)
                 .offset(y = 190.dp)
                 .size(width = 356.dp, height = 64.dp)
-                .glass(
-                    level = GlassLevel.Regular,
+                .glassSurface(
+                    spec = GlassSpecs.NavBody,
                     shape = RoundedCornerShape(32.dp),
                     source = glassSource
                 )
@@ -203,8 +218,8 @@ fun GlassSampleScene() {
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(280.dp)
-                .glass(
-                    level = GlassLevel.Thick,
+                .glassSurface(
+                    spec = GlassSpecs.Floating,
                     shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
                     source = glassSource
                 )

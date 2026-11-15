@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import app.enk.design.effects.EffectsLevel
 import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 import kotlinx.coroutines.CoroutineScope
@@ -45,7 +46,7 @@ class SettingsStoreTest {
         assertFalse(s.muted)
         assertEquals(0.6f, s.bellVolume, 0.0001f)
         assertTrue(s.haptics)
-        assertFalse(s.reduceEffects)
+        assertEquals(EffectsLevel.Auto, s.effects)
         assertEquals(ThemeId.Graphite, s.theme)
         assertEquals(ThemeMode.System, s.themeMode)
         assertEquals(25, s.warmth)
@@ -113,7 +114,7 @@ class SettingsStoreTest {
                 muted = true,
                 bellVolume = 0.8f,
                 haptics = false,
-                reduceEffects = true,
+                effects = EffectsLevel.Balanced,
                 theme = ThemeId.Sky,
                 themeMode = ThemeMode.Light,
                 warmth = 50,
@@ -136,7 +137,7 @@ class SettingsStoreTest {
         assertTrue(s.muted)
         assertEquals(0.8f, s.bellVolume, 0.0001f)
         assertFalse(s.haptics)
-        assertTrue(s.reduceEffects)
+        assertEquals(EffectsLevel.Balanced, s.effects)
         assertEquals(ThemeId.Sky, s.theme)
         assertEquals(ThemeMode.Light, s.themeMode)
         assertEquals(50, s.warmth)
@@ -335,7 +336,6 @@ class SettingsStoreTest {
                 autocorrect = true,
                 muted = true,
                 haptics = false,
-                reduceEffects = true,
                 hintDismissed = true
             )
         }
@@ -343,7 +343,6 @@ class SettingsStoreTest {
         assertTrue(sTrue.autocorrect)
         assertTrue(sTrue.muted)
         assertFalse(sTrue.haptics)
-        assertTrue(sTrue.reduceEffects)
         assertTrue(sTrue.hintDismissed)
 
         val storeToggleFalse = createStore()
@@ -352,7 +351,6 @@ class SettingsStoreTest {
                 autocorrect = false,
                 muted = false,
                 haptics = true,
-                reduceEffects = false,
                 hintDismissed = false
             )
         }
@@ -360,8 +358,58 @@ class SettingsStoreTest {
         assertFalse(sFalse.autocorrect)
         assertFalse(sFalse.muted)
         assertTrue(sFalse.haptics)
-        assertFalse(sFalse.reduceEffects)
         assertFalse(sFalse.hintDismissed)
+    }
+
+    @Test
+    fun effectsDefaultAutoRoundTripsAndMigratesOldKeys() = runBlocking {
+        // default Auto
+        val storeDefault = createStore()
+        assertEquals(EffectsLevel.Auto, storeDefault.settings.first().effects)
+
+        // round trip each value
+        for (level in EffectsLevel.entries) {
+            val store = createStore()
+            store.update { it.copy(effects = level) }
+            assertEquals(level, store.settings.first().effects)
+        }
+
+        // old true -> Light
+        val fileOldTrue = File(tempFolder.root, "old_true.preferences_pb")
+        val dsOldTrue = PreferenceDataStoreFactory.create(produceFile = { fileOldTrue })
+        dsOldTrue.edit { prefs ->
+            prefs[androidx.datastore.preferences.core.booleanPreferencesKey("reduce_effects")] = true
+        }
+        val storeOldTrue = SettingsStore(dsOldTrue)
+        assertEquals(EffectsLevel.Light, storeOldTrue.settings.first().effects)
+
+        // old false -> Auto
+        val fileOldFalse = File(tempFolder.root, "old_false.preferences_pb")
+        val dsOldFalse = PreferenceDataStoreFactory.create(produceFile = { fileOldFalse })
+        dsOldFalse.edit { prefs ->
+            prefs[androidx.datastore.preferences.core.booleanPreferencesKey("reduce_effects")] = false
+        }
+        val storeOldFalse = SettingsStore(dsOldFalse)
+        assertEquals(EffectsLevel.Auto, storeOldFalse.settings.first().effects)
+
+        // unknown string -> Auto
+        val fileUnknown = File(tempFolder.root, "unknown.preferences_pb")
+        val dsUnknown = PreferenceDataStoreFactory.create(produceFile = { fileUnknown })
+        dsUnknown.edit { prefs ->
+            prefs[stringPreferencesKey("effects")] = "InvalidLevel"
+        }
+        val storeUnknown = SettingsStore(dsUnknown)
+        assertEquals(EffectsLevel.Auto, storeUnknown.settings.first().effects)
+
+        // both keys present -> effects wins
+        val fileBoth = File(tempFolder.root, "both.preferences_pb")
+        val dsBoth = PreferenceDataStoreFactory.create(produceFile = { fileBoth })
+        dsBoth.edit { prefs ->
+            prefs[androidx.datastore.preferences.core.booleanPreferencesKey("reduce_effects")] = true
+            prefs[stringPreferencesKey("effects")] = "Balanced"
+        }
+        val storeBoth = SettingsStore(dsBoth)
+        assertEquals(EffectsLevel.Balanced, storeBoth.settings.first().effects)
     }
 
     @Test

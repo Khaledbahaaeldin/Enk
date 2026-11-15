@@ -41,6 +41,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.enk.design.effects.EffectsLevel
+import app.enk.design.glass.GlassButton
 import app.enk.design.shell.GroupedDivider
 import app.enk.design.shell.GroupedRow
 import app.enk.design.shell.GroupedSection
@@ -246,33 +248,30 @@ fun SettingsContent(
             item(key = "group_display") {
                 GroupedSection(title = "Display", footer = DISPLAY_FOOTER) {
                     GroupedRow(
-                        title = "Reduce effects",
-                        trailing = {
-                            ShellToggle(
-                                checked = settings.reduceEffects,
-                                onChange = { checked -> onSettingsChange { it.copy(reduceEffects = checked) } }
-                            )
-                        }
+                        title = "Effects",
+                        subtitle = "Auto picks what your phone can draw."
                     )
+                    Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp)) {
+                        ShellSegmented(
+                            items = listOf("Auto", "Full", "Balanced", "Light"),
+                            selected = settings.effects.ordinal,
+                            onSelect = { idx ->
+                                onSettingsChange { it.copy(effects = EffectsLevel.entries[idx]) }
+                            }
+                        )
+                    }
                 }
             }
 
             // 5. Data Group
             item(key = "group_data") {
                 GroupedSection(title = "Data") {
-                    val buttonShape = RoundedCornerShape(15.dp)
-
                     GroupedRow(
                         title = "Export all notes",
                         trailing = {
-                            Box(
-                                modifier = Modifier
-                                    .height(30.dp)
-                                    .clip(buttonShape)
-                                    .background(material.field2)
-                                    .clickable(onClick = onExport)
-                                    .padding(horizontal = 14.dp),
-                                contentAlignment = Alignment.Center
+                            GlassButton(
+                                onClick = onExport,
+                                modifier = Modifier.height(36.dp)
                             ) {
                                 Text(
                                     text = "Export",
@@ -289,14 +288,9 @@ fun SettingsContent(
                     GroupedRow(
                         title = "Import notes",
                         trailing = {
-                            Box(
-                                modifier = Modifier
-                                    .height(30.dp)
-                                    .clip(buttonShape)
-                                    .background(material.field2)
-                                    .clickable(onClick = onImport)
-                                    .padding(horizontal = 14.dp),
-                                contentAlignment = Alignment.Center
+                            GlassButton(
+                                onClick = onImport,
+                                modifier = Modifier.height(36.dp)
                             ) {
                                 Text(
                                     text = "Import",
@@ -384,7 +378,7 @@ fun SettingsScreen(
                 if (updated.muted != settings.muted) viewModel.setMuted(updated.muted)
                 if (updated.bellVolume != settings.bellVolume) viewModel.setBellVolume(updated.bellVolume)
                 if (updated.haptics != settings.haptics) viewModel.setHaptics(updated.haptics)
-                if (updated.reduceEffects != settings.reduceEffects) viewModel.setReduceEffects(updated.reduceEffects)
+                if (updated.effects != settings.effects) viewModel.setEffects(updated.effects)
                 if (updated.darkPaper != settings.darkPaper) viewModel.setDarkPaper(updated.darkPaper)
                 if (updated.keyboard != settings.keyboard) viewModel.setKeyboard(updated.keyboard)
             },
@@ -426,4 +420,4 @@ internal const val TRANSFER_MESSAGE_MS = 4_000L
 internal const val APPEARANCE_FOOTER =
     "Themes colour menus and controls. The writing page keeps its paper and steel; the lamp is its night mode. Dynamic follows your Android wallpaper."
 internal const val WRITING_FOOTER = "Strike-through keeps deleted letters on the paper, as a typewriter would."
-internal const val DISPLAY_FOOTER = "Reduce effects turns off paper grain, glass blur, and extra motion."
+internal const val DISPLAY_FOOTER = "Light is solid and still. Balanced blurs without bending. Full bends the picture behind glass."

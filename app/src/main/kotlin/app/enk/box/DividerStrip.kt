@@ -38,10 +38,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.enk.data.DividerEntity
+import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.glassSurface
 import app.enk.design.motion.ShellMotion
-import app.enk.design.shell.GlassLevel
 import app.enk.design.shell.GlassSource
-import app.enk.design.shell.glass
 import app.enk.design.shell.rememberGlassSource
 import app.enk.design.theme.LocalShellColors
 import app.enk.design.theme.LocalShellMaterial
@@ -84,8 +84,7 @@ fun DividerStrip(
     Box(
         modifier = modifier
             .height(44.dp)
-            .glass(GlassLevel.Regular, stripShape, glassSource)
-            .clip(stripShape)
+            .glassSurface(GlassSpecs.SegmentedBody, stripShape, glassSource)
             .padding(4.dp)
     ) {
         Box(
@@ -100,9 +99,7 @@ fun DividerStrip(
                         .offset { IntOffset(animatedX.roundToInt(), 0) }
                         .width(with(density) { animatedWidth.toDp() })
                         .height(36.dp)
-                        .clip(lensShape)
-                        .background(Brush.verticalGradient(listOf(material.lensA, material.lensB)))
-                        .border(0.5.dp, material.lensEdge, lensShape)
+                        .glassSurface(GlassSpecs.SegmentedLens, lensShape, glassSource)
                 )
             }
 

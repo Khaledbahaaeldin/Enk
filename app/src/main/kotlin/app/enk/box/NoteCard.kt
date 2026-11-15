@@ -48,8 +48,11 @@ import app.enk.data.SearchHit
 import app.enk.design.LocalMonoFont
 import app.enk.design.ShadowLayer
 import app.enk.design.enkShadow
+import app.enk.design.motion.PressDepth
 import app.enk.design.motion.ShellMotion
+import app.enk.design.motion.pressFeedback
 import app.enk.design.paperGrain
+import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.theme.LocalShellMaterial
 import app.enk.search.matchStyled
 import kotlinx.coroutines.coroutineScope
@@ -83,17 +86,11 @@ fun NoteCard(
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnHold by rememberUpdatedState(onHold)
 
-    var isPressed by remember { mutableStateOf(false) }
-
-    val targetScale = when {
-        lifted -> 1.03f
-        isPressed -> 0.985f
-        else -> 1.0f
-    }
-    val animatedScale by animateFloatAsState(
-        targetValue = targetScale,
-        animationSpec = tween(durationMillis = 120),
-        label = "card_scale"
+    val reduceEffects = LocalReduceEffects.current
+    val liftedScale by animateFloatAsState(
+        targetValue = if (lifted) 1.03f else 1.0f,
+        animationSpec = if (reduceEffects) tween(100) else ShellMotion.press.toSpec(),
+        label = "card_lifted_scale"
     )
 
     val shape = RoundedCornerShape(14.dp)
@@ -147,9 +144,10 @@ fun NoteCard(
                 }
             }
             .graphicsLayer {
-                scaleX = animatedScale
-                scaleY = animatedScale
+                scaleX = liftedScale
+                scaleY = liftedScale
             }
+            .pressFeedback(depth = PressDepth.Card, enabled = !lifted)
             .enkShadow(shadowLayers, shape)
             .clip(shape)
             .background(PaperColor)
@@ -159,7 +157,6 @@ fun NoteCard(
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val downPos = down.position
                     val downTime = down.uptimeMillis
-                    isPressed = true
                     var slopExceeded = false
                     var heldTriggered = false
 
@@ -175,12 +172,10 @@ fun NoteCard(
                         val elapsed = change.uptimeMillis - downTime
                         if (!slopExceeded && !heldTriggered && elapsed >= ShellMotion.LONG_PRESS_MS) {
                             heldTriggered = true
-                            isPressed = false
                             currentOnHold()
                         }
 
                         if (!change.pressed) {
-                            isPressed = false
                             if (!heldTriggered && !slopExceeded && !change.isConsumed) {
                                 currentOnClick()
                             }
@@ -269,6 +264,7 @@ fun NoteCard(
     Box(
         modifier = modifier
             .testTag("search_hit_${hit.noteId}_${hit.pageIndex}")
+            .pressFeedback(depth = PressDepth.Card)
             .enkShadow(shadowLayers, shape)
             .clip(shape)
             .background(PaperColor)

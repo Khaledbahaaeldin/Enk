@@ -28,16 +28,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.enk.data.DividerEntity
-import app.enk.design.shell.GlassLevel
+import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.glassSurface
 import app.enk.design.shell.GlassSource
-import app.enk.design.shell.glass
 import app.enk.design.shell.rememberGlassSource
 import app.enk.design.theme.LocalShellColors
 import app.enk.design.theme.LocalShellMaterial
+import app.enk.writer.AndroidHaptics
 
 @Composable
 fun MoveToDividerSheet(
@@ -49,7 +51,14 @@ fun MoveToDividerSheet(
 ) {
     val colors = LocalShellColors.current
     val material = LocalShellMaterial.current
-    val sheetShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
+    val context = LocalContext.current
+    val haptics = remember(context) { AndroidHaptics(context) }
+    val sheetShape = RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp)
+
+    val handleDismiss = {
+        haptics.pulse(14)
+        onDismiss()
+    }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -63,7 +72,7 @@ fun MoveToDividerSheet(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = onDismiss
+                    onClick = handleDismiss
                 )
         )
 
@@ -72,7 +81,7 @@ fun MoveToDividerSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 420.dp)
-                .glass(GlassLevel.Thick, sheetShape, glassSource)
+                .glassSurface(GlassSpecs.Floating, sheetShape, glassSource)
                 .clip(sheetShape)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
                 .padding(top = 10.dp, start = 20.dp, end = 20.dp, bottom = 24.dp)
@@ -107,7 +116,7 @@ fun MoveToDividerSheet(
                                 .height(52.dp)
                                 .clickable {
                                     onSelectDivider(null)
-                                    onDismiss()
+                                    handleDismiss()
                                 }
                                 .padding(vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -130,7 +139,7 @@ fun MoveToDividerSheet(
                                 .height(52.dp)
                                 .clickable {
                                     onSelectDivider(divider.id)
-                                    onDismiss()
+                                    handleDismiss()
                                 }
                                 .padding(vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically

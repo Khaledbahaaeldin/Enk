@@ -10,6 +10,7 @@ import app.enk.audio.SoundSet
 import app.enk.data.Exporter
 import app.enk.data.ImportResult
 import app.enk.data.Importer
+import app.enk.design.effects.EffectsLevel
 import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 import app.enk.widget.EnkWidgetManager
@@ -158,9 +159,9 @@ class SettingsViewModel(
         }
     }
 
-    fun setReduceEffects(b: Boolean) {
+    fun setEffects(level: EffectsLevel) {
         scope.launch(ioDispatcher) {
-            store.update { it.copy(reduceEffects = b) }
+            store.update { it.copy(effects = level) }
         }
     }
 

@@ -1,5 +1,6 @@
 package app.enk.settings
 
+import app.enk.design.effects.EffectsLevel
 import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 
@@ -35,7 +36,7 @@ data class Settings(
     val muted: Boolean = false,
     val bellVolume: Float = 0.6f,
     val haptics: Boolean = true,
-    val reduceEffects: Boolean = false,
+    val effects: EffectsLevel = EffectsLevel.Auto,
     val theme: ThemeId = ThemeId.Graphite,
     val themeMode: ThemeMode = ThemeMode.System,
     val warmth: Int = 25,

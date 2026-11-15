@@ -1,5 +1,6 @@
 package app.enk.design
 
+import app.enk.design.glass.FaderMath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

@@ -34,8 +34,8 @@ val LocalShellMaterial: ProvidableCompositionLocal<ShellMaterialTokens> = static
 
 @Composable
 fun EnkShellTheme(
-    theme: ThemeId,
-    mode: ThemeMode,
+    theme: ThemeId = ThemeId.Graphite,
+    mode: ThemeMode = ThemeMode.Dark,
     content: @Composable () -> Unit
 ) {
     val isDark = when (mode) {

@@ -128,7 +128,14 @@ class WriterScreenTest {
         }
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithTag("control_panel").assertExists()
+        composeTestRule.onNodeWithTag("top_island").performClick()
+        composeTestRule.waitForIdle()
+        val lampNode = composeTestRule.onNodeWithTag("lamp_button")
+        lampNode.assertExists()
+        assertEquals("On", lampNode.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription])
+        lampNode.performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("lamp_popup").assertExists()
     }
 
     @Test
@@ -137,6 +144,7 @@ class WriterScreenTest {
         val pageText = "The quick brown fox jumps over the lazy dog"
         repo.savePages(note.id, listOf(StruckPage(pageText)))
         val viewModel = WriterViewModel(note.id, repo, settingsStore, testScope)
+        while (viewModel.state.value.currentPage.text.isEmpty()) delay(10)
 
         composeTestRule.setContent {
             WriterScreen(
@@ -180,7 +188,11 @@ class WriterScreenTest {
         composeTestRule.waitForIdle()
 
         assertFalse("Lamp is off initially in day", viewModel.state.value.lampOn)
-        composeTestRule.onNodeWithTag("control_panel").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("top_island").performClick()
+        composeTestRule.waitForIdle()
+        val lampNode = composeTestRule.onNodeWithTag("lamp_button")
+        lampNode.assertExists()
+        assertEquals("Off", lampNode.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription])
     }
 
     @Test
@@ -200,9 +212,11 @@ class WriterScreenTest {
         }
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithTag("wordmark").performClick()
+        composeTestRule.onNodeWithTag("top_island").performClick()
         composeTestRule.waitForIdle()
-        assertTrue("onOpenBox must be called when wordmark button is clicked", boxOpened)
+        composeTestRule.onNodeWithTag("box_button").performClick()
+        composeTestRule.waitForIdle()
+        assertTrue("onOpenBox must be called when box_button is clicked", boxOpened)
     }
 
     @Test
@@ -222,6 +236,8 @@ class WriterScreenTest {
         }
         composeTestRule.waitForIdle()
 
+        composeTestRule.onNodeWithTag("top_island").performClick()
+        composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("box_button").assertIsDisplayed()
         composeTestRule.onNodeWithTag("box_button").performClick()
         composeTestRule.waitForIdle()

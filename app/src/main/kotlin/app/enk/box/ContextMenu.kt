@@ -1,5 +1,8 @@
 package app.enk.box
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,11 +20,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -29,11 +35,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.enk.design.shell.GlassLevel
+import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.ResolvedEffects
+import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.glassSurface
+import app.enk.design.motion.ShellMotion
 import app.enk.design.shell.GlassSource
-import app.enk.design.shell.glass
+import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.shell.rememberGlassSource
 import app.enk.design.theme.LocalShellColors
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
@@ -48,6 +59,9 @@ fun ContextMenu(
     val colors = LocalShellColors.current
     val density = LocalDensity.current
     val config = LocalConfiguration.current
+    val effects = LocalEffects.current
+    val reduceEffects = LocalReduceEffects.current
+    val isLight = effects == ResolvedEffects.Light || reduceEffects
 
     val screenHeightDp = config.screenHeightDp.dp
     val menuWidth = 232.dp
@@ -73,23 +87,44 @@ fun ContextMenu(
         }
     }
 
-    val menuShape = RoundedCornerShape(16.dp)
+    val menuShape = RoundedCornerShape(22.dp)
+
+    val scaleAnim = remember { Animatable(if (isLight) 1f else 0.6f) }
+    val alphaAnim = remember { Animatable(0f) }
+    val scrimAnim = remember { Animatable(0f) }
+
+    LaunchedEffect(isLight) {
+        if (isLight) {
+            launch { alphaAnim.animateTo(1f, tween(100, easing = LinearEasing)) }
+            launch { scrimAnim.animateTo(1f, tween(100, easing = LinearEasing)) }
+        } else {
+            launch { scaleAnim.animateTo(1f, ShellMotion.sheet.toSpec()) }
+            launch { alphaAnim.animateTo(1f, tween(200, easing = LinearEasing)) }
+            launch { scrimAnim.animateTo(1f, tween(300, easing = LinearEasing)) }
+        }
+    }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
+        modifier = modifier.fillMaxSize()
     ) {
         // Scrim
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(colors.thick.copy(alpha = 0.4f))
+                .background(colors.thick.copy(alpha = 0.4f * scrimAnim.value))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = onDismiss
                 )
         )
+
+        val pivotX = if (cardBounds != null) {
+            val cardLeftDp = with(density) { cardBounds.left.toDp() }
+            val cardCenterDp = with(density) { cardBounds.center.x.toDp() }
+            ((cardCenterDp - cardLeftDp) / menuWidth).coerceIn(0f, 1f)
+        } else 0f
+        val pivotY = if (menuTopDp < (with(density) { cardBounds?.top?.toDp() ?: 0.dp })) 1f else 0f
 
         // Menu container
         Box(
@@ -102,7 +137,13 @@ fun ContextMenu(
                 }
                 .width(menuWidth)
                 .testTag("context_menu")
-                .glass(GlassLevel.Thick, menuShape, glassSource)
+                .graphicsLayer {
+                    scaleX = scaleAnim.value
+                    scaleY = scaleAnim.value
+                    alpha = alphaAnim.value
+                    transformOrigin = TransformOrigin(pivotX, pivotY)
+                }
+                .glassSurface(GlassSpecs.Floating, menuShape, glassSource)
                 .clip(menuShape)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {

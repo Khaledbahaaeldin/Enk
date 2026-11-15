@@ -138,7 +138,7 @@ class ShellControlsCompositionTest {
         val touch = bounds("shell_fader")
         assertTrue("touch height ${touch.height}", touch.height >= 48f)
         assertEquals(360f, touch.width, 0.5f)
-        assertEquals(24f, bounds("shell_fader_knob").width, 0.5f)
+        assertEquals(56f, bounds("shell_fader_knob").width, 0.5f)
     }
 
     @Test
@@ -146,7 +146,7 @@ class ShellControlsCompositionTest {
         val values = mutableListOf<Float>()
         show { ShellFader(value = 0.5f, onChange = { values += it }, modifier = Modifier.fillMaxWidth()) }
         val width = bounds("shell_fader").width
-        val x = 12f + 0.537f * (width - 24f)
+        val x = 28f + 0.537f * (width - 56f)
 
         composeTestRule.onNodeWithTag("shell_fader").performTouchInput { click(Offset(x, center.y)) }
         composeTestRule.waitForIdle()
