@@ -1,6 +1,7 @@
 package app.enk.search
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -122,7 +123,13 @@ fun SearchContent(
                             hit = hit,
                             query = query,
                             onClick = { onHitClick(hit.noteId, hit.pageIndex) },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .animateItem(
+                                    fadeInSpec = spring(1f, 400f),
+                                    placementSpec = spring(1f, 400f),
+                                    fadeOutSpec = spring(1f, 400f)
+                                )
+                                .fillMaxWidth()
                         )
                     }
                 }

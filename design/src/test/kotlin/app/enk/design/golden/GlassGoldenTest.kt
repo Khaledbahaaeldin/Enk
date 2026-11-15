@@ -29,11 +29,11 @@ import app.enk.design.EnkColors
 import app.enk.design.ShadowLayer
 import app.enk.design.enkShadow
 import app.enk.design.paperGrain
+import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.glassSurface
 import app.enk.design.shell.EdgeKind
-import app.enk.design.shell.GlassLevel
 import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.shell.ShellBackground
-import app.enk.design.shell.glass
 import app.enk.design.shell.glassSource
 import app.enk.design.shell.rememberGlassSource
 import app.enk.design.shell.scrollEdge
@@ -172,8 +172,8 @@ fun GlassSampleScene() {
                 .align(Alignment.TopCenter)
                 .offset(y = 190.dp)
                 .size(width = 356.dp, height = 64.dp)
-                .glass(
-                    level = GlassLevel.Regular,
+                .glassSurface(
+                    spec = GlassSpecs.NavBody,
                     shape = RoundedCornerShape(32.dp),
                     source = glassSource
                 )
@@ -218,8 +218,8 @@ fun GlassSampleScene() {
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(280.dp)
-                .glass(
-                    level = GlassLevel.Thick,
+                .glassSurface(
+                    spec = GlassSpecs.Floating,
                     shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
                     source = glassSource
                 )

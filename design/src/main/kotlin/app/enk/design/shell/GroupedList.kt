@@ -21,6 +21,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.enk.design.motion.PressDepth
+import app.enk.design.motion.pressFeedback
 import app.enk.design.theme.LocalShellColors
 
 /**
@@ -91,7 +93,13 @@ fun GroupedRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .pressFeedback(depth = PressDepth.Row)
+                        .clickable(onClick = onClick)
+                } else Modifier
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

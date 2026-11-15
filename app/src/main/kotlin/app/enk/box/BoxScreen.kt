@@ -3,6 +3,7 @@ package app.enk.box
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,6 +48,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.enk.design.LocalMonoFont
+import app.enk.design.motion.PressDepth
+import app.enk.design.motion.pressFeedback
 import app.enk.design.shell.rememberGlassSource
 import app.enk.design.theme.LocalShellColors
 import app.enk.shell.Dest
@@ -243,6 +246,7 @@ private fun BoxList(
                     .fillMaxWidth()
                     .height(52.dp)
                     .testTag("ghost_card")
+                    .pressFeedback(depth = PressDepth.Pill)
                     .clip(ghostShape)
                     .border(1.dp, colors.hair, ghostShape)
                     .clickable(onClick = onNewNote)
@@ -264,6 +268,11 @@ private fun BoxList(
                 onMoveToDivider = { onNoteMove(note.id) },
                 onMoveToTrash = { onNoteTrash(note.id) },
                 modifier = Modifier
+                    .animateItem(
+                        fadeInSpec = spring(1f, 400f),
+                        placementSpec = spring(1f, 400f),
+                        fadeOutSpec = spring(1f, 400f)
+                    )
                     .fillMaxWidth()
                     .onGloballyPositioned { cardBoundsMap[note.id] = it.boundsInRoot() }
                     .graphicsLayer {
@@ -304,6 +313,7 @@ internal fun TrashRow(count: Int, onClick: () -> Unit, modifier: Modifier = Modi
             .fillMaxWidth()
             .height(52.dp)
             .testTag("trash_row")
+            .pressFeedback(depth = PressDepth.Row)
             .clip(shape)
             .background(colors.g1)
             .clickable(onClick = onClick)

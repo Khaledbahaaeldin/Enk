@@ -131,7 +131,7 @@ fun WriterScreen(
     onOpenBox: () -> Unit,
     modifier: Modifier = Modifier,
     soundSets: List<SoundSet> = emptyList(),
-    onSettingsChange: (Settings.() -> Settings) -> Unit = {},
+    onSettingsChange: ((Settings) -> Settings) -> Unit = {},
     /** Non-null only while the start animation runs; see [WriterIntro]. */
     intro: WriterIntro? = null,
     keyboardLayout: KeyboardLayout? = null,
@@ -281,7 +281,7 @@ fun WriterScreen(
     LaunchedEffect(showAsk, lastKeyMs) {
         if (showAsk && lastKeyMs != 0L) {
             delay(4000)
-            onSettingsChange { copy(darkPaper = DarkPaper.Normal) }
+            onSettingsChange { it.copy(darkPaper = DarkPaper.Normal) }
         }
     }
 
@@ -587,7 +587,7 @@ fun WriterScreen(
                     pulse(14)
                     hintPolicy = hintPolicy.onLongPress()
                     if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                        onSettingsChange { copy(hintDismissed = true) }
+                        onSettingsChange { it.copy(hintDismissed = true) }
                     }
                 }
 
@@ -607,7 +607,7 @@ fun WriterScreen(
                                 if (motion == CarriageMotion.Dragging) {
                                     hintPolicy = hintPolicy.onScrub()
                                     if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                                        onSettingsChange { copy(hintDismissed = true) }
+                                        onSettingsChange { it.copy(hintDismissed = true) }
                                     }
                                 }
                             },
@@ -749,11 +749,11 @@ fun WriterScreen(
                         onOpenBox = onOpenBox,
                         onToggleLamp = toggleLamp,
                         warmth = settings.warmth,
-                        onWarmthChange = { w -> onSettingsChange { copy(warmth = w) } },
+                        onWarmthChange = { w -> onSettingsChange { it.copy(warmth = w) } },
                         intensity = settings.intensity,
-                        onIntensityChange = { i -> onSettingsChange { copy(intensity = i) } },
+                        onIntensityChange = { i -> onSettingsChange { it.copy(intensity = i) } },
                         beam = settings.beam,
-                        onBeamChange = { b -> onSettingsChange { copy(beam = b) } },
+                        onBeamChange = { b -> onSettingsChange { it.copy(beam = b) } },
                         onDetent = { pos ->
                             if (!latestSettings.muted) player.playTick(pos, 1f)
                             pulse(4)
@@ -767,8 +767,8 @@ fun WriterScreen(
                     val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
                     if (showAsk) {
                         DarkPaperAsk(
-                            onLamp = { onSettingsChange { copy(darkPaper = DarkPaper.Lamp) } },
-                            onNormal = { onSettingsChange { copy(darkPaper = DarkPaper.Normal) } },
+                            onLamp = { onSettingsChange { it.copy(darkPaper = DarkPaper.Lamp) } },
+                            onNormal = { onSettingsChange { it.copy(darkPaper = DarkPaper.Normal) } },
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .padding(horizontal = 20.dp, vertical = 16.dp)

@@ -1,6 +1,7 @@
 package app.enk.box
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,10 +50,10 @@ import app.enk.design.LocalMonoFont
 import app.enk.design.ShadowLayer
 import app.enk.design.glass.GlassButton
 import app.enk.design.enkShadow
+import app.enk.design.motion.PressDepth
+import app.enk.design.motion.pressFeedback
 import app.enk.design.paperGrain
-import app.enk.design.shell.GlassLevel
 import app.enk.design.shell.GlassSource
-import app.enk.design.shell.glass
 import app.enk.design.shell.rememberGlassSource
 import app.enk.design.theme.LocalShellColors
 import app.enk.design.theme.LocalShellMaterial
@@ -109,6 +110,11 @@ fun TrashContent(
 
                 Box(
                     modifier = Modifier
+                        .animateItem(
+                            fadeInSpec = spring(1f, 400f),
+                            placementSpec = spring(1f, 400f),
+                            fadeOutSpec = spring(1f, 400f)
+                        )
                         .fillMaxWidth()
                         .enkShadow(shadowLayers, cardShape)
                         .clip(cardShape)
@@ -163,6 +169,7 @@ fun TrashContent(
                             Box(
                                 modifier = Modifier
                                     .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                    .pressFeedback(depth = PressDepth.Pill)
                                     .clickable { onRestore(item.id) },
                                 contentAlignment = Alignment.Center
                             ) {

@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import app.enk.design.glass.GlassSpecs
 import app.enk.design.theme.LocalShellColors
 import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.drawPlainBackdrop
@@ -40,7 +41,7 @@ fun Modifier.scrollEdge(kind: EdgeKind, progress: Float, source: GlassSource): M
     }
 
     val compact = kind == EdgeKind.CompactBar
-    val blurRadius = if (compact) 22.dp else 18.dp
+    val blurRadius = GlassSpecs.NavBody.blurDp.dp
     val fadeStart = if (compact) 0.7f else 0.6f
     val backdrop = source.backdrop ?: emptyBackdrop()
 

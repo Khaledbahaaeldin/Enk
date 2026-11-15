@@ -144,6 +144,7 @@ class WriterScreenTest {
         val pageText = "The quick brown fox jumps over the lazy dog"
         repo.savePages(note.id, listOf(StruckPage(pageText)))
         val viewModel = WriterViewModel(note.id, repo, settingsStore, testScope)
+        while (viewModel.state.value.currentPage.text.isEmpty()) delay(10)
 
         composeTestRule.setContent {
             WriterScreen(

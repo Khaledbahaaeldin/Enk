@@ -71,9 +71,7 @@ import app.enk.design.motion.ItemBounds
 import app.enk.design.motion.LensController
 import app.enk.design.motion.ShellMotion
 import app.enk.design.shell.GlassBackendKind
-import app.enk.design.shell.GlassLevel
 import app.enk.design.shell.GlassSource
-import app.enk.design.shell.glass
 import app.enk.design.shell.rememberGlassBackend
 import app.enk.design.shell.rememberGlassSource
 import app.enk.design.theme.LocalShellColors

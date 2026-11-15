@@ -9,8 +9,6 @@ import app.enk.design.effects.LocalEffects
 import app.enk.design.effects.ResolvedEffects
 import app.enk.design.isHighContrastTextEnabled
 
-enum class GlassLevel { Regular, Thick }
-
 enum class GlassBackendKind { Refraction, Blur, Solid }
 
 val LocalReduceEffects = compositionLocalOf { false }
