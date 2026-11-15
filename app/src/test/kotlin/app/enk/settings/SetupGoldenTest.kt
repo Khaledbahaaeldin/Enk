@@ -86,7 +86,9 @@ class SetupGoldenTest {
             CompositionLocalProvider(
                 LocalMonoFont provides courier,
                 LocalShellColors provides colors,
-                LocalShellMaterial provides material
+                LocalShellMaterial provides material,
+                LocalEffects provides ResolvedEffects.Light,
+                LocalReduceEffects provides true
             ) {
                 SettingsContent(
                     settings = Settings(

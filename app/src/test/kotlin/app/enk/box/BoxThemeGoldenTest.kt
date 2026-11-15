@@ -12,6 +12,9 @@ import app.enk.data.DividerEntity
 import app.enk.data.NoteSummary
 import app.enk.data.TrashedSummary
 import app.enk.design.LocalMonoFont
+import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.ResolvedEffects
+import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.theme.DynamicShellColors
 import app.enk.design.theme.EnkShellTheme
 import app.enk.design.theme.LocalShellColors
@@ -74,7 +77,11 @@ class BoxThemeGoldenTest {
 
     @Composable
     private fun BoxScene(theme: ThemeId, mode: ThemeMode) {
-        CompositionLocalProvider(LocalMonoFont provides courier) {
+        CompositionLocalProvider(
+            LocalMonoFont provides courier,
+            LocalEffects provides ResolvedEffects.Light,
+            LocalReduceEffects provides true
+        ) {
             EnkShellTheme(theme = theme, mode = mode) {
                 BoxScreen(
                     state = BoxUiState(
@@ -102,7 +109,9 @@ class BoxThemeGoldenTest {
         CompositionLocalProvider(
             LocalMonoFont provides courier,
             LocalShellColors provides colors,
-            LocalShellMaterial provides material
+            LocalShellMaterial provides material,
+            LocalEffects provides ResolvedEffects.Light,
+            LocalReduceEffects provides true
         ) {
             BoxScreen(
                 state = BoxUiState(
@@ -118,7 +127,11 @@ class BoxThemeGoldenTest {
 
     @Composable
     private fun TrashScene(theme: ThemeId, mode: ThemeMode) {
-        CompositionLocalProvider(LocalMonoFont provides courier) {
+        CompositionLocalProvider(
+            LocalMonoFont provides courier,
+            LocalEffects provides ResolvedEffects.Light,
+            LocalReduceEffects provides true
+        ) {
             EnkShellTheme(theme = theme, mode = mode) {
                 TrashScreen(
                     trashed = sampleTrashed,

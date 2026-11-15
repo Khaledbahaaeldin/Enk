@@ -63,6 +63,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.enk.design.ShadowLayer
 import app.enk.design.enkShadow
+import app.enk.design.glass.GlassInteraction
+import app.enk.design.glass.GlassLensMath
+import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.glassSurface
 import app.enk.design.motion.ItemBounds
 import app.enk.design.motion.LensController
 import app.enk.design.motion.ShellMotion
@@ -99,7 +103,7 @@ fun GlassNavBar(
             .testTag("glass_nav_bar")
             .fillMaxWidth()
             .height(64.dp)
-            .glass(level = GlassLevel.Regular, shape = RoundedCornerShape(32.dp), source = glassSource)
+            .glassSurface(spec = GlassSpecs.NavBody, shape = RoundedCornerShape(32.dp), source = glassSource)
     ) {
         val totalWidthPx = constraints.maxWidth.toFloat()
         val paddingPx = with(density) { 5.dp.toPx() }
@@ -120,6 +124,9 @@ fun GlassNavBar(
         val lensLeftAnim = remember { Animatable(targetLeft) }
         val scope = rememberCoroutineScope()
         val currentOnSelect by rememberUpdatedState(onSelect)
+
+        val lensInteraction = remember { GlassInteraction() }
+        val lensPressAnim = remember { Animatable(1f) }
 
         var isDragging by remember { mutableStateOf(false) }
         var dragHighlightedDest by remember { mutableStateOf<Dest?>(null) }
@@ -159,9 +166,12 @@ fun GlassNavBar(
                     val startTime = System.currentTimeMillis()
 
                     lensController.down(startX, lensLeftAnim.value, itemWidthPx)
+                    val targetPress = if (reduceEffects) 1f else GlassLensMath.NAV_PRESS
+                    scope.launch { lensPressAnim.animateTo(targetPress, ShellMotion.press.toSpec()) }
 
                     var currentX = startX
                     var currentY = startY
+                    var lastX = startX
                     var lastTime = startTime
                     var dragged = false
                     var cancelled = false
@@ -180,9 +190,14 @@ fun GlassNavBar(
                             break
                         }
 
+                        val now = System.currentTimeMillis()
+                        val dtSec = maxOf(0.001f, (now - lastTime) / 1000f)
+                        velocity = (change.position.x - lastX) / dtSec / density.density
+                        lastX = change.position.x
+                        lastTime = now
+
                         currentX = change.position.x
                         currentY = change.position.y
-                        lastTime = System.currentTimeMillis()
 
                         if (change.changedToUp()) {
                             break
@@ -197,9 +212,24 @@ fun GlassNavBar(
                             change.consume()
                             val frame = lensController.move(currentX, lastTime)
                             dragHighlightedDest = resolveDest(frame.highlighted)
+                            val (sx, sy) = if (reduceEffects) Pair(1f, 1f) else GlassLensMath.stretch(velocity)
+                            lensInteraction.stretchX = sx
+                            lensInteraction.stretchY = sy
+                            val hPx = with(density) { 54.dp.toPx() }
+                            lensInteraction.specularAngleDeg = GlassLensMath.specularAngleDeg(
+                                centreX = itemWidthPx / 2f,
+                                centreY = hPx / 2f,
+                                touchX = currentX - lensLeftAnim.value,
+                                touchY = currentY - lensTopOffsetPx
+                            )
                             scope.launch { lensLeftAnim.snapTo(frame.left) }
                         }
                     }
+
+                    lensInteraction.stretchX = 1f
+                    lensInteraction.stretchY = 1f
+                    lensInteraction.specularAngleDeg = null
+                    scope.launch { lensPressAnim.animateTo(1f, ShellMotion.release.toSpec()) }
 
                     val isOutside = currentY < -30f || currentY > barHeightPx + 30f
 
@@ -249,10 +279,6 @@ fun GlassNavBar(
             }
         }
 
-        // Lens stretch calculation
-        val k = if (reduceEffects) 0f else min(0.14f, abs(velocity) / 6000f)
-        val lensScaleX = 1f + k
-        val lensScaleY = 1f - k / 2f
         val lensWidthDp = with(density) { itemWidthPx.toDp() }
 
         // Root container for items and lens
@@ -261,46 +287,21 @@ fun GlassNavBar(
                 .fillMaxSize()
                 .then(gestureModifier)
         ) {
-            // Lens behind items
+            lensInteraction.pressScale = lensPressAnim.value
+
+            // Lens behind items with NavLens
             Box(
                 modifier = Modifier
                     .offset { IntOffset(lensLeftAnim.value.roundToInt(), lensTopOffsetPx) }
                     .width(lensWidthDp)
                     .height(54.dp)
-                    .graphicsLayer {
-                        scaleX = lensScaleX
-                        scaleY = lensScaleY
-                    }
-                    .enkShadow(
-                        listOf(
-                            ShadowLayer(0.dp, 1.dp, 3.dp, 0.dp, material.sh1),
-                            ShadowLayer(0.dp, 6.dp, 14.dp, (-4).dp, material.sh2)
-                        ),
-                        RoundedCornerShape(27.dp)
+                    .glassSurface(
+                        spec = GlassSpecs.NavLens,
+                        shape = RoundedCornerShape(27.dp),
+                        source = glassSource,
+                        interaction = lensInteraction
                     )
-                    .background(
-                        brush = Brush.verticalGradient(listOf(material.lensA, material.lensB)),
-                        shape = RoundedCornerShape(27.dp)
-                    )
-            ) {
-                // Inset top highlight: 0.5 dp lensEdge
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val shape = RoundedCornerShape(27.dp)
-                    val outline = shape.createOutline(size, layoutDirection, this)
-                    val shapePath = outline.toPath()
-                    clipPath(shapePath) {
-                        val highlightPx = 0.5.dp.toPx()
-                        val translatedHole = Path().apply {
-                            addPath(shapePath)
-                            asAndroidPath().offset(0f, highlightPx)
-                        }
-                        val topHighlightPath = Path().apply {
-                            op(shapePath, translatedHole, PathOperation.Difference)
-                        }
-                        drawPath(topHighlightPath, color = material.lensEdge)
-                    }
-                }
-            }
+            )
 
             // Items Row
             Row(

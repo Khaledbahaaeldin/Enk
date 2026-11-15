@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.enk.design.effects.EffectsLevel
+import app.enk.design.glass.GlassButton
 import app.enk.design.shell.GroupedDivider
 import app.enk.design.shell.GroupedRow
 import app.enk.design.shell.GroupedSection
@@ -265,19 +266,12 @@ fun SettingsContent(
             // 5. Data Group
             item(key = "group_data") {
                 GroupedSection(title = "Data") {
-                    val buttonShape = RoundedCornerShape(15.dp)
-
                     GroupedRow(
                         title = "Export all notes",
                         trailing = {
-                            Box(
-                                modifier = Modifier
-                                    .height(30.dp)
-                                    .clip(buttonShape)
-                                    .background(material.field2)
-                                    .clickable(onClick = onExport)
-                                    .padding(horizontal = 14.dp),
-                                contentAlignment = Alignment.Center
+                            GlassButton(
+                                onClick = onExport,
+                                modifier = Modifier.height(36.dp)
                             ) {
                                 Text(
                                     text = "Export",
@@ -294,14 +288,9 @@ fun SettingsContent(
                     GroupedRow(
                         title = "Import notes",
                         trailing = {
-                            Box(
-                                modifier = Modifier
-                                    .height(30.dp)
-                                    .clip(buttonShape)
-                                    .background(material.field2)
-                                    .clickable(onClick = onImport)
-                                    .padding(horizontal = 14.dp),
-                                contentAlignment = Alignment.Center
+                            GlassButton(
+                                onClick = onImport,
+                                modifier = Modifier.height(36.dp)
                             ) {
                                 Text(
                                     text = "Import",

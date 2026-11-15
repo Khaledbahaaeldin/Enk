@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.dp
 import app.enk.EnkSnapshots
 import app.enk.design.EnkColors
 import app.enk.design.LocalMonoFont
+import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.ResolvedEffects
+import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.shell.ShellBackground
 import app.enk.design.shell.glassSource
 import app.enk.design.shell.rememberGlassSource
@@ -49,7 +52,11 @@ class ShellGoldenTest {
 
     @Composable
     private fun NavBarStripScene(theme: ThemeId, mode: ThemeMode) {
-        CompositionLocalProvider(LocalMonoFont provides courier) {
+        CompositionLocalProvider(
+            LocalMonoFont provides courier,
+            LocalEffects provides ResolvedEffects.Light,
+            LocalReduceEffects provides true
+        ) {
             EnkShellTheme(theme = theme, mode = mode) {
                 val glassSource = rememberGlassSource()
                 ShellBackground(modifier = Modifier.fillMaxSize()) {
@@ -120,7 +127,11 @@ class ShellGoldenTest {
     @Test
     fun scaffoldTitleCollapsed() {
         snapshots.snapshot {
-            CompositionLocalProvider(LocalMonoFont provides courier) {
+            CompositionLocalProvider(
+                LocalMonoFont provides courier,
+                LocalEffects provides ResolvedEffects.Light,
+                LocalReduceEffects provides true
+            ) {
                 EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
                     val listState = LazyListState(firstVisibleItemIndex = 1, firstVisibleItemScrollOffset = 500)
                     ShellScaffold(

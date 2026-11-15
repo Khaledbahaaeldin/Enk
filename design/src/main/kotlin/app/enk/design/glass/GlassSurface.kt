@@ -50,7 +50,8 @@ fun Modifier.glassSurface(
     spec: GlassSpec,
     shape: CornerBasedShape,
     source: GlassSource,
-    interaction: GlassInteraction? = null
+    interaction: GlassInteraction? = null,
+    solidColor: androidx.compose.ui.graphics.Color? = null
 ): Modifier {
     val colors = LocalShellColors.current
     val material = LocalShellMaterial.current
@@ -59,7 +60,9 @@ fun Modifier.glassSurface(
     val reduceEffects = LocalReduceEffects.current
 
     if (backend == GlassBackendKind.Solid) {
-        val solidModifier = if (spec.tint == GlassTint.Lens) {
+        val solidModifier = if (solidColor != null) {
+            Modifier.background(solidColor, shape)
+        } else if (spec.tint == GlassTint.Lens) {
             Modifier.background(material.lensA, shape)
         } else {
             Modifier.background(colors.g1, shape)
@@ -155,10 +158,12 @@ fun Modifier.glassSurface(
                 scaleY = ps * sy
             },
             onDrawSurface = {
-                if (spec.tint != GlassTint.None) {
-                    val outline = shape.createOutline(size, layoutDirection, this)
-                    val shapePath = outline.toPath()
-                    clipPath(shapePath) {
+                val outline = shape.createOutline(size, layoutDirection, this)
+                val shapePath = outline.toPath()
+                clipPath(shapePath) {
+                    if (solidColor != null) {
+                        drawRect(color = solidColor)
+                    } else if (spec.tint != GlassTint.None) {
                         when (spec.tint) {
                             GlassTint.Regular -> drawRect(brush = Brush.verticalGradient(listOf(material.glassA, material.glassB)))
                             GlassTint.Thick -> drawRect(color = colors.thick)

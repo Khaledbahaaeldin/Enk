@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import app.enk.data.TrashedSummary
 import app.enk.design.LocalMonoFont
 import app.enk.design.ShadowLayer
+import app.enk.design.glass.GlassButton
 import app.enk.design.enkShadow
 import app.enk.design.paperGrain
 import app.enk.design.shell.GlassLevel
@@ -211,14 +212,9 @@ fun TrashContent(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .height(36.dp)
-                                .glass(GlassLevel.Regular, buttonShape, glassSource)
-                                .clip(buttonShape)
-                                .clickable(onClick = onDeleteAllForever)
-                                .padding(horizontal = 18.dp),
-                            contentAlignment = Alignment.Center
+                        GlassButton(
+                            onClick = onDeleteAllForever,
+                            glassSource = glassSource
                         ) {
                             Text(
                                 text = "Delete all forever",

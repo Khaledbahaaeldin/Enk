@@ -1,5 +1,7 @@
 package app.enk.search
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -16,9 +18,14 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -28,6 +35,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.ResolvedEffects
+import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.glassSurface
+import app.enk.design.motion.ShellMotion
+import app.enk.design.shell.GlassSource
+import app.enk.design.shell.LocalReduceEffects
+import app.enk.design.shell.rememberGlassSource
 import app.enk.design.theme.LocalShellColors
 import app.enk.design.theme.LocalShellMaterial
 
@@ -43,19 +58,36 @@ fun SearchField(
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     placeholder: String = "Search your notes",
-    onSearch: () -> Unit = {}
+    onSearch: () -> Unit = {},
+    glassSource: GlassSource = rememberGlassSource()
 ) {
     val colors = LocalShellColors.current
     val material = LocalShellMaterial.current
+    val level = LocalEffects.current
+    val reduceEffects = LocalReduceEffects.current
+    val isLight = level == ResolvedEffects.Light || reduceEffects
+
+    var isFocused by remember { mutableStateOf(false) }
+
+    val baseHeight = 44.dp
+    val targetHeight = if (isFocused && !isLight) baseHeight + 4.dp else baseHeight
+    val animatedHeight by animateDpAsState(
+        targetValue = targetHeight,
+        animationSpec = spring(
+            dampingRatio = ShellMotion.default.damping,
+            stiffness = ShellMotion.default.stiffness
+        ),
+        label = "search_field_height"
+    )
+
     val shape = RoundedCornerShape(22.dp)
 
     Box(
         modifier = modifier
             .testTag("search_field")
             .fillMaxWidth()
-            .height(44.dp)
-            .clip(shape)
-            .background(material.field)
+            .height(animatedHeight)
+            .glassSurface(spec = GlassSpecs.Field, shape = shape, source = glassSource)
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart
     ) {
@@ -91,7 +123,9 @@ fun SearchField(
             BasicTextField(
                 value = query,
                 onValueChange = onQueryChange,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { isFocused = it.isFocused },
                 singleLine = true,
                 textStyle = TextStyle(
                     color = colors.t1,
