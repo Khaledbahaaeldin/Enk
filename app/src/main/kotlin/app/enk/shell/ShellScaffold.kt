@@ -109,6 +109,7 @@ fun ShellScaffold(
         // Floating GlassNavBar at bottom
         if (showNav) {
             val navSelected = selected ?: Dest.Write
+            val host = LocalRailTransition.current
             GlassNavBar(
                 selected = navSelected,
                 onSelect = onNavigate,
@@ -117,6 +118,13 @@ fun ShellScaffold(
                     .align(Alignment.BottomCenter)
                     .windowInsetsPadding(WindowInsets.navigationBars)
                     .padding(bottom = 22.dp)
+                    .graphicsLayer {
+                        if (host != null && host.flight) {
+                            val p = host.boxP()
+                            translationY = RailTransitionMath.barTranslationY(p).dp.toPx()
+                            alpha = RailTransitionMath.barAlpha(p)
+                        }
+                    }
             )
         }
     }

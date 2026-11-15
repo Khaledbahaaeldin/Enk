@@ -219,4 +219,87 @@ class GlassMorphTest {
         assertEquals(300f, alertBounds.width.value, 1.5f)
         assertEquals(200f, alertBounds.height.value, 1.5f)
     }
+
+    @Test
+    fun menuBudsFromTheCard() {
+        var expanded by mutableStateOf(false)
+        composeTestRule.setContent {
+            CompositionLocalProvider(
+                LocalEffects provides ResolvedEffects.Light,
+                LocalReduceEffects provides true
+            ) {
+                val source = rememberGlassSource()
+                GlassMorph(
+                    expanded = expanded,
+                    anchor = DpRect(20.dp, 50.dp, 120.dp, 90.dp),
+                    expandedSize = DpSize(240.dp, 180.dp),
+                    expandedRadius = 24.dp,
+                    target = DpOffset(10.dp, 20.dp),
+                    collapsedAlpha = 1f,
+                    source = source,
+                    onDismiss = {},
+                    collapsedContent = { Text("Card Corner") },
+                    expandedContent = { _, _ -> Text("Menu Items") },
+                    itemCount = 1
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // At first (collapsed / p = 0): shape is inside the card anchor bounds (width = 100, height = 40)
+        val initialBounds = composeTestRule.onNodeWithTag("glass_morph_surface").getUnclippedBoundsInRoot()
+        assertEquals(20f, initialBounds.left.value, 1.5f)
+        assertEquals(50f, initialBounds.top.value, 1.5f)
+        assertEquals(100f, initialBounds.width.value, 1.5f)
+        assertEquals(40f, initialBounds.height.value, 1.5f)
+
+        // Expand
+        expanded = true
+        composeTestRule.waitForIdle()
+
+        // At last frame: shape is the menu bounds (left = 20 + 10 = 30, top = 50 + 20 = 70, width = 240, height = 180)
+        val finalBounds = composeTestRule.onNodeWithTag("glass_morph_surface").getUnclippedBoundsInRoot()
+        assertEquals(30f, finalBounds.left.value, 1.5f)
+        assertEquals(70f, finalBounds.top.value, 1.5f)
+        assertEquals(240f, finalBounds.width.value, 1.5f)
+        assertEquals(180f, finalBounds.height.value, 1.5f)
+    }
+
+    @Test
+    fun noCompositionPerFrame() {
+        var expanded by mutableStateOf(false)
+        var contentCompositions = 0
+
+        composeTestRule.setContent {
+            CompositionLocalProvider(
+                LocalEffects provides ResolvedEffects.Full,
+                LocalReduceEffects provides false
+            ) {
+                val source = rememberGlassSource()
+                GlassMorph(
+                    expanded = expanded,
+                    anchor = DpRect(20.dp, 50.dp, 120.dp, 90.dp),
+                    expandedSize = DpSize(240.dp, 180.dp),
+                    expandedRadius = 24.dp,
+                    target = DpOffset(10.dp, 20.dp),
+                    collapsedAlpha = 1f,
+                    source = source,
+                    onDismiss = {},
+                    collapsedContent = {},
+                    expandedContent = { _, _ ->
+                        contentCompositions++
+                        Text("Stable Content")
+                    },
+                    itemCount = 1
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        expanded = true
+        composeTestRule.waitForIdle()
+
+        // Content should not recompose on every animation frame (at most 2 times)
+        assertTrue("Recomposition count should be at most 2, was $contentCompositions", contentCompositions <= 2)
+    }
 }

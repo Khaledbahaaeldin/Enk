@@ -55,20 +55,29 @@ object RailTransitionMath {
 
     fun boxScale(p: Float): Float = 1f - 0.04f * ez(seg(p, 0.05f, 0.70f))
     fun boxTranslationY(p: Float): Float = -8f * ez(seg(p, 0.05f, 0.70f))
-    fun boxBlurDp(p: Float): Float = 8f * ez(seg(p, 0.05f, 0.70f))
     fun boxBrightness(p: Float): Float = 1f - 0.65f * ez(seg(p, 0.05f, 0.70f))
     fun boxAlpha(p: Float): Float = 1f - seg(p, 0.72f, 0.92f)
 
-    fun navLeft(p: Float, startLeft: Float = 12f): Float = startLeft * (1f - ez(seg(p, 0.05f, 0.60f)))
-    fun navWidth(p: Float, startW: Float = 336f, endW: Float = 360f): Float =
+    fun writeLeft(p: Float, startLeft: Float): Float =
+        startLeft * (1f - ez(seg(p, 0.05f, 0.60f)))
+    fun writeWidth(p: Float, startW: Float, endW: Float): Float =
         startW + (endW - startW) * ez(seg(p, 0.05f, 0.60f))
-    fun navHeight(p: Float, startH: Float = 64f, endH: Float = 16f): Float =
+    fun writeHeight(p: Float, startH: Float, endH: Float = 16f): Float =
         startH + (endH - startH) * ez(seg(p, 0.05f, 0.60f))
-    fun navTop(p: Float, startTop: Float, railY: Float): Float =
+    fun writeTop(p: Float, startTop: Float, railY: Float): Float =
         startTop + ((railY - 8f) - startTop) * ez(seg(p, 0.05f, 0.60f))
-    fun navRadius(p: Float, startR: Float = 32f, endR: Float = 8f): Float =
+    fun writeRadius(p: Float, startR: Float = 31f, endR: Float = 8f): Float =
         startR + (endR - startR) * ez(seg(p, 0.05f, 0.60f))
-    fun navContentAlpha(p: Float): Float = 1f - seg(p, 0f, 0.16f)
+
+    fun barTranslationY(p: Float): Float = 24f * ez(seg(p, 0.05f, 0.60f))
+    fun barAlpha(p: Float): Float = 1f - ez(seg(p, 0.05f, 0.60f))
+
+    fun navLeft(p: Float, startLeft: Float = 12f): Float = writeLeft(p, startLeft)
+    fun navWidth(p: Float, startW: Float = 336f, endW: Float = 360f): Float = writeWidth(p, startW, endW)
+    fun navHeight(p: Float, startH: Float = 64f, endH: Float = 16f): Float = writeHeight(p, startH, endH)
+    fun navTop(p: Float, startTop: Float, railY: Float): Float = writeTop(p, startTop, railY)
+    fun navRadius(p: Float, startR: Float = 32f, endR: Float = 8f): Float = writeRadius(p, startR, endR)
+    fun navContentAlpha(p: Float): Float = barAlpha(p)
 
     /** The nav glass fades out where the writer's steel rail fades in. */
     fun steelRailAlpha(p: Float): Float = seg(p, 0.50f, 0.62f)
@@ -273,7 +282,7 @@ val LocalRailTransition = staticCompositionLocalOf<RailTransitionHost?> { null }
 fun Modifier.railRecede(): Modifier {
     val host = LocalRailTransition.current ?: return this
     val effects = LocalEffects.current
-    val blur = effects != ResolvedEffects.Light
+    val dimAllowed = effects != ResolvedEffects.Light
     return this
         .graphicsLayer {
             val p = host.boxP()
@@ -283,16 +292,12 @@ fun Modifier.railRecede(): Modifier {
             scaleY = s
             translationY = RailTransitionMath.boxTranslationY(p) * density
             alpha = RailTransitionMath.boxAlpha(p)
-            val b = RailTransitionMath.boxBlurDp(p) * density
-            if (blur && b > 0.5f) {
-                renderEffect = BlurEffect(b, b, TileMode.Decal)
-            }
         }
         .drawWithContent {
             drawContent()
             val p = host.boxP()
             val dim = 1f - RailTransitionMath.boxBrightness(p)
-            if (p > 0f && blur && dim > 0f) {
+            if (p > 0f && dimAllowed && dim > 0f) {
                 drawRect(Color.Black.copy(alpha = dim))
             }
         }
@@ -305,15 +310,14 @@ fun RailMorphOverlay(host: RailTransitionHost, modifier: Modifier = Modifier) {
     val material = LocalShellMaterial.current
     Canvas(modifier = modifier.fillMaxSize()) {
         val p = host.flightP() ?: return@Canvas
-        val nav = host.navBounds ?: return@Canvas
+        val writeBtn = host.writeButtonBounds ?: host.navBounds ?: return@Canvas
         val railY = host.railCenterYPx ?: return@Canvas
-        val m = RailTransitionMath.ez(RailTransitionMath.seg(p, 0.05f, 0.60f))
-        val left = nav.left * (1f - m)
-        val width = nav.width + (size.width - nav.width) * m
+        val left = RailTransitionMath.writeLeft(p, writeBtn.left)
+        val width = RailTransitionMath.writeWidth(p, writeBtn.width, size.width)
         val h = 16.dp.toPx()
-        val height = nav.height + (h - nav.height) * m
-        val top = nav.top + ((railY - 8.dp.toPx()) - nav.top) * m
-        val radius = 32.dp.toPx() + (8.dp.toPx() - 32.dp.toPx()) * m
+        val height = RailTransitionMath.writeHeight(p, writeBtn.height, h)
+        val top = RailTransitionMath.writeTop(p, writeBtn.top, railY)
+        val radius = RailTransitionMath.writeRadius(p, writeBtn.width / 2f, 8.dp.toPx())
         val alpha = 1f - RailTransitionMath.steelRailAlpha(p)
         if (alpha <= 0f) return@Canvas
         val rr = RoundRect(Rect(left, top, left + width, top + height), CornerRadius(minOf(radius, height / 2f)))

@@ -1,5 +1,6 @@
 package app.enk.design.glass
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -20,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpRect
@@ -34,6 +37,7 @@ import app.enk.design.motion.ShellMotion
 import app.enk.design.shell.GlassSource
 import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.theme.LocalShellColors
+import kotlin.math.roundToInt
 
 data class MorphFrame(
     val widthDp: Float,
@@ -118,7 +122,7 @@ fun GlassMorph(
     modifier: Modifier = Modifier,
     collapsedRadius: Dp = minOf(anchor.width, anchor.height) / 2
 ) {
-    val anim = remember { androidx.compose.animation.core.Animatable(if (expanded) 1f else 0f) }
+    val anim = remember { Animatable(if (expanded) 1f else 0f) }
     val effects = LocalEffects.current
     val reduceEffects = LocalReduceEffects.current
     val colors = LocalShellColors.current
@@ -133,66 +137,144 @@ fun GlassMorph(
         anim.animateTo(targetVal, animationSpec = spec)
     }
 
-    val p = anim.value
+    val liquidGroupState = rememberLiquidGroupState()
+    val shouldCompose = collapsedAlpha > 0f || expanded || anim.targetValue > 0f || anim.isRunning
 
-    if (p > 0.001f || expanded) {
+    if (shouldCompose) {
         Box(modifier = modifier.fillMaxSize()) {
-            if (p > 0.02f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag("glass_morph_scrim_tap")
+                    .graphicsLayer {
+                        alpha = if (anim.value > 0.02f) 1f else 0f
+                    }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss
+                    )
+            )
+
+            LiquidGroup(
+                state = liquidGroupState,
+                shapes = {
+                    val p = anim.value
+                    val frame = morphFrame(
+                        p = p,
+                        collapsed = DpSize(anchor.width, anchor.height),
+                        expanded = expandedSize,
+                        collapsedRadiusDp = collapsedRadius.value,
+                        expandedRadiusDp = expandedRadius.value,
+                        target = target,
+                        itemCount = itemCount
+                    )
+                    val s1 = LiquidShape(
+                        cx = anchor.left.value + anchor.width.value / 2f,
+                        cy = anchor.top.value + anchor.height.value / 2f,
+                        halfW = anchor.width.value / 2f,
+                        halfH = anchor.height.value / 2f,
+                        radius = collapsedRadius.value
+                    )
+                    val morphLeft = anchor.left.value + frame.offsetXDp
+                    val morphTop = anchor.top.value + frame.offsetYDp
+                    val s2 = LiquidShape(
+                        cx = morphLeft + frame.widthDp / 2f,
+                        cy = morphTop + frame.heightDp / 2f,
+                        halfW = frame.widthDp / 2f,
+                        halfH = frame.heightDp / 2f,
+                        radius = frame.radiusDp
+                    )
+                    listOf(s1, s2)
+                },
+                spec = LiquidSpecs.Panel,
+                source = source,
+                pressed = { anim.value < 1f }
+            )
+
+            if (collapsedAlpha > 0f) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .testTag("glass_morph_scrim_tap")
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onDismiss
+                        .offset(x = anchor.left, y = anchor.top)
+                        .size(width = anchor.width, height = anchor.height)
+                        .graphicsLayer {
+                            val p = anim.value
+                            alpha = (1f - p * 3f).coerceIn(0f, 1f)
+                        }
+                        .glassSurface(
+                            spec = GlassSpecs.Floating,
+                            liquid = LiquidSpecs.Panel,
+                            shape = RoundedCornerShape(collapsedRadius),
+                            source = source
                         )
                 )
             }
 
-            val frame = morphFrame(
-                p = p,
-                collapsed = DpSize(anchor.width, anchor.height),
-                expanded = expandedSize,
-                collapsedRadiusDp = collapsedRadius.value,
-                expandedRadiusDp = expandedRadius.value,
-                target = target,
-                itemCount = itemCount
-            )
-
-            val tintFactor = (collapsedAlpha + (1f - collapsedAlpha) * (p * 4f).coerceIn(0f, 1f))
-            val tintColor = colors.thick.copy(alpha = colors.thick.alpha * tintFactor)
-            val shape = RoundedCornerShape(frame.radiusDp.dp)
-
+            val shape = RoundedCornerShape(expandedRadius)
             Box(
                 modifier = Modifier
-                    .offset(x = anchor.left + frame.offsetXDp.dp, y = anchor.top + frame.offsetYDp.dp)
-                    .size(width = frame.widthDp.dp, height = frame.heightDp.dp)
+                    .layout { measurable, _ ->
+                        val p = anim.value
+                        val frame = morphFrame(
+                            p = p,
+                            collapsed = DpSize(anchor.width, anchor.height),
+                            expanded = expandedSize,
+                            collapsedRadiusDp = collapsedRadius.value,
+                            expandedRadiusDp = expandedRadius.value,
+                            target = target,
+                            itemCount = itemCount
+                        )
+                        val wPx = (frame.widthDp * density).roundToInt()
+                        val hPx = (frame.heightDp * density).roundToInt()
+                        val placeable = measurable.measure(Constraints.fixed(wPx, hPx))
+                        val xPx = ((anchor.left.value + frame.offsetXDp) * density).roundToInt()
+                        val yPx = ((anchor.top.value + frame.offsetYDp) * density).roundToInt()
+                        layout(wPx, hPx) {
+                            placeable.place(xPx, yPx)
+                        }
+                    }
                     .testTag("glass_morph_surface")
-                    .glassSurface(spec = GlassSpecs.Floating, shape = shape, source = source, solidColor = tintColor)
+                    .glassSurface(
+                        spec = GlassSpecs.Floating,
+                        liquid = LiquidSpecs.Panel,
+                        shape = shape,
+                        source = source
+                    )
                     .clip(shape)
             ) {
-                if (frame.labelAlpha > 0.001f) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { alpha = frame.labelAlpha },
-                        contentAlignment = Alignment.Center,
-                        content = collapsedContent
-                    )
-                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val p = anim.value
+                            alpha = (1f - p * 4f).coerceIn(0f, 1f)
+                        },
+                    contentAlignment = Alignment.Center,
+                    content = collapsedContent
+                )
 
-                if (p > 0.25f) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        content = {
-                            expandedContent(
-                                { i -> frame.itemAlpha.getOrElse(i) { 0f } },
-                                { i -> frame.itemDyDp.getOrElse(i) { 0f }.dp }
-                            )
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val p = anim.value
+                            alpha = ((p - 0.2f) * 2f).coerceIn(0f, 1f)
+                        },
+                    content = {
+                        val itemAlphaProvider: (Int) -> Float = { i ->
+                            val p = anim.value
+                            val safeP = if (p.isNaN()) 0f else p
+                            ((safeP - 0.35f - 0.08f * i) * 4f).coerceIn(0f, 1f)
                         }
-                    )
-                }
+                        val itemDyProvider: (Int) -> Dp = { i ->
+                            val p = anim.value
+                            val safeP = if (p.isNaN()) 0f else p
+                            val dy = (1f - ((safeP - 0.25f) * 2f).coerceIn(0f, 1f)) * 8f
+                            dy.dp
+                        }
+                        expandedContent(itemAlphaProvider, itemDyProvider)
+                    }
+                )
             }
         }
     }
