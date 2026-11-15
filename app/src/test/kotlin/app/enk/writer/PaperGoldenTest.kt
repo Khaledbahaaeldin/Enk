@@ -278,7 +278,7 @@ class PaperGoldenTest {
                     geometry = referenceGeometry,
                     nightProgress = 0f,
                     reduceEffects = false,
-                    typeOnMs = { 190f }
+                    typeOnMs = { 150f }
                 )
             }
         }

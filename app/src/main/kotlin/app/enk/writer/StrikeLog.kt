@@ -20,17 +20,20 @@ class StrikeLog {
     private fun prune(nowMs: Float) {
         if (nowMs.isNaN() || nowMs < 0f) return
 
-        keyAndStruckEntries.removeAll { entry ->
-            val age = nowMs - entry.startMs
-            age >= StrikeTiming.TOTAL_MS
+        // Index loops, no lambdas: this runs for every visible glyph on every drawn frame.
+        var i = keyAndStruckEntries.size - 1
+        while (i >= 0) {
+            if (nowMs - keyAndStruckEntries[i].startMs >= StrikeTiming.TOTAL_MS) keyAndStruckEntries.removeAt(i)
+            i--
         }
         while (keyAndStruckEntries.size > StrikeTiming.MAX_ANIMATING) {
             keyAndStruckEntries.removeAt(0)
         }
 
-        eraseEntries.removeAll { entry ->
-            val age = nowMs - entry.startMs
-            age >= StrikeTiming.ERASE_WIPE_MS
+        i = eraseEntries.size - 1
+        while (i >= 0) {
+            if (nowMs - eraseEntries[i].startMs >= StrikeTiming.ERASE_WIPE_MS) eraseEntries.removeAt(i)
+            i--
         }
     }
 
@@ -81,17 +84,29 @@ class StrikeLog {
 
     fun keyAt(index: Int, nowMs: Float): Key? {
         prune(nowMs)
-        return keyAndStruckEntries.filterIsInstance<Key>().lastOrNull { it.index == index }
+        var i = keyAndStruckEntries.size - 1
+        while (i >= 0) {
+            val e = keyAndStruckEntries[i]
+            if (e is Key && e.index == index) return e
+            i--
+        }
+        return null
     }
 
     fun struckAt(index: Int, nowMs: Float): Struck? {
         prune(nowMs)
-        return keyAndStruckEntries.filterIsInstance<Struck>().lastOrNull { it.index == index }
+        var i = keyAndStruckEntries.size - 1
+        while (i >= 0) {
+            val e = keyAndStruckEntries[i]
+            if (e is Struck && e.index == index) return e
+            i--
+        }
+        return null
     }
 
     fun erases(nowMs: Float): List<Erase> {
         prune(nowMs)
-        return eraseEntries.toList()
+        return if (eraseEntries.isEmpty()) emptyList() else eraseEntries.toList()
     }
 
     fun latestKey(nowMs: Float): Key? {

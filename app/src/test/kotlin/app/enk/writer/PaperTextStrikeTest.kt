@@ -128,4 +128,50 @@ class PaperTextStrikeTest {
         val hasInk95 = pixelArray95.any { it != bg95 }
         assertFalse("Erased glyph must be gone after 90 ms", hasInk95)
     }
+
+    private fun inkPixels(): Int {
+        val bitmap = composeTestRule.onRoot().captureToImage()
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.readPixels(pixels)
+        val bg = pixels[0]
+        return pixels.count { it != bg }
+    }
+
+    @Test
+    fun theStrikeThroughLineGrowsLeftToRightAfterImpact() {
+        val strikes = StrikeLog()
+        var clock by mutableFloatStateOf(10f)
+        strikes.recordStruck(index = 0, weight = 1f, nowMs = 0f)
+        // The impact flash belongs to the newest entry; a later key far away keeps it off this glyph,
+        // so only the strike line changes the ink here.
+        strikes.recordKey(index = 99, weight = 1f, nowMs = 1f)
+
+        composeTestRule.setContent {
+            PaperText(
+                page = StruckPage("A", struck = listOf(0..0)),
+                caret = 1,
+                geometry = referenceGeometry,
+                textColor = Color.Black,
+                reduceMotion = false,
+                modifier = Modifier.fillMaxSize(),
+                strikes = strikes,
+                clockMs = { clock }
+            )
+        }
+        val beforeImpact = inkPixels()
+        clock = 46f // 20 ms after impact: half the line
+        composeTestRule.waitForIdle()
+        val half = inkPixels()
+        clock = 80f // 54 ms after impact: the whole line
+        composeTestRule.waitForIdle()
+        val whole = inkPixels()
+        // The line is also drawn whole once nothing animates: the entry has expired by 130 ms.
+        clock = 200f
+        composeTestRule.waitForIdle()
+        val settled = inkPixels()
+
+        assertTrue("no line before impact ($beforeImpact) and a half line at 20 ms ($half)", half > beforeImpact)
+        assertTrue("the whole line ($whole) is longer than the half line ($half)", whole > half)
+        assertTrue("the settled strike-through ($settled) equals the full line ($whole)", settled == whole)
+    }
 }

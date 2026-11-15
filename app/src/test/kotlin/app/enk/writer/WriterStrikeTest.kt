@@ -1,6 +1,7 @@
 package app.enk.writer
 
 import android.content.Context
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -103,8 +104,8 @@ class WriterStrikeTest {
         composeTestRule.onNodeWithTag("writer_input").performTextInput("a")
         composeTestRule.waitForIdle()
 
-        val key = testStrikes.lastRecordedKey
-        assertEquals("Must record exactly one StrikeLog key entry", 0, key?.index)
+        // Entries expire 130 ms after the key, so after waitForIdle only the last recorded one can be read.
+        assertEquals("Must record a StrikeLog key entry for the typed glyph", 0, testStrikes.lastRecordedKey?.index)
         assertEquals(1, playedSounds.count { it == SoundEvent.Key })
     }
 
@@ -132,8 +133,8 @@ class WriterStrikeTest {
         composeTestRule.onNodeWithTag("key_a").performClick()
         composeTestRule.waitForIdle()
 
-        val key = testStrikes.lastRecordedKey
-        assertEquals("Must record exactly one StrikeLog key entry", 0, key?.index)
+        // Entries expire 130 ms after the key, so after waitForIdle only the last recorded one can be read.
+        assertEquals("Must record a StrikeLog key entry for the typed glyph", 0, testStrikes.lastRecordedKey?.index)
         assertEquals(1, playedSounds.count { it == SoundEvent.Key })
     }
 
@@ -230,5 +231,50 @@ class WriterStrikeTest {
 
         val erase = testStrikes.lastRecordedErase
         assertEquals("Must record Erase entry with removed text", "a", erase?.text)
+    }
+
+    @Test
+    fun enterSendsTheCarriageBackWithTheReturnSpringNotWithASnap(): Unit = runBlocking {
+        val context: Context = RuntimeEnvironment.getApplication()
+        val note = repo.createNote(dividerId = null)
+        val viewModel = WriterViewModel(note.id, repo, settingsStore, testScope)
+        val layout = LayoutLoader.load(context)
+
+        composeTestRule.mainClock.autoAdvance = false
+        composeTestRule.setContent {
+            WriterScreen(
+                viewModel = viewModel,
+                settings = Settings(keyboard = KeyboardMode.Enk),
+                player = recordingPlayer,
+                haptics = dummyHaptics,
+                onOpenBox = {},
+                keyboardLayout = layout
+            )
+        }
+        repeat(3) { composeTestRule.mainClock.advanceTimeByFrame() }
+
+        fun carriageX(): Float {
+            val b = composeTestRule.onNodeWithTag("carriage").getUnclippedBoundsInRoot()
+            return (b.left.value + b.right.value) / 2f
+        }
+
+        for (tag in listOf("key_a", "key_s", "key_d", "key_f", "key_g")) {
+            composeTestRule.onNodeWithTag(tag).performClick()
+            composeTestRule.mainClock.advanceTimeBy(200)
+        }
+        composeTestRule.mainClock.advanceTimeBy(900)
+        val atLineEnd = carriageX()
+
+        composeTestRule.onNodeWithTag("key_enter").performClick()
+        repeat(3) { composeTestRule.mainClock.advanceTimeByFrame() }
+        val midReturn = carriageX()
+        composeTestRule.mainClock.advanceTimeBy(1200)
+        val home = carriageX()
+
+        assertTrue("the carriage ends at the start of the line ($home) well left of the line end ($atLineEnd)", home < atLineEnd - 30f)
+        assertTrue(
+            "48 ms into the return the carriage is still travelling ($midReturn), a snap would already be home ($home)",
+            midReturn > home + 8f && midReturn < atLineEnd - 4f
+        )
     }
 }

@@ -138,7 +138,6 @@ fun WriterScreen(
     strikes: StrikeLog = remember { StrikeLog() },
     onTypeOnActiveChange: ((Boolean) -> Unit)? = null
 ) {
-    fun updateSettings(block: Settings.() -> Settings) = onSettingsChange(block)
     val state by viewModel.state.collectAsState()
     val page = state.currentPage
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -223,17 +222,22 @@ fun WriterScreen(
     var pendingThumpAtMs by remember { mutableFloatStateOf(-1f) }
     var pendingThumpImpulse by remember { mutableFloatStateOf(0f) }
 
+    // Strike times are small Floats counted from when the writer appeared: a Float of the raw uptime
+    // is 8 ms coarse after a day and 64 ms after ten days, which would wreck 26 ms timing.
+    val clockBaseMs = remember { android.os.SystemClock.uptimeMillis().toDouble() }
+    fun frameMs(frameNanos: Long): Float = (frameNanos / 1_000_000.0 - clockBaseMs).toFloat()
     fun refreshClock(): Float {
-        val t = android.os.SystemClock.uptimeMillis().toFloat()
+        val t = (android.os.SystemClock.uptimeMillis() - clockBaseMs).toFloat()
         clockMs.floatValue = t
         return t
     }
+    val thumpDp = remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(strikeKey) {
         if (strikeKey > 0) {
             var lastFrameMs = 0f
             while (strikes.hasActive(clockMs.floatValue) || !thump.atRest || pendingThumpAtMs >= 0f) {
-                val now = withFrameNanos { it / 1_000_000f }
+                val now = frameMs(withFrameNanos { it })
                 val dt = if (lastFrameMs > 0f) (now - lastFrameMs) / 1000f else 0.016f
                 lastFrameMs = now
                 clockMs.floatValue = now
@@ -243,7 +247,9 @@ fun WriterScreen(
                     pendingThumpImpulse = 0f
                 }
                 thump.step(dt)
+                thumpDp.floatValue = thump.x
             }
+            thumpDp.floatValue = thump.x
         }
     }
 
@@ -273,7 +279,7 @@ fun WriterScreen(
     LaunchedEffect(showAsk, lastKeyMs) {
         if (showAsk && lastKeyMs != 0L) {
             delay(4000)
-            updateSettings { copy(darkPaper = DarkPaper.Normal) }
+            onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Normal) }
         }
     }
 
@@ -443,9 +449,9 @@ fun WriterScreen(
                             val out = KeyboardToWriter.outcomeFor(a, before)
                             out.event?.let { ev ->
                                 viewModel.dispatch(ev)
-                                lastKeyMs = System.currentTimeMillis()
                                 onStrike(ev, before)
                             }
+                            lastKeyMs = System.currentTimeMillis()
                             val live = viewModel.state.value
                             ringBellAt(live.currentPage.text, live.caret)
                         }
@@ -492,8 +498,14 @@ fun WriterScreen(
                 val visibleChars = remember(visibleLineLengths) { visibleLineLengths.sum() }
                 val skipTypeOn = TypeOn.skip(visibleChars, visibleCount) || page.text.isEmpty()
 
-                LaunchedEffect(state.loaded, state.pageIndex) {
-                    if (state.loaded && !reduceMotion && !skipTypeOn && intro == null) {
+                // Remembered across rotation and other recreation: the text is typed on once per page.
+                var typedOnPage by rememberSaveable { mutableIntStateOf(-1) }
+                LaunchedEffect(state.loaded, state.pageIndex, intro == null) {
+                    if (state.loaded && intro != null) {
+                        // The start animation does its own type-on for this page.
+                        typedOnPage = state.pageIndex
+                    } else if (state.loaded && !reduceMotion && !skipTypeOn && typedOnPage != state.pageIndex) {
+                        typedOnPage = state.pageIndex
                         typeOnActive = true
                         typeOnToken++
                     }
@@ -504,7 +516,7 @@ fun WriterScreen(
                         typeOnElapsedMs = 0f
                         var startMs = -1f
                         while (typeOnActive) {
-                            val now = withFrameNanos { it / 1_000_000f }
+                            val now = frameMs(withFrameNanos { it })
                             if (startMs < 0f) startMs = now
                             val elapsed = now - startMs
                             typeOnElapsedMs = elapsed
@@ -514,6 +526,11 @@ fun WriterScreen(
                             if (elapsed > total) {
                                 typeOnActive = false
                                 typeOnElapsedMs = -1f
+                                // The carriage glides from where the sweep left it to the caret.
+                                if (carriageMotion != CarriageMotion.Dragging) {
+                                    carriageMotion = CarriageMotion.Return
+                                    motionToken++
+                                }
                                 break
                             }
                         }
@@ -522,7 +539,9 @@ fun WriterScreen(
                     }
                 }
 
-                val typeOnBudget = if (intro != null) 400f else TypeOn.BUDGET_MS
+                // The start animation hands over at 450 ms of reveal time: a 200 ms budget keeps the last
+                // line's sweep (it starts at most 120 + 200 ms in, and takes 112 ms) inside that window.
+                val typeOnBudget = if (intro != null) 200f else TypeOn.BUDGET_MS
                 val typeOnMs: (() -> Float?)? = if (reduceMotion || skipTypeOn) {
                     null
                 } else if (intro != null) {
@@ -532,12 +551,8 @@ fun WriterScreen(
                         val tot = TypeOn.totalMs(visibleCount, stagger)
                         if (t > tot) null else t
                     }
-                } else if (typeOnActive && typeOnElapsedMs >= 0f) {
-                    {
-                        typeOnElapsedMs
-                    }
                 } else {
-                    null
+                    { if (typeOnActive && typeOnElapsedMs >= 0f) typeOnElapsedMs else null }
                 }
 
                 val carriageSweepXDp: (() -> Float?)? = if (reduceMotion || skipTypeOn) {
@@ -549,18 +564,20 @@ fun WriterScreen(
                         val col = TypeOn.carriageColumn(t, visibleLineLengths, geometry.cols, stagger)
                         if (col != null) geometry.carriageCenterXDp(col) else null
                     }
-                } else if (typeOnActive && typeOnElapsedMs >= 0f) {
-                    {
-                        val stagger = TypeOn.staggerMs(visibleCount, typeOnBudget)
-                        val col = TypeOn.carriageColumn(typeOnElapsedMs, visibleLineLengths, geometry.cols, stagger)
-                        if (col != null) geometry.carriageCenterXDp(col) else null
-                    }
                 } else {
-                    null
+                    {
+                        if (typeOnActive && typeOnElapsedMs >= 0f) {
+                            val stagger = TypeOn.staggerMs(visibleCount, typeOnBudget)
+                            val col = TypeOn.carriageColumn(typeOnElapsedMs, visibleLineLengths, geometry.cols, stagger)
+                            if (col != null) geometry.carriageCenterXDp(col) else null
+                        } else {
+                            null
+                        }
+                    }
                 }
 
                 val restingCarriageX = geometry.carriageCenterXDp(caretPos.col)
-                val currentCarriageX = dragCarriageXDp ?: (carriageSweepXDp?.invoke() ?: restingCarriageX)
+                val currentCarriageX = dragCarriageXDp ?: (if (state.lampOn) carriageSweepXDp?.invoke() else null) ?: restingCarriageX
 
                 val toggleLamp: () -> Unit = {
                     viewModel.dispatch(WriterEvent.ToggleLamp)
@@ -568,7 +585,7 @@ fun WriterScreen(
                     pulse(14)
                     hintPolicy = hintPolicy.onLongPress()
                     if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                        updateSettings { copy(hintDismissed = true) }
+                        onSettingsChange { s -> s.copy(hintDismissed = true) }
                     }
                 }
 
@@ -588,7 +605,7 @@ fun WriterScreen(
                                 if (motion == CarriageMotion.Dragging) {
                                     hintPolicy = hintPolicy.onScrub()
                                     if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                                        updateSettings { copy(hintDismissed = true) }
+                                        onSettingsChange { s -> s.copy(hintDismissed = true) }
                                     }
                                 }
                             },
@@ -642,7 +659,7 @@ fun WriterScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .graphicsLayer {
-                                        translationY = if (reduceMotion) 0f else thump.x * density.density
+                                        translationY = if (reduceMotion) 0f else thumpDp.floatValue * density.density
                                     }
                             ) {
                                 val paperTextIntroAlpha: (() -> Float)? = if (intro != null && reduceMotion) {
@@ -702,9 +719,13 @@ fun WriterScreen(
                         centerXDp = currentCarriageX,
                         mode = carriageMotion,
                         slugChar = slugChar ?: (state.lastTypedIndex?.let { idx -> page.text.getOrNull(idx) }),
-                        slugFrame = {
-                            strikes.latestKey(clockMs.floatValue)?.let {
-                                strikeFrame(clockMs.floatValue - it.startMs, it.weight, it.fast)
+                        slugFrame = if (reduceMotion) {
+                            { null }
+                        } else {
+                            {
+                                strikes.latestKey(clockMs.floatValue)?.let {
+                                    strikeFrame(clockMs.floatValue - it.startMs, it.weight, it.fast)
+                                }
                             }
                         },
                         carriageSweepXDp = carriageSweepXDp,
@@ -805,8 +826,8 @@ fun WriterScreen(
                         lampColor = lampColor,
                         settings = lampSettings,
                         onChange = { lamp ->
-                            updateSettings {
-                                copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
+                            onSettingsChange { s ->
+                                s.copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
                             }
                         },
                         onDetent = { pos ->
@@ -821,8 +842,8 @@ fun WriterScreen(
                     val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
                     if (showAsk) {
                         DarkPaperAsk(
-                            onLamp = { updateSettings { copy(darkPaper = DarkPaper.Lamp) } },
-                            onNormal = { updateSettings { copy(darkPaper = DarkPaper.Normal) } },
+                            onLamp = { onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Lamp) } },
+                            onNormal = { onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Normal) } },
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .padding(horizontal = 20.dp, vertical = 16.dp)
@@ -931,9 +952,9 @@ fun WriterScreen(
                     val out = KeyboardToWriter.outcomeFor(action, before)
                     out.event?.let { ev ->
                         viewModel.dispatch(ev)
-                        lastKeyMs = System.currentTimeMillis()
                         onStrike(ev, before)
                     }
+                    lastKeyMs = System.currentTimeMillis()
                     val live = viewModel.state.value
                     ringBellAt(live.currentPage.text, live.caret)
                 },

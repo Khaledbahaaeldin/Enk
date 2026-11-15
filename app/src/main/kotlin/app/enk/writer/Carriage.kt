@@ -88,7 +88,18 @@ fun Carriage(
 
     val xAnim = remember { Animatable(targetX) }
 
-    LaunchedEffect(targetX, mode, reduceEffects) {
+    // While a type-on sweep drives the carriage, remember where it is, so that when the sweep ends the
+    // carriage moves on from there (a glide) instead of jumping to the caret.
+    val sweepX = carriageSweepXDp?.invoke()
+    val lastSweepX = remember { floatArrayOf(Float.NaN) }
+    if (sweepX != null) lastSweepX[0] = sweepX
+    val sweeping = sweepX != null
+
+    LaunchedEffect(targetX, mode, reduceEffects, sweeping) {
+        if (!sweeping && !lastSweepX[0].isNaN()) {
+            xAnim.snapTo(lastSweepX[0])
+            lastSweepX[0] = Float.NaN
+        }
         when (mode) {
             CarriageMotion.Dragging -> xAnim.snapTo(targetX)
             CarriageMotion.Glide -> {
@@ -163,7 +174,7 @@ fun Carriage(
         }
     }
 
-    val currentCenterXDp = carriageSweepXDp?.invoke() ?: xAnim.value
+    val currentCenterXDp = sweepX ?: xAnim.value
 
     // Interactive area bounds: 54 x 48 dp, centred on body (body top = railYDp - 17, center = railYDp + 1)
     val interactiveLeftDp = currentCenterXDp - (CarriageGeometry.interactiveWidthDp / 2f)
