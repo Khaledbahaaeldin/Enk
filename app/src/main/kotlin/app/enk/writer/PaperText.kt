@@ -2,6 +2,7 @@ package app.enk.writer
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
@@ -100,12 +101,17 @@ fun PaperText(
     val feedAnim = remember { Animatable(targetOffsetDp) }
 
     LaunchedEffect(targetOffsetDp, reduceMotion) {
-        val duration = if (reduceMotion) 100 else EnkMotion.feedMs
-        val easing = if (reduceMotion) LinearEasing else EnkMotion.feed
-        feedAnim.animateTo(
-            targetValue = targetOffsetDp,
-            animationSpec = tween(durationMillis = duration, easing = easing)
-        )
+        if (reduceMotion) {
+            feedAnim.snapTo(targetOffsetDp)
+        } else {
+            feedAnim.animateTo(
+                targetValue = targetOffsetDp,
+                animationSpec = spring(
+                    dampingRatio = 1.0f,
+                    stiffness = stiffnessFor(StrikeTiming.FEED_RESPONSE_S)
+                )
+            )
+        }
     }
 
     val currentOffsetDp = feedAnim.value

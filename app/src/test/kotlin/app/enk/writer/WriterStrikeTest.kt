@@ -14,6 +14,7 @@ import app.enk.data.EnkDatabase
 import app.enk.data.NoteRepository
 import app.enk.data.SystemClock
 import app.enk.keyboard.LayoutLoader
+import app.enk.settings.CorrectionMode
 import app.enk.settings.KeyboardMode
 import app.enk.settings.Settings
 import app.enk.settings.SettingsStore
@@ -24,6 +25,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -133,5 +135,100 @@ class WriterStrikeTest {
         val key = testStrikes.lastRecordedKey
         assertEquals("Must record exactly one StrikeLog key entry", 0, key?.index)
         assertEquals(1, playedSounds.count { it == SoundEvent.Key })
+    }
+
+    @Test
+    fun enterRecordsNoKeyEntryAndPlaysEnterSound(): Unit = runBlocking {
+        val context: Context = RuntimeEnvironment.getApplication()
+        val note = repo.createNote(dividerId = null)
+        val viewModel = WriterViewModel(note.id, repo, settingsStore, testScope)
+        val testStrikes = StrikeLog()
+        val layout = LayoutLoader.load(context)
+
+        composeTestRule.setContent {
+            WriterScreen(
+                viewModel = viewModel,
+                settings = Settings(keyboard = KeyboardMode.Enk),
+                player = recordingPlayer,
+                haptics = dummyHaptics,
+                onOpenBox = {},
+                keyboardLayout = layout,
+                strikes = testStrikes
+            )
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("key_a").performClick()
+        composeTestRule.waitForIdle()
+
+        val keysCountBefore = testStrikes.allKeys().size
+        composeTestRule.onNodeWithTag("key_enter").performClick()
+        composeTestRule.waitForIdle()
+
+        val keysCountAfter = testStrikes.allKeys().size
+        assertEquals("Enter must not record a Key entry", keysCountBefore, keysCountAfter)
+        assertTrue("Must play Enter sound", playedSounds.contains(SoundEvent.Enter))
+    }
+
+    @Test
+    fun backspaceUnderStrikeThroughRecordsStruckEntry(): Unit = runBlocking {
+        val context: Context = RuntimeEnvironment.getApplication()
+        val note = repo.createNote(dividerId = null)
+        val viewModel = WriterViewModel(note.id, repo, settingsStore, testScope)
+        val testStrikes = StrikeLog()
+        val layout = LayoutLoader.load(context)
+
+        composeTestRule.setContent {
+            WriterScreen(
+                viewModel = viewModel,
+                settings = Settings(keyboard = KeyboardMode.Enk, correction = CorrectionMode.StrikeThrough),
+                player = recordingPlayer,
+                haptics = dummyHaptics,
+                onOpenBox = {},
+                keyboardLayout = layout,
+                strikes = testStrikes
+            )
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("key_a").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("key_backspace").performClick()
+        composeTestRule.waitForIdle()
+
+        val struck = testStrikes.lastRecordedStruck
+        assertEquals("Must record Struck entry for backspaced char", 0, struck?.index)
+    }
+
+    @Test
+    fun backspaceUnderCleanEraseRecordsEraseEntry(): Unit = runBlocking {
+        val context: Context = RuntimeEnvironment.getApplication()
+        val note = repo.createNote(dividerId = null)
+        val viewModel = WriterViewModel(note.id, repo, settingsStore, testScope)
+        val testStrikes = StrikeLog()
+        val layout = LayoutLoader.load(context)
+
+        composeTestRule.setContent {
+            WriterScreen(
+                viewModel = viewModel,
+                settings = Settings(keyboard = KeyboardMode.Enk, correction = CorrectionMode.CleanErase),
+                player = recordingPlayer,
+                haptics = dummyHaptics,
+                onOpenBox = {},
+                keyboardLayout = layout,
+                strikes = testStrikes
+            )
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("key_a").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("key_backspace").performClick()
+        composeTestRule.waitForIdle()
+
+        val erase = testStrikes.lastRecordedErase
+        assertEquals("Must record Erase entry with removed text", "a", erase?.text)
     }
 }

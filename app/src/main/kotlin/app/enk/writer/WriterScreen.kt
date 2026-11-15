@@ -205,6 +205,7 @@ fun WriterScreen(
     // Carriage motion state
     var carriageMotion by remember { mutableStateOf(CarriageMotion.Rest) }
     var dragCarriageXDp by remember { mutableStateOf<Float?>(null) }
+    var motionToken by remember { mutableIntStateOf(0) }
 
     val thump = remember { Spring1D(StrikeTiming.THUMP_RESPONSE_S, StrikeTiming.THUMP_DAMPING) }
     val clockMs = remember { mutableFloatStateOf(0f) }
@@ -261,7 +262,7 @@ fun WriterScreen(
     LaunchedEffect(showAsk, lastKeyMs) {
         if (showAsk && lastKeyMs != 0L) {
             delay(4000)
-            onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Normal) }
+            onSettingsChange { this.copy(darkPaper = DarkPaper.Normal) }
         }
     }
 
@@ -369,8 +370,18 @@ fun WriterScreen(
 
         if (carriageMotion != CarriageMotion.Dragging) {
             carriageMotion = carriageModeFor(event, before, after, columnsForKeys)
+            motionToken++
         }
         strikeKey++
+    }
+
+    LaunchedEffect(motionToken) {
+        if (motionToken > 0) {
+            delay(700)
+            if (carriageMotion != CarriageMotion.Dragging) {
+                carriageMotion = CarriageMotion.Rest
+            }
+        }
     }
 
     LaunchedEffect(useEnk) {
@@ -462,7 +473,7 @@ fun WriterScreen(
                     pulse(14)
                     hintPolicy = hintPolicy.onLongPress()
                     if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                        onSettingsChange { s -> s.copy(hintDismissed = true) }
+                        onSettingsChange { this.copy(hintDismissed = true) }
                     }
                 }
 
@@ -482,7 +493,7 @@ fun WriterScreen(
                                 if (motion == CarriageMotion.Dragging) {
                                     hintPolicy = hintPolicy.onScrub()
                                     if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                                        onSettingsChange { s -> s.copy(hintDismissed = true) }
+                                        onSettingsChange { this.copy(hintDismissed = true) }
                                     }
                                 }
                             },
@@ -690,8 +701,8 @@ fun WriterScreen(
                         lampColor = lampColor,
                         settings = lampSettings,
                         onChange = { lamp ->
-                            onSettingsChange { s ->
-                                s.copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
+                            onSettingsChange {
+                                this.copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
                             }
                         },
                         onDetent = { pos ->
@@ -706,8 +717,8 @@ fun WriterScreen(
                     val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
                     if (showAsk) {
                         DarkPaperAsk(
-                            onLamp = { onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Lamp) } },
-                            onNormal = { onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Normal) } },
+                            onLamp = { onSettingsChange { this.copy(darkPaper = DarkPaper.Lamp) } },
+                            onNormal = { onSettingsChange { this.copy(darkPaper = DarkPaper.Normal) } },
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .padding(horizontal = 20.dp, vertical = 16.dp)

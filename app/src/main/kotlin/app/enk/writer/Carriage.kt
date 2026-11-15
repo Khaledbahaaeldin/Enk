@@ -1,6 +1,7 @@
 package app.enk.writer
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -104,11 +105,59 @@ fun Carriage(
                     animationSpec = tween(durationMillis = duration, easing = easing)
                 )
             }
-            CarriageMotion.Rest,
-            CarriageMotion.Tick,
-            CarriageMotion.TickSoft,
-            CarriageMotion.Return,
-            CarriageMotion.WrapReturn -> xAnim.snapTo(targetX)
+            CarriageMotion.Tick -> {
+                if (reduceEffects) {
+                    xAnim.snapTo(targetX)
+                } else {
+                    xAnim.animateTo(
+                        targetValue = targetX,
+                        animationSpec = spring(
+                            dampingRatio = StrikeTiming.TICK_DAMPING,
+                            stiffness = stiffnessFor(StrikeTiming.TICK_RESPONSE_S)
+                        )
+                    )
+                }
+            }
+            CarriageMotion.TickSoft -> {
+                if (reduceEffects) {
+                    xAnim.snapTo(targetX)
+                } else {
+                    xAnim.animateTo(
+                        targetValue = targetX,
+                        animationSpec = spring(
+                            dampingRatio = StrikeTiming.TICK_SOFT_DAMPING,
+                            stiffness = stiffnessFor(StrikeTiming.TICK_SOFT_RESPONSE_S)
+                        )
+                    )
+                }
+            }
+            CarriageMotion.Return -> {
+                if (reduceEffects) {
+                    xAnim.snapTo(targetX)
+                } else {
+                    xAnim.animateTo(
+                        targetValue = targetX,
+                        animationSpec = spring(
+                            dampingRatio = StrikeTiming.RETURN_DAMPING,
+                            stiffness = stiffnessFor(StrikeTiming.RETURN_RESPONSE_S)
+                        )
+                    )
+                }
+            }
+            CarriageMotion.WrapReturn -> {
+                if (reduceEffects) {
+                    xAnim.snapTo(targetX)
+                } else {
+                    xAnim.animateTo(
+                        targetValue = targetX,
+                        animationSpec = spring(
+                            dampingRatio = StrikeTiming.RETURN_DAMPING,
+                            stiffness = stiffnessFor(StrikeTiming.WRAP_RETURN_RESPONSE_S)
+                        )
+                    )
+                }
+            }
+            CarriageMotion.Rest -> xAnim.snapTo(targetX)
         }
     }
 
