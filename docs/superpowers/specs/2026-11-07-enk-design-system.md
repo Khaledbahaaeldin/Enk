@@ -1,6 +1,6 @@
 # Enk design system
 
-Date: 2026-11-07. Status: writer (sections 1 to 11) and interface shell with themes (section 12) approved by the author; a few items remain PROPOSED (marked inline and in 12.13). Companion to `2026-11-07-enk-design.md` (the product spec) and `../plans/2026-11-07-enk-1-0-plan.md` (the build plan).
+Date: 2026-11-07; updated 2026-11-15 for batch 14 (liquid glass, the top island, the Rail transition). Status: writer (sections 1 to 11) and interface shell with themes (section 12) approved by the author; a few items remain PROPOSED (marked inline and in 12.13). Companion to `2026-11-07-enk-design.md` (the product spec) and `../plans/2026-11-07-enk-1-0-plan.md` (the build plan).
 
 This is the single source of truth for how Enk looks, moves, and sounds. Every developer follows it. If a screen needs something this document does not define, extend this document first (in a reviewed change), then build.
 
@@ -165,7 +165,9 @@ Rule: a part that moves casts a shadow whose offset grows while it is lifted (se
 
 All coordinates are in dp relative to the screen unless stated. `railY` is defined in 7.2.
 
-### 6.1 Top bar `APPROVED`
+### 6.1 Top bar `APPROVED` (replaced in batch 14 by the top island, see 12.8)
+
+The writer no longer has a top bar or a wordmark: the paper runs up to 8 dp under the safe area and one glass island floats over it (12.8, "Writer island"). The text below is kept for history; the wordmark stays on Start, Box and Setup.
 
 Height 60. Horizontal padding 26. Left: dot 10 dp circle `accent`, gap 8, then wordmark "ENK". Right: two lines of meta text, right-aligned: line 1 is the page position (`"{chars} / 3000"` in the prototype; in the product, `"p.2 · 140 / 3000"` style, see plan Task 15), line 2 is a short status. Background: none (sits on the chassis). In the product the status line is empty unless a transient message is showing; the prototype's "SPIKE" text is not shipped.
 
@@ -227,7 +229,9 @@ Shown only when the lamp is on.
 
 `intensity = intensitySlider / 100` (slider 20..100, default 80).
 
-### 6.7 Lamp control panel `APPROVED`
+### 6.7 Lamp control panel `APPROVED` (removed in batch 14; replaced by the lamp view)
+
+The steel panel and its faders were deleted. The lamp is now controlled from the island's Lamp state (12.8, "Writer island" and "Slider"). `FaderMath` (20 detents, `valueFor`) survives unchanged in `design/.../glass/FaderMath.kt`. The recess below is history; the rail no longer makes room for a panel (`CARRIAGE_CLEARANCE_DP` = 33 replaces the panel clearance).
 
 A recessed hardware box at the bottom of the screen, visible only while the lamp is on.
 
@@ -243,7 +247,7 @@ A recessed hardware box at the bottom of the screen, visible only while the lamp
 
 Open/close motion: the panel enters from `translateY +40 dp, scale 0.97, alpha 0` to rest in 560 ms with `EnkMotion.springPanel` while alpha reaches 1 in 350 ms; the three rows enter from `translateY +10 dp, alpha 0` in 400 ms (alpha) and 550 ms (translate, `springRow`), delayed 120, 200, and 280 ms. Closing reverses without the stagger. The hint text under the panel is hidden while the lamp is on.
 
-### 6.8 Fader `APPROVED`
+### 6.8 Fader `APPROVED` (removed in batch 14; see the glass slider in 12.8)
 
 | Part | Spec |
 |---|---|
@@ -283,13 +287,13 @@ Reference: on W = 400 dp, fontScale 1.0: cols 28, textWidth 328, fs 19.52 sp, co
 
 | Quantity | Value |
 |---|---|
-| Paper top | 64 dp |
+| Paper top | 8 dp under the safe area (batch 14; was 64). The island floats over the paper and the text fades under it over the top 70 dp. Compact windows (height under 360 dp) keep 44 dp |
 | `railY` (centre of the rod) | `round(H * 0.62)` where H is the full screen height |
 | Current line's bottom edge | `railY - 23` dp |
-| Text block top (in paper coordinates) | `railY - 64 - 23 - (line + 1) * lineHeight`, where `line` is the zero-based line of the caret |
+| Text block top (in paper coordinates) | `railY - paperTop - 23 - (line + 1) * lineHeight` (the absolute text position is unchanged by the paper-top move), where `line` is the zero-based line of the caret |
 | Feed animation | when the caret's line changes, the text block slides with 200 ms `EnkMotion.feed` |
 
-The writing screen's visual stack, back to front: chassis, paper (text, grain, curl), beam and halo, rail, carriage, top bar, panel, hint. The carriage and rail draw above the paper and its shadow.
+The writing screen's visual stack, back to front: chassis, paper (text, grain, curl), beam and halo, rail, carriage, hint, the island (and the dark-paper question). The island is drawn beside the box that records the glass backdrop, never inside it. The carriage and rail draw above the paper and its shadow.
 
 ### 7.3 Column mapping
 
@@ -333,6 +337,8 @@ Cubic-bezier values are `(x1, y1, x2, y2)`. Implement as `CubicBezierEasing`, or
 | `knobLift` | 200 ms | ease-out (shadow only) |
 | `longPress` | 480 ms threshold, 6 dp slop | |
 
+**Rail transition (batch 14).** One progress `p` (0 to 1, spring response 0.72 s, damping 0.76) drives the Box-to-Write transition; its beat windows and values are in 12.9.
+
 **Reduced motion** (system "remove animations" on, or the in-app "reduce effects" switch): replace `carriageSnap`, `springPanel`, `springRow`, `springKnob`, `slugStrike`, and `stamp` with 100 ms linear fades or no animation; stop caret blinking; keep `feed` at 100 ms. Reduce effects also turns off the grain (opacity 0), the beam blur, and the halo's Screen blend (use plain alpha).
 
 ## 10. Sound and haptics
@@ -354,7 +360,7 @@ Rules: sounds use audio usage "assistance sonification" so they never steal audi
 
 ## 11. Components checklist for golden tests
 
-Each approved component has a screenshot golden (JVM, day and night where it differs) compared to a reference rendered from the prototype with the tolerance in the plan (Task 3). The inventory: rail with brackets; carriage rest; carriage with slug up; slot glowing (night); caret; stamped character mid-animation (frame at 80 ms); beam and halo at default settings; panel at rest; fader at 0%, 25%, 100%; knob lifted; top bar.
+Each approved component has a screenshot golden (JVM, day and night where it differs) compared to a reference rendered from the prototype with the tolerance in the plan (Task 3). The inventory: rail with brackets; carriage rest; carriage with slug up; slot glowing (night); caret; stamped character mid-animation (frame at 80 ms); beam and halo at default settings; island at rest, open and in the lamp view; glass kit surfaces; the Rail transition at fixed times of the test clock (the real shell, Light level).
 
 ## 12. Interface shell and themes (everything outside the writer)
 
@@ -467,6 +473,10 @@ The veil and compact bar opacity follow scroll progress `p = clamp((scrollY - 30
 
 **Reduce effects / reduced transparency:** every glass, thick, compact bar, and veil surface becomes a solid `g1` with no blur and no gradient. The aura grain turns off. Behavior is otherwise identical.
 
+**Glass kit (batch 14, `design/.../glass`).** One modifier, `glassSurface(spec, shape, source, interaction)`, draws every glass surface from a `GlassSpec` (blur dp, saturation, tint, shadow, lens height and amount, fringe, depth, highlight width). The specs (`GlassSpecs`): NavBody 24 / 1.5 regular; NavLens 1 / 1.5, lens 22 / 46, fringe and depth; SegmentedBody 24; SegmentedLens lens 14 / 30; ToggleTrack 14; ToggleBead lens 14 / 28; SliderTrack 14; SliderThumb lens 16 / 34; Button 14, lens 14 / 26; Field 24, lens 12 / 20; TopBarButton 14, lens 10 / 16; Floating (menu, sheet, alert, island) 44 / 1.6 thick, lens 18 / 34; Toast 24; KeyboardTray 44 thick. The lens is clamped to the surface's size and smallest corner (`GlassLensMath.coerceLens`).
+
+**Effects levels (`EffectsLevel`: Auto, Full, Balanced, Light; Setup > Display).** Full: blur and refraction. Balanced: blur, no refraction. Light: solid surfaces (the previous Reduce effects). Auto resolves from the device and a frame governor demotes it one level after sustained slow frames (the listener follows the setting at once). Animations off forces Light.
+
 ### 12.5 Typography (shell)
 
 System sans (`FontFamily.Default`) except where noted; sizes in sp, line height in sp, tracking in em.
@@ -517,12 +527,12 @@ Every non-writer screen is a scroll container with these parts, back to front: a
 
 **Divider strip.** Glass, height 44, radius 22, padding 4, horizontally scrollable. Items are 36 dp tall with 15 dp side padding; the last item is a 38 dp "+" that opens the new-divider sheet instead of selecting. A lens follows the selected item.
 
-**Note card.** Paper `#F2ECDF`, radius 14, grain overlay (opacity 0.3, Multiply), elevation per 12.6. Content: title (one line, ellipsis), first line of body, and a footer with date left and page label right ("p.2"). Press: scale 0.985 in 120 ms. Hold 420 ms: lift and open the context menu.
+**Note card.** Paper `#F2ECDF`, radius 14, grain overlay (opacity 0.3, Multiply), elevation per 12.6. Content: title (one line, ellipsis), first line of body, and a footer with date left and page label right ("p.2"). Press: `pressFeedback` with `PressDepth.Card`. Hold 420 ms: lift and open the context menu.
 
 **New-note ghost card.** No fill; 1 dp outline `hair`; radius 14; text "New note" 14 sp weight 500 `t2`, centered; padding 16. It is always first in a divider's list.
 
 **Buttons.**
-- Glass button: height 36 (small 30), side padding 18 (small 14), pill, glass material, label per 12.5. Press: scale 0.96 in 120 ms ease-out plus a 12% brightness lift, at pointer-down.
+- Glass button: height 36 (small 30), side padding 18 (small 14), pill, glass material, label per 12.5. `GlassButton`: `GlassSpecs.Button`; press scales to `GlassLensMath.BUTTON_PRESS` (1.07) on pointer-down with `shellPress` and releases with `shellRelease`; none at Light.
 - Primary: fill `ui`, text `uiInk`, shadow (0,1,2) `sh1`; used once per sheet ("Add").
 - Destructive: label color `danger`; never a filled button.
 - Paper-pill (on a card): height 28, side padding 13, pill, fill `rgba(32,30,28,.92)`, text `#F3EEE3`, size 12.5 weight 500 (for Restore).
@@ -533,6 +543,8 @@ Every non-writer screen is a scroll container with these parts, back to front: a
 
 **Segmented control.** Height 34, radius 17, padding 3, fill `field`; lens inside; items flex equally with 12 dp side padding. Draggable (12.9).
 
+**Slider (`GlassSlider`, batch 14; bell volume and the lamp view).** `GlassSlider(value: Int, min, max, onValueChange, onDetent, accent, label)`: 6 dp capsule track, filled part `accent`, thumb 56 x 32 dp radius 16 (`SliderThumb`) that stretches with its velocity and shows the rim light while touched; 48 dp touch height; a tap springs the thumb there (`shellDefault`), a drag is 1:1 from where it was grabbed; values and detents come from `FaderMath`. Semantics: range info, set-progress, label and value. The description below is the bell fader's row layout.
+
 **Fader (bell volume).** Row of label left and fader right (fills the rest, 12 dp gap, 32 dp tall). Track 6 dp, radius 3, `track`; fill `ui` from the left to the knob center; knob 28 dp white circle with the same shadows as the bead; while held it scales 1.12. Continuous 1:1 tracking, no detents.
 
 **Sound-set rows.** Four rows (Classic, Antique, Soft, Keyboard) in one group. The selected row shows an index mark on the right: 14 x 3 dp, radius 2, `ui`, scaling in from 0 to 1 horizontally over 350 ms with overshoot ease (0.2, 1.4, 0.4, 1).
@@ -540,6 +552,8 @@ Every non-writer screen is a scroll container with these parts, back to front: a
 **Theme tiles (Setup > Appearance).** A 3 x 2 grid (Graphite, Apricot, Sky / Slate, Mono, Dynamic), column gap 10, row gap 14, grid padding 14 top, 12 sides, 8 bottom. A tile is a 62 dp tall radius-16 swatch with a 0.5 dp `hair` outline and the label (12.5 sp weight 500) below. Swatch: for static themes a vertical gradient from the palette's dark color (solid for the first 18%) to its light color, with a radial glow of the mid color at 50% x, 78% y fading out at 68%; for Dynamic, a 165-degree gradient from a dark tone of the system primary through the primary to a light tone of the tertiary. Selected: label becomes `t1`, a 2 dp ring in `g1` plus a 1.5 dp ring in `ui` around the swatch, scale 1.03, and a 14 x 3 dp index mark under the label. Below the grid is a Light, Dark, System segmented control (row padding 8 x 16).
 
 **Search field.** Height 44, radius 22, fill `field`, 16 dp side padding, a 18 dp magnifier icon in `t2`, then the text field (16 sp, caret `ui`). Placeholder "Search your notes".
+
+**Writer island (batch 14, `TopIsland`).** One glass island, `GlassSpecs.Floating`, centred, 10 dp under the safe area, over the paper. Three states with one size spring (`shellSheet`): Rest 150 x 40 (page meta `p.1 · 85 / 3000`, Courier 11 sp, a 6 dp lamp dot when the lamp is on), Actions 320 x 110 (Keyboard, Lamp, Box: 24 dp line glyphs in the theme's `t1`, 12 sp labels, 48 dp targets), Lamp 320 x 270 (the lamp view: the Lamp toggle, then warmth, intensity and beam sliders). Radius `min(28 dp, shorter side / 2)`. The size is measured in the layout phase; the content cross-fades (in 120 ms after 80 ms, out 90 ms; 100 ms at Light). A tap on the resting island presses it (1.07) and opens Actions. It folds after 4,500 ms idle (every touch inside restarts the timer; not while a slider is held), on typing, on a tap anywhere outside (the whole screen is the outside while it is open) and on Back. It does not react to touch until the Rail transition has reached 0.95. Test tags: `top_island`, `keyboard_switch`, `lamp_button`, `box_button`, `lamp_popup`, `lamp_toggle`, `slider_*`. Not built: scaling the island's shadow and edge highlight with its size.
 
 **Context menu.** Thick material, width 232, radius 16, rows 46 dp, separators `hair`. The first row, "Move to divider", has a chevron in `t3`; the second, "Move to trash", uses `danger`. It opens 10 dp below the lifted card with its origin at the card's left edge, left-aligned to the card (at least 20 dp from the screen edge) and never lower than 600 dp from the top.
 
@@ -560,9 +574,27 @@ Springs use Apple's model: **damping ratio** and **response** (seconds). For a m
 | `shellDefault` | 0.35 | 1.0 | lens moves, strip and nav selection |
 | `shellFlick` | 0.35 | 0.8 | lens after a drag release faster than 350 dp/s |
 | `shellToggle` | 0.28 | 1.0 | toggle bead |
-| `shellSheet` | 0.38 | 0.82 | sheet open and dismiss |
+| `shellSheet` | 0.38 | 0.82 | sheet open and dismiss, the island's size, the glass morph |
+| `shellPress` | 0.20 | 1.0 | press down |
+| `shellRelease` | 0.35 | 0.8 | press release |
+| `shellPage` | 0.40 | 1.0 | screen and tab changes |
+| `shellRailPage` | 0.72 | 0.76 | the Rail transition |
 
-Other motion: press feedback on pointer-down (button 0.96 / 120 ms ease-out; card 0.985 / 350 ms (0.2, 0.9, 0.3, 1); paper-pill 0.95 / 120 ms). Card entrance: translate 14 dp up and fade in over 500 ms (0.2, 0.9, 0.3, 1), staggered 40 ms per card. Context menu: scale from 0.6 to 1 over 400 ms (0.2, 1, 0.3, 1) with opacity over 200 ms, origin at the card's left edge. Alert: scale from 1.08 to 1 over 350 ms (0.2, 0.9, 0.3, 1). Scrim: 300 ms. Theme change: every color cross-fades over 500 ms. Screen change: cross-fade 250 ms.
+Other motion: press feedback on pointer-down through `pressFeedback` (`PressDepth` Button, Pill, Card, Row, in `design/.../motion`) on glass buttons, paper pills, note cards, grouped rows and theme tiles. Card entrance: translate 14 dp up and fade in over 500 ms (0.2, 0.9, 0.3, 1), staggered 40 ms per card. Context menu: scale from 0.6 to 1 over 400 ms (0.2, 1, 0.3, 1) with opacity over 200 ms, origin at the card's left edge. Alert: scale from 1.08 to 1 over 350 ms (0.2, 0.9, 0.3, 1). Scrim: 300 ms. Theme change: every color cross-fades over 500 ms. Screen change (batch 14, `AnimatedContent`, `shellPage`): a tab change slides 12 dp in the direction of the tab order with a fade (Box 0, Find 1, Setup 2) and gives an 8 ms haptic when haptics are on; opening a note slides the writer up 48 dp while the Box scales to 0.96 (back is the mirror); Trash and Credits slide in 24 dp from the trailing edge. At Light each is instant.
+
+**The Rail transition (Box to Write, batch 14).** The glass nav bar becomes the typewriter rail, the paper is fed out of that slot, the carriage drops onto the rail with a ding, the island arrives. It plays when Write is chosen from a tab and runs back from the island's Box button; opening a note from a card keeps the slide above. One progress `p` with `seg(p, a, b)` windows, `ez(t) = t²(3 - 2t)`, `out(t) = 1 - (1 - t)³`, `back(t) = 1 + 2.9(t - 1)³ + 1.9(t - 1)²`. `p` is at about 0.35 after 130 ms, 0.6 after 200 ms, 0.9 (the ding) after 325 ms and settles near 430 ms. It is interruptible: a new target re-aims `p` from where it is.
+
+| Beat | Window of `p` | What moves |
+|---|---|---|
+| Box recedes | `ez(seg(.05, .70))` | scale 1 to 0.96, up 8 dp, blur 8 dp, brightness 1 to 0.35 (no blur or dim at Light) |
+| Bar becomes the rail | `ez(seg(.05, .60))` | the nav pill (from its real bounds) to a 16 dp rail rectangle on the rail's centre line, full width, radius 32 to 8; tab row and lens fade out over `seg(0, .16)`; drawn as a tinted pill, no refraction |
+| Glass to steel | `seg(.50, .62)` | the pill fades out as the writer's steel rail fades in |
+| Paper is fed | `out(seg(.40, .92))` | the paper is clipped to a band around the rail that grows to the whole paper (corners 10 dp top, 26 dp bottom); the keyboard rises over `out(seg(.35, .88))` |
+| Carriage lands | `back(seg(.72, .96))`, alpha `seg(.72, .80)` | drops 80 dp onto the rail; at `p >= 0.90` going forward, once: a 600 ms ring (`#ffb36b`), the bell if sound is on, a 14 ms pulse if haptics are on |
+| Island and caret | `back(seg(.80, 1))`, caret `seg(.94, 1)` | the island scales 0.55 to 1 from its top centre and fades in |
+| Box fades out | `1 - seg(.72, .92)` | the writer's chassis shows through |
+
+The loaded text is not drawn until the ding; the ding starts the type-on (a key press cancels it). In reverse nothing types and the text stays. With Reduce effects (and Light) `p` is a 150 ms tween and the ring is off. A finished flight keeps its end value until the next route change, so the screen that is still leaving cannot flash back. Cold start, restore and rotation skip it.
 
 **Lens (nav, strip, segmented).**
 - Tap: spring the lens to the item's left and width (`shellDefault`).
@@ -574,7 +606,7 @@ Other motion: press feedback on pointer-down (button 0.96 / 120 ms ease-out; car
 
 **Interruptibility.** Every spring re-targets from its live position and velocity; a gesture grabbing a moving object holds it where it is. Never use fixed-duration animations for gesture-driven motion.
 
-**Reduced motion** (system animations off, or Reduce effects on): all springs snap to their targets; entrances and menus become 100 ms fades; the stretch is off; theme change is instant.
+**Reduced motion** (system animations off, or Reduce effects on; the Light level counts as reduced): all springs snap to their targets; entrances and menus become 100 ms fades; the stretch is off; theme change is instant.
 
 ### 12.10 Screens
 
@@ -588,7 +620,7 @@ Other motion: press feedback on pointer-down (button 0.96 / 120 ms ease-out; car
 
 **Widgets.** Wide widget: paper card 360 x 160 dp, radius 26, grain, meta line "Recent · 7 Nov · p.2" (Courier 10.5), two lines of the note in Courier 15 / 1.55, and a paper-pill "New note" button bottom-right (14 dp insets). Small widget: 170 x 170 dp, radius 30, glass-style panel (solid graphite on the home screen because app widgets cannot blur what is behind them) with a miniature rail and carriage and a small glass-style "New note" button. Empty state: a 170 x 170 paper card, "Nothing yet / Tap to write your first note."
 
-**Writer top bar.** Unchanged from 6.1. The wordmark opens the Box.
+**Writer top.** The island (12.8). The Box is reached from the island's Box button or the nav bar's Box tab.
 
 ### 12.11 Accessibility
 
@@ -617,3 +649,7 @@ Don't: add orange fills; add ruler or tick marks; use pure black (`#000`) or pur
 ## 14. Change control
 
 Any change to a value in this document needs: the new value, why, a screenshot, and the author's approval, and updates here and in the golden references in the same change.
+
+## 15. Changes since approval
+
+- 2026-11-15 (batch 14, following the round 2 decisions): glass kit and effects levels (12.4), the top island replacing the top bar and the steel lamp panel (6.1, 6.7, 6.8, 12.8), paper top 8 dp (7.2), shell motion tokens and screen transitions (12.9), the Rail transition (12.9).
