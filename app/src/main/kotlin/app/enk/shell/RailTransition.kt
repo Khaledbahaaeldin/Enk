@@ -72,13 +72,6 @@ object RailTransitionMath {
     fun barTranslationY(p: Float): Float = 24f * ez(seg(p, 0.05f, 0.60f))
     fun barAlpha(p: Float): Float = 1f - ez(seg(p, 0.05f, 0.60f))
 
-    fun navLeft(p: Float, startLeft: Float = 12f): Float = writeLeft(p, startLeft)
-    fun navWidth(p: Float, startW: Float = 336f, endW: Float = 360f): Float = writeWidth(p, startW, endW)
-    fun navHeight(p: Float, startH: Float = 64f, endH: Float = 16f): Float = writeHeight(p, startH, endH)
-    fun navTop(p: Float, startTop: Float, railY: Float): Float = writeTop(p, startTop, railY)
-    fun navRadius(p: Float, startR: Float = 32f, endR: Float = 8f): Float = writeRadius(p, startR, endR)
-    fun navContentAlpha(p: Float): Float = barAlpha(p)
-
     /** The nav glass fades out where the writer's steel rail fades in. */
     fun steelRailAlpha(p: Float): Float = seg(p, 0.50f, 0.62f)
 

@@ -605,7 +605,14 @@ fun WriterScreen(
                         .onGloballyPositioned { coords ->
                             rail?.railCenterYPx = coords.positionInRoot().y + railY * density.density
                         }
-                        .glassSource(glassSource)
+                        .glassSource(
+                            glassSource,
+                            live = {
+                                val isTypingActive = typingActive || carriageMotion == CarriageMotion.Dragging
+                                val isTransitionRunning = rail?.flight == true
+                                isTypingActive || isTransitionRunning
+                            }
+                        )
                         .markerGestures(
                             geometry = geometry,
                             pageLength = { state.currentPage.text.length },

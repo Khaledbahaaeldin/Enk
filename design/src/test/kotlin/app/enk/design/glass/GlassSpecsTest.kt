@@ -43,19 +43,19 @@ class GlassSpecsTest {
 
     @Test
     fun exactValuesOfEverySpec() {
-        assertEquals(GlassSpec(24f, 1.5f, GlassTint.Regular, GlassShadowKind.Regular), GlassSpecs.NavBody)
+        assertEquals(GlassSpec(20f, 1.5f, GlassTint.Regular, GlassShadowKind.Regular), GlassSpecs.NavBody)
         assertEquals(GlassSpec(1f, 1.5f, GlassTint.Lens, GlassShadowKind.None, 22f, 46f, fringe = true, depth = true, highlightWidthDp = 1f), GlassSpecs.NavLens)
-        assertEquals(GlassSpec(24f, 1.5f, GlassTint.Regular, GlassShadowKind.Small), GlassSpecs.SegmentedBody)
+        assertEquals(GlassSpec(20f, 1.5f, GlassTint.Regular, GlassShadowKind.Small), GlassSpecs.SegmentedBody)
         assertEquals(GlassSpec(1f, 1.5f, GlassTint.Lens, GlassShadowKind.None, 14f, 30f, fringe = true, depth = true, highlightWidthDp = 1f), GlassSpecs.SegmentedLens)
         assertEquals(GlassSpec(14f, 1.5f, GlassTint.Regular, GlassShadowKind.None), GlassSpecs.ToggleTrack)
         assertEquals(GlassSpec(1f, 1.5f, GlassTint.Lens, GlassShadowKind.Small, 14f, 28f, fringe = true, depth = true, highlightWidthDp = 1f), GlassSpecs.ToggleBead)
         assertEquals(GlassSpec(14f, 1.5f, GlassTint.Regular, GlassShadowKind.None), GlassSpecs.SliderTrack)
         assertEquals(GlassSpec(1f, 1.5f, GlassTint.Lens, GlassShadowKind.Small, 16f, 34f, fringe = true, depth = true, highlightWidthDp = 1f), GlassSpecs.SliderThumb)
         assertEquals(GlassSpec(14f, 1.5f, GlassTint.Regular, GlassShadowKind.Small, 14f, 26f), GlassSpecs.Button)
-        assertEquals(GlassSpec(24f, 1.5f, GlassTint.Regular, GlassShadowKind.None, 12f, 20f), GlassSpecs.Field)
+        assertEquals(GlassSpec(20f, 1.5f, GlassTint.Regular, GlassShadowKind.None, 12f, 20f), GlassSpecs.Field)
         assertEquals(GlassSpec(14f, 1.5f, GlassTint.Regular, GlassShadowKind.None, 10f, 16f), GlassSpecs.TopBarButton)
-        assertEquals(GlassSpec(44f, 1.6f, GlassTint.Thick, GlassShadowKind.Thick, 18f, 34f), GlassSpecs.Floating)
+        assertEquals(GlassSpec(32f, 1.6f, GlassTint.Thick, GlassShadowKind.Thick, 18f, 34f), GlassSpecs.Floating)
         assertEquals(GlassSpec(24f, 1.5f, GlassTint.Thick, GlassShadowKind.Small), GlassSpecs.Toast)
-        assertEquals(GlassSpec(44f, 1.6f, GlassTint.Thick, GlassShadowKind.None), GlassSpecs.KeyboardTray)
+        assertEquals(GlassSpec(32f, 1.6f, GlassTint.Thick, GlassShadowKind.None), GlassSpecs.KeyboardTray)
     }
 }

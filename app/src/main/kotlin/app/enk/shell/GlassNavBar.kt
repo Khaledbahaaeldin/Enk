@@ -324,7 +324,7 @@ fun GlassNavBar(
                 .fillMaxSize()
                 .graphicsLayer {
                     if (rail != null) {
-                        alpha = RailTransitionMath.navContentAlpha(rail.boxP())
+                        alpha = RailTransitionMath.barAlpha(rail.boxP())
                     }
                 },
             verticalAlignment = Alignment.CenterVertically
