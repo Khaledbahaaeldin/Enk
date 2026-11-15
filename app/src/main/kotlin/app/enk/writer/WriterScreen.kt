@@ -11,6 +11,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.ResolvedEffects
 import app.enk.settings.CorrectionMode
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -156,7 +158,8 @@ fun WriterScreen(
         }
     }
 
-    val reduceMotion = rememberReduceMotion(settings.reduceEffects)
+    val resolvedEffects = LocalEffects.current
+    val reduceMotion = rememberReduceMotion(resolvedEffects)
 
     // Sound set resolution
     val defaultSoundSet = remember {

@@ -5,7 +5,7 @@ import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 
 /** True when the system animator scale is 0, the "remove animations" setting. */
-internal fun isReducedMotion(context: Context?): Boolean {
+fun isReducedMotion(context: Context?): Boolean {
     if (context == null) return false
     return runCatching {
         Settings.Global.getFloat(
@@ -17,7 +17,7 @@ internal fun isReducedMotion(context: Context?): Boolean {
 }
 
 /** True when the system "high contrast text" accessibility setting is on. */
-internal fun isHighContrastTextEnabled(context: Context?): Boolean {
+fun isHighContrastTextEnabled(context: Context?): Boolean {
     if (context == null) return false
     val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
     val fromAm = runCatching {

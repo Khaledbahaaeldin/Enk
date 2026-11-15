@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import app.enk.design.effects.EffectsLevel
 import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -33,7 +34,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
             prefs[Keys.MUTED] = updated.muted
             prefs[Keys.BELL_VOLUME] = updated.bellVolume
             prefs[Keys.HAPTICS] = updated.haptics
-            prefs[Keys.REDUCE_EFFECTS] = updated.reduceEffects
+            prefs[Keys.EFFECTS] = updated.effects.name
             prefs[Keys.THEME] = updated.theme.name
             prefs[Keys.THEME_MODE] = updated.themeMode.name
             prefs[Keys.WARMTH] = updated.warmth
@@ -52,6 +53,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val MUTED = booleanPreferencesKey("muted")
         val BELL_VOLUME = floatPreferencesKey("bell_volume")
         val HAPTICS = booleanPreferencesKey("haptics")
+        val EFFECTS = stringPreferencesKey("effects")
         val REDUCE_EFFECTS = booleanPreferencesKey("reduce_effects")
         val THEME = stringPreferencesKey("theme")
         val THEME_MODE = stringPreferencesKey("theme_mode")
@@ -89,6 +91,15 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         }
 
         private fun mapFromPreferences(prefs: Preferences): Settings {
+            val resolvedEffects = if (prefs.contains(Keys.EFFECTS)) {
+                val raw = prefs[Keys.EFFECTS]
+                enumValues<EffectsLevel>().firstOrNull { it.name == raw } ?: EffectsLevel.Auto
+            } else if (prefs[Keys.REDUCE_EFFECTS] == true) {
+                EffectsLevel.Light
+            } else {
+                EffectsLevel.Auto
+            }
+
             return Settings(
                 correction = safeEnumValueOf(prefs[Keys.CORRECTION], CorrectionMode.CleanErase),
                 autocorrect = prefs[Keys.AUTOCORRECT] ?: false,
@@ -96,7 +107,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
                 muted = prefs[Keys.MUTED] ?: false,
                 bellVolume = sanitizeBellVolume(prefs[Keys.BELL_VOLUME]),
                 haptics = prefs[Keys.HAPTICS] ?: true,
-                reduceEffects = prefs[Keys.REDUCE_EFFECTS] ?: false,
+                effects = resolvedEffects,
                 theme = safeEnumValueOf(prefs[Keys.THEME], ThemeId.Graphite),
                 themeMode = safeEnumValueOf(prefs[Keys.THEME_MODE], ThemeMode.System),
                 warmth = sanitizeWarmth(prefs[Keys.WARMTH]),

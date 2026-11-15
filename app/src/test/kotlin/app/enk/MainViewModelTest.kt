@@ -8,6 +8,7 @@ import app.enk.audio.SoundSet
 import app.enk.data.EnkDatabase
 import app.enk.data.NoteRepository
 import app.enk.data.SystemClock
+import app.enk.design.effects.EffectsLevel
 import app.enk.settings.SettingsStore
 import app.enk.text.StruckPage
 import app.enk.writer.Haptics
@@ -116,12 +117,12 @@ class MainViewModelTest {
 
     @Test
     fun initialSettingsAreReadBeforeLoadedIsReported() = runBlocking {
-        settingsStore.update { it.copy(reduceEffects = true, bellVolume = 0.25f) }
+        settingsStore.update { it.copy(effects = EffectsLevel.Light, bellVolume = 0.25f) }
         val context: Context = RuntimeEnvironment.getApplication()
         val viewModel = MainViewModel(context, container, Dispatchers.Unconfined)
 
         viewModel.isLoaded.filter { it }.first()
-        assertTrue("the first composition must already see the stored settings", viewModel.initialSettings.reduceEffects)
+        assertEquals("the first composition must already see the stored settings", EffectsLevel.Light, viewModel.initialSettings.effects)
         assertEquals(0.25f, viewModel.initialSettings.bellVolume, 0.0001f)
     }
 

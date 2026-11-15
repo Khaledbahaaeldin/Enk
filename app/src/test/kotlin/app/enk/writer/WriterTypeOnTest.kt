@@ -8,6 +8,10 @@ import androidx.compose.ui.test.performTextInput
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import app.enk.audio.SoundEvent
+import androidx.compose.runtime.CompositionLocalProvider
+import app.enk.design.effects.EffectsLevel
+import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.ResolvedEffects
 import app.enk.audio.SoundPlayer
 import app.enk.audio.SoundSet
 import app.enk.data.EnkDatabase
@@ -128,16 +132,18 @@ class WriterTypeOnTest {
         var typeOnStarted = false
 
         composeTestRule.setContent {
-            WriterScreen(
-                viewModel = viewModel,
-                settings = Settings(reduceEffects = true),
-                player = dummyPlayer,
-                haptics = dummyHaptics,
-                onOpenBox = {},
-                onTypeOnActiveChange = { active ->
-                    if (active) typeOnStarted = true
-                }
-            )
+            CompositionLocalProvider(LocalEffects provides ResolvedEffects.Light) {
+                WriterScreen(
+                    viewModel = viewModel,
+                    settings = Settings(effects = EffectsLevel.Light),
+                    player = dummyPlayer,
+                    haptics = dummyHaptics,
+                    onOpenBox = {},
+                    onTypeOnActiveChange = { active ->
+                        if (active) typeOnStarted = true
+                    }
+                )
+            }
         }
 
         composeTestRule.waitForIdle()

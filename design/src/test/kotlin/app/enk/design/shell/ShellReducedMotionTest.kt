@@ -32,11 +32,11 @@ class ShellReducedMotionTest {
     }
 
     @Test
-    fun chooseGlassBackendReturnsSolidWhenReduceEffectsTrue() {
-        assertEquals(GlassBackendKind.Solid, chooseGlassBackend(sdkInt = 35, reduceEffects = true, highContrastText = false))
-        assertEquals(GlassBackendKind.Solid, chooseGlassBackend(sdkInt = 34, reduceEffects = true, highContrastText = false))
-        assertEquals(GlassBackendKind.Solid, chooseGlassBackend(sdkInt = 31, reduceEffects = true, highContrastText = false))
-        assertEquals(GlassBackendKind.Solid, chooseGlassBackend(sdkInt = 35, reduceEffects = true, highContrastText = true))
+    fun resolveGlassBackendReturnsSolidWhenLightLevel() {
+        assertEquals(GlassBackendKind.Solid, resolveGlassBackend(level = app.enk.design.effects.ResolvedEffects.Light, sdkInt = 35, highContrastText = false))
+        assertEquals(GlassBackendKind.Solid, resolveGlassBackend(level = app.enk.design.effects.ResolvedEffects.Light, sdkInt = 34, highContrastText = false))
+        assertEquals(GlassBackendKind.Solid, resolveGlassBackend(level = app.enk.design.effects.ResolvedEffects.Light, sdkInt = 31, highContrastText = false))
+        assertEquals(GlassBackendKind.Solid, resolveGlassBackend(level = app.enk.design.effects.ResolvedEffects.Light, sdkInt = 35, highContrastText = true))
     }
 
     @Test

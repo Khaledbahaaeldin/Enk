@@ -8,6 +8,9 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import app.enk.EnkSnapshots
 import app.enk.design.LocalMonoFont
+import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.ResolvedEffects
+import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.theme.DynamicShellColors
 import app.enk.design.theme.EnkShellTheme
 import app.enk.design.theme.LocalShellColors
@@ -34,7 +37,11 @@ class SetupGoldenTest {
 
     @Composable
     private fun SetupScene(theme: ThemeId, mode: ThemeMode) {
-        CompositionLocalProvider(LocalMonoFont provides courier) {
+        CompositionLocalProvider(
+            LocalMonoFont provides courier,
+            LocalEffects provides ResolvedEffects.Light,
+            LocalReduceEffects provides true
+        ) {
             EnkShellTheme(theme = theme, mode = mode) {
                 SettingsContent(
                     settings = Settings(
