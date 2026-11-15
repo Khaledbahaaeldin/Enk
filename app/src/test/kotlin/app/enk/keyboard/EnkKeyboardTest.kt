@@ -697,4 +697,35 @@ class EnkKeyboardTest {
         composeRule.onNodeWithTag("key_1").assertExists()
         composeRule.onNodeWithTag("key_q").assertDoesNotExist()
     }
+
+    @Test
+    fun calloutAndAlternativesKeepTheCaseThatWasTyped() {
+        composeRule.setContent {
+            EnkShellTheme(ThemeId.Graphite, ThemeMode.Light) {
+                EnkKeyboard(
+                    layout = layout,
+                    metrics = metrics,
+                    onFeedback = {},
+                    onApply = {},
+                    onAlternative = { _, _ -> },
+                    caretProvider = { 0 },
+                    initialState = KeyboardState(page = PageId.Letters, shift = Shift.Once)
+                )
+            }
+        }
+
+        composeRule.mainClock.autoAdvance = false
+        composeRule.onNodeWithTag("key_e").performTouchInput { down(center) }
+        composeRule.mainClock.advanceTimeBy(100)
+        // Shift is already cleared (the key cap shows "e"), but the callout still shows what was typed.
+        composeRule.onNodeWithText("E").assertExists()
+
+        composeRule.mainClock.advanceTimeBy(400)
+        // The long-press alternatives are the uppercase ones that releasing would insert.
+        composeRule.onNodeWithText("\u00C9").assertExists()
+        composeRule.onNodeWithText("\u00E9").assertDoesNotExist()
+
+        composeRule.onNodeWithTag("key_e").performTouchInput { up() }
+        composeRule.mainClock.autoAdvance = true
+    }
 }

@@ -1,16 +1,27 @@
-# Keyboard Physical Device Verification Checklist
+# Keyboard device checklist
 
-This checklist tracks physical on-device verification for the Enk in-app keyboard. Because the typewriter acoustic/haptic sync, multi-touch input, display latency, and TalkBack audio ducking require real hardware sensors and tactile feedback, these tests are executed on physical Android hardware.
+The Enk in-app keyboard needs a real phone for everything that depends on touch, sound, haptics and other keyboards. Fill in one row per phone and check. Result is `PENDING-DEVICE` until someone has run it.
 
 | Check | Phone | Result | Notes |
 |---|---|---|---|
-| Touch latency: acoustic/haptic sync on Pixel 8a or similar | Pixel 8a / physical hardware | PENDING-DEVICE | Audio and tactile click should trigger immediately on touch-down with negligible perceptible latency. |
-| Tap typing at 40+ wpm with thumb and index | Physical hardware | PENDING-DEVICE | Natural rapid typing without dropped keys or false multi-touch gesture triggers. |
-| Long press popup selection on 'e' and 'a' | Physical hardware | PENDING-DEVICE | Long-press after 350 ms opens popup callout; drag left/right selects alternative accented character, release inputs it. |
-| Space-bar cursor drag with 2+ rows of text | Physical hardware | PENDING-DEVICE | Dragging space bar past 10 dp slop smoothly traverses caret across columns and line wraps with subtle 4 ms ticks. |
-| Backspace hold-to-repeat: accelerate after 10 repeats | Physical hardware | PENDING-DEVICE | 400 ms initial delay, 90 ms repeat cadence for first 10 repeats, accelerating to 45 ms thereafter. |
-| Rotate to landscape: verify layout scales, does not exceed 60% of height | Physical hardware | PENDING-DEVICE | Screen rotation triggers compact/medium metrics scaling; total keyboard height remains <= 60% of window height. |
-| Fast switch between Enk and system keyboard in top bar | Physical hardware | PENDING-DEVICE | Tapping top-bar keyboard switch icon toggles between Enk in-app keyboard and system IME smoothly with caret preserved. |
-| Hardware keyboard: type 50 words with Shift, Backspace, Enter, arrows | Physical hardware / Bluetooth keyboard | PENDING-DEVICE | Hardware keystrokes route directly to Writer reducer; sound and haptic fire on key down; Shift/arrows handle navigation. |
-| Contrast on OLED in dark and light themes (APCA Lc >= 45 for key labels) | Physical hardware (OLED) | PENDING-DEVICE | Key labels and icons maintain accessible contrast against key cap background across all 5 themes. |
-| TalkBack navigation through all keys: labels and hints speak clearly | Physical hardware | PENDING-DEVICE | TalkBack accessibility focus moves cleanly across keys; custom labels speak ("Shift", "Delete", "Space", "Return"). |
+| Typing speed with two thumbs (no dropped or doubled keys) | | PENDING-DEVICE | |
+| The sound and haptic on every key (letters, Space, Enter, Backspace, Shift) | | PENDING-DEVICE | |
+| The sound arrives at the same moment as the key animation (touch-down, not release) | | PENDING-DEVICE | |
+| Shift once, caps lock (double tap) and the shift icon states | | PENDING-DEVICE | Once clears after one letter; caps stays until tapped again. |
+| The numbers and symbols pages (123, #+=, ABC) | | PENDING-DEVICE | |
+| Long-press alternatives for e, a, s and the punctuation; with shift once the alternatives shown are the uppercase ones that get inserted | | PENDING-DEVICE | |
+| Backspace hold-repeat (first repeat after 400 ms, then 90 ms, then 45 ms after ten repeats) | | PENDING-DEVICE | |
+| The space-bar cursor drag across a wrapped line | | PENDING-DEVICE | |
+| Enter | | PENDING-DEVICE | |
+| Landscape with the keyboard up: the writer still shows the caret line and the carriage | | PENDING-DEVICE | |
+| A window about 360 dp tall (split screen or a small phone) | | PENDING-DEVICE | |
+| TalkBack: explore by touch and double tap on three keys | | PENDING-DEVICE | |
+| A Bluetooth or USB keyboard: typing, Backspace, Enter, arrows | | PENDING-DEVICE | |
+| The globe key and the top-bar chip switch to the system keyboard and back with Gboard: type a sentence, Space, Enter, autocorrect on and off, no repeated word | | PENDING-DEVICE | |
+| The same with Samsung Keyboard (its own key sound must not race Enk's) | | PENDING-DEVICE | |
+| The same with SwiftKey (Space and Enter must not repeat the last word) | | PENDING-DEVICE | |
+| Rotation mid-sentence (text, caret and keyboard page survive) | | PENDING-DEVICE | |
+| Dark mode and the four themes | | PENDING-DEVICE | |
+| Font scale 130% (keys keep their size; labels may clip) | | PENDING-DEVICE | |
+| "Reduce effects" on (no press scale, instant page switch) | | PENDING-DEVICE | |
+| Cold start: the writer does not resize or jump when the start animation ends | | PENDING-DEVICE | Checked on the emulator after the batch 12 audit; confirm on a phone. |

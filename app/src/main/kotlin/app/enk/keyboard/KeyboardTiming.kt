@@ -91,3 +91,10 @@ data class KeyboardMetrics(
         )
     }
 }
+
+/**
+ * The height the writer gives to the Enk keyboard, or 0 when the system keyboard is the one in use.
+ * The start animation lands on the writer's rail, so it must know about this space from the first frame.
+ */
+fun enkKeyboardReservedDp(keyboard: app.enk.settings.KeyboardMode, screenHeightDp: Float): Float =
+    if (keyboard == app.enk.settings.KeyboardMode.Enk) KeyboardMetrics.forWindow(screenHeightDp).totalHeightDp(4) else 0f

@@ -206,6 +206,8 @@ class StartHandoffTest {
         }
         val viewModel = ViewModelProvider(activity, MainViewModel.factory(activity, container, Dispatchers.Unconfined))[MainViewModel::class.java]
         val measured = Measured()
+        // The app's default keyboard is Enk, so the writer reserves its height from the first frame.
+        val reserved = app.enk.keyboard.enkKeyboardReservedDp(app.enk.settings.Settings().keyboard, 820f)
 
         composeTestRule.setContent {
             measured.view = LocalView.current
@@ -213,7 +215,7 @@ class StartHandoffTest {
             CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale)) {
                 EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val targets = rememberStartTargets(maxWidth, maxHeight, text, lightSplash = false)
+                        val targets = rememberStartTargets(maxWidth, maxHeight, text, lightSplash = false, reservedBottomDp = reserved)
                         measured.targets = targets
                         val end = StartTimeline.at(StartTimeline.DURATION_MS.toFloat(), targets)
                         val intro = WriterIntro(
@@ -244,7 +246,7 @@ class StartHandoffTest {
         composeTestRule.waitForIdle()
 
         val targets = measured.targets!!
-        val expectedInsets = StartLayout.targets(400f, 820f, InsetsDp(0f, topInsetPx.toFloat(), 0f, bottomInsetPx.toFloat()), fontScale, text, false)
+        val expectedInsets = StartLayout.targets(400f, 820f, InsetsDp(0f, topInsetPx.toFloat(), 0f, bottomInsetPx.toFloat()), fontScale, text, false, reserved)
         assertEquals("the host saw the insets the test applied", expectedInsets.railY, targets.railY, 0.01f)
 
         val frame = StartTimeline.at(StartTimeline.DURATION_MS.toFloat(), targets)

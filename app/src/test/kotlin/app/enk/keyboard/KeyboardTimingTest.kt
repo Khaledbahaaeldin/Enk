@@ -107,4 +107,11 @@ class KeyboardTimingTest {
         // -1 rows: 10 + 8 = 18.0f
         assertEquals(18.0f, full.totalHeightDp(-1), 0.001f)
     }
+
+    @Test
+    fun theReservedHeightIsTheKeyboardHeightOnlyForTheEnkKeyboard() {
+        assertEquals(232f, enkKeyboardReservedDp(app.enk.settings.KeyboardMode.Enk, 820f), 0.001f)
+        assertEquals(151f, enkKeyboardReservedDp(app.enk.settings.KeyboardMode.Enk, 360f), 0.001f)
+        assertEquals(0f, enkKeyboardReservedDp(app.enk.settings.KeyboardMode.System, 820f), 0.001f)
+    }
 }

@@ -34,12 +34,14 @@ object StartLayout {
         insets: InsetsDp,
         fontScale: Float,
         firstPageText: String,
-        lightSplash: Boolean
+        lightSplash: Boolean,
+        /** Space the writer leaves at the bottom for the in-app keyboard. */
+        reservedBottomDp: Float = 0f
     ): StartTargets {
         val windowWidthDp = if (rawWindowWidthDp.isFinite()) rawWindowWidthDp.coerceAtLeast(0f) else 0f
         val windowHeightDp = if (rawWindowHeightDp.isFinite()) rawWindowHeightDp.coerceAtLeast(0f) else 0f
         val writerWidth = (windowWidthDp - insets.left - insets.right).coerceAtLeast(0f)
-        val writerHeight = (windowHeightDp - insets.top - insets.bottom).coerceAtLeast(0f)
+        val writerHeight = (windowHeightDp - insets.top - insets.bottom - reservedBottomDp.coerceAtLeast(0f)).coerceAtLeast(0f)
         val geometry = WriterGeometry.compute(writerWidth, writerHeight, fontScale)
         val lines = GridLayout.wrap(firstPageText, geometry.cols)
         val col = GridLayout.caret(lines, firstPageText.length, geometry.cols).col
@@ -72,7 +74,8 @@ internal fun rememberStartTargets(
     maxWidth: Dp,
     maxHeight: Dp,
     firstPageText: String,
-    lightSplash: Boolean
+    lightSplash: Boolean,
+    reservedBottomDp: Float = 0f
 ): StartTargets {
     val density = LocalDensity.current
     val direction = LocalLayoutDirection.current
@@ -85,7 +88,7 @@ internal fun rememberStartTargets(
             bottom = safe.getBottom(this).toDp().value
         )
     }
-    return remember(maxWidth, maxHeight, insets, density.fontScale, firstPageText, lightSplash) {
-        StartLayout.targets(maxWidth.value, maxHeight.value, insets, density.fontScale, firstPageText, lightSplash)
+    return remember(maxWidth, maxHeight, insets, density.fontScale, firstPageText, lightSplash, reservedBottomDp) {
+        StartLayout.targets(maxWidth.value, maxHeight.value, insets, density.fontScale, firstPageText, lightSplash, reservedBottomDp)
     }
 }

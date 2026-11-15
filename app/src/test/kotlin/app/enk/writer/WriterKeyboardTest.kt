@@ -383,4 +383,33 @@ class WriterKeyboardTest {
         }
         assertEquals("", viewModel.state.value.currentPage.text)
     }
+
+    @Test
+    fun enkKeyboardIsInTheLayoutWhileTheStartAnimationRuns(): Unit = runBlocking {
+        val note = repo.createNote(dividerId = null)
+        val viewModel = WriterViewModel(note.id, repo, settingsStore, testScope)
+
+        composeTestRule.setContent {
+            WriterScreen(
+                viewModel = viewModel,
+                settings = Settings(keyboard = KeyboardMode.Enk),
+                player = dummyPlayer,
+                haptics = dummyHaptics,
+                onOpenBox = {},
+                intro = WriterIntro(
+                    paperOffsetDp = { 0f },
+                    textAlpha = { 1f },
+                    topBarAlpha = { 1f },
+                    ownPartsAlpha = { 1f }
+                ),
+                keyboardLayout = layout
+            )
+        }
+        composeTestRule.waitForIdle()
+
+        // The keyboard must not appear when the animation ends (the paper would resize and the rail jump),
+        // so it is there from the first frame; the system field stays out.
+        composeTestRule.onNodeWithTag("enk_keyboard").assertExists()
+        composeTestRule.onNodeWithTag("writer_input").assertDoesNotExist()
+    }
 }

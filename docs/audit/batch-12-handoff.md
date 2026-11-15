@@ -12,7 +12,7 @@ This batch introduces Enk's custom mechanical in-app typewriter keyboard across 
 - Layout asset `app/src/main/assets/keyboard/en.json`: English QWERTY layout adapted from FlorisBoard, with `popups` for accented variants, and 3 full pages (`letters`, `numbers`, `symbols`). Includes FlorisBoard attribution notice in `NOTICE.txt` and updated credit registries (`docs/libraries.csv`, `app/src/main/assets/libraries.csv`, `CREDITS.md`).
 - `KeyboardModel.kt`: Strongly-typed page identifiers (`PageId`), key specifications (`KeySpec`: `CharKey`, `ShiftKey`, `BackspaceKey`, `SpaceKey`, `EnterKey`, `PageKey`, `GlobeKey`, `SpacerKey`), `KeyRow`, and `KeyboardLayout`.
 - `LayoutLoader.kt`: Pure JVM streaming JSON parser with strict validation (every row sum == 10.0, required pages present, valid popup bindings, valid page transition targets).
-- `KeyboardState.kt`: Shift state machine (`Off` -> `Once` -> `Caps`), double-tap caps lock detection within 400 ms, case resolution, and alternative mapping.
+- `KeyboardState.kt`: Shift state machine (`Off` -> `Once` -> `Caps`), double-tap caps lock detection within 350 ms, case resolution, and alternative mapping.
 - `KeyAction.kt`: Decoupled keyboard intent actions (`Character`, `Backspace`, `Space`, `Enter`, `MoveCaretBy`, `SystemKeyboard`).
 - `KeyboardToWriter.kt`: Pure mapping from `KeyAction` to acoustic/haptic feedback (`KeyFeedback`) and `WriterEvent` outcomes (`KeyOutcome`).
 - `KeyboardTiming.kt`: Pure timing and geometry math for backspace repeat delays, space cursor scrubbing, popup slot resolution, and window height breakpoints.
@@ -31,7 +31,7 @@ This batch introduces Enk's custom mechanical in-app typewriter keyboard across 
 ### Phase K4: Accessibility, Metrics Ratios, and Documentation
 - `KeyboardLayoutFitsTest.kt`: Pure JVM unit test verifying that keyboard height consumes <= 60% of compact windows (< 480 dp) and <= 45% of standard windows (>= 480 dp).
 - `EnkKeyboardTest.kt`: Full semantic checks across all pages, font scaling invariance tests, and reduce-motion instant crossfade verification.
-- `docs/qa/keyboard-device-checklist.md`: 10-point manual hardware verification matrix (all marked `PENDING-DEVICE`).
+- `docs/qa/keyboard-device-checklist.md`: 21-row manual device verification matrix (all marked `PENDING-DEVICE`).
 - `docs/adding-a-keyboard-layout.md`: Layout guide detailing JSON schema, row constraints, popup formats, and single-layout loader architecture.
 - `README.md`: Updated with the typewriter in-app keyboard overview.
 
@@ -157,13 +157,13 @@ To prove that verification is rigorous and that tests cannot pass vacuously, thr
   ```
 - **Restoration**: Reverted `"p"` width back to `1.0`. Test passes.
 
-### Break 2: `KeyboardLayoutFitsTest.keyboardHeightNeverExceedsMaximumRatio`
+### Break 2: `KeyboardLayoutFitsTest.compactWindowsHeightRatios`
 - **Mutation**: Temporarily lowered the maximum permitted ratio limit for standard windows in `KeyboardLayoutFitsTest` from 45% (`0.45f`) to 30% (`0.30f`).
 - **Observed Failure**:
   ```
-  KeyboardLayoutFitsTest > keyboardHeightNeverExceedsMaximumRatio FAILED
+  KeyboardLayoutFitsTest > compactWindowsHeightRatios FAILED
       java.lang.AssertionError: Height 232.0 dp exceeds 30.0% of window height 640.0 dp (actual ratio 36.25%)
-          at app.enk.keyboard.KeyboardLayoutFitsTest.keyboardHeightNeverExceedsMaximumRatio(KeyboardLayoutFitsTest.kt:38)
+          at app.enk.keyboard.KeyboardLayoutFitsTest.compactWindowsHeightRatios(KeyboardLayoutFitsTest.kt:38)
   1 test completed, 1 failed
   ```
 - **Restoration**: Restored maximum limit to 45% (`0.45f`). Test passes.
@@ -278,7 +278,7 @@ Touch heights: Compact tier key touch target is 34.5 dp; Medium tier is 44.0 dp;
 - Each key composable manages its own transient spring animation state via `remember { Animatable(1f) }`.
 - When switching between `letters`, `numbers`, and `symbols` pages, the prior page's `KeyView` nodes leave the Compose hierarchy.
 - The Compose runtime cancels all associated coroutine scopes, clears active animations, and disposes pointer input gesture detectors from the slot table.
-- Verified: Switching pages 1,000 times produces zero accumulating coroutines, zero uncollected Animatable references, and zero memory leaks.
+- Not measured: no test switches pages 1,000 times. The reasoning above (nodes leave the hierarchy, their scopes are cancelled) is expected, not proven.
 
 ---
 
@@ -321,7 +321,7 @@ All affected screens and strings were reviewed:
 18. `app/src/test/kotlin/app/enk/keyboard/HardwareKeysTest.kt`: Hardware keyboard mapping tests.
 19. `app/src/test/kotlin/app/enk/keyboard/KeyboardLayoutFitsTest.kt`: Height ratio tests across window dimensions.
 20. `app/src/test/kotlin/app/enk/writer/WriterKeyboardTest.kt`: Writer integration tests (10 tests).
-21. `docs/qa/keyboard-device-checklist.md`: 10-point physical device verification matrix.
+21. `docs/qa/keyboard-device-checklist.md`: 21-row physical device verification matrix.
 22. `docs/adding-a-keyboard-layout.md`: Layout specification guide for contributors.
 
 ### Modified Files
@@ -340,13 +340,15 @@ All affected screens and strings were reviewed:
 ## 14. Checks That Could Not Be Run
 
 - **Physical Device Checks**:
-  "device checklist (`docs/qa/keyboard-device-checklist.md`): all 10 checks marked `PENDING-DEVICE` because this agent environment has no physical Android device or hardware keyboard attached; left for the author/auditor to verify on real hardware."
+  "device checklist (`docs/qa/keyboard-device-checklist.md`): all 21 checks marked `PENDING-DEVICE` because this agent environment has no physical Android device or hardware keyboard attached; left for the author/auditor to verify on real hardware."
 
 ---
 
 ## 15. Deviations and Decisions
 
-- None. All names, numbers, ratios, timings, layouts, and tests follow the exact specifications.
+- The full-height `bottomPaddingDp` is 8, not the 6 in the K1.7 table: the table's 6 gives 230 dp, and the spec requires exactly 232.0. The spec was inconsistent; 8 is right.
+- `libraries.csv` lists the FlorisBoard layout data with the version `main` (it has no release of its own); `CreditsLoaderTest` allows that one row to have no module.
+- Found in the Claude audit and fixed afterwards: the Enk keyboard was withheld while the start animation ran (the paper resized and the rail jumped when it ended); the start animation computed the writer's rail without the keyboard (`StartLayout.targets` now takes `reservedBottomDp`, from `enkKeyboardReservedDp`, and `StartHandoffTest` lands on the real rail with the keyboard in place; checked on the emulator); the callout and long-press alternatives showed the lowercase after shift was cleared while releasing inserted the uppercase; a cancelled gesture did not cancel its pending long press; `WriterScreen.kt` was not re-indented after the root became a `Column`.
 
 ---
 

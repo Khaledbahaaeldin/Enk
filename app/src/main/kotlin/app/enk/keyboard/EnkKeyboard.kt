@@ -266,6 +266,9 @@ private fun KeyView(
 
     // Popup/callout states for CharKey
     var showCallout by remember { mutableStateOf(false) }
+    // What the key looked like when it was touched: shift is cleared on touch-down, but the callout
+    // and the alternatives must keep showing (and later inserting) the case that was typed.
+    var stateAtDownShown by remember { mutableStateOf<KeyboardState?>(null) }
     var showPopup by remember { mutableStateOf(false) }
     var popupSelectedIndex by remember { mutableStateOf<Int?>(0) }
     var keyCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -403,6 +406,7 @@ private fun KeyView(
                     when (spec) {
                         is CharKey -> {
                             val stateAtDown = currentState
+                            stateAtDownShown = stateAtDown
                             val out = outputFor(spec.label, stateAtDown)
                             onFeedback(KeyAction.Character(out))
                             onApply(KeyAction.Character(out))
@@ -480,8 +484,10 @@ private fun KeyView(
                                 }
                             }
 
+                            longPressJob?.cancel()
                             showCallout = false
                             showPopup = false
+                            stateAtDownShown = null
                             animatePressUp()
                         }
 
@@ -711,7 +717,7 @@ private fun KeyView(
 
         // Callout Bubble for CharKey
         if (spec is CharKey && showCallout && !showPopup) {
-            val out = outputFor(spec.label, state)
+            val out = outputFor(spec.label, stateAtDownShown ?: state)
             val bubbleWidthDp = with(density) { keyWidthPx.toDp() + 16.dp }
             val bubbleHeightDp = with(density) { keyHeightPx.toDp() + 22.dp }
             val bubbleWidthPx = with(density) { bubbleWidthDp.toPx() }
@@ -812,7 +818,7 @@ private fun KeyView(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = alternativeFor(alt, state),
+                                    text = alternativeFor(alt, stateAtDownShown ?: state),
                                     color = slotTextColor,
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Normal,
