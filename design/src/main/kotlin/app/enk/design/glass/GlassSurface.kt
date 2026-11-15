@@ -86,8 +86,10 @@ fun Modifier.glassSurface(
     solidColor: Color? = null,
     press: LiquidPressState? = null,
     exportedBackdrop: LayerBackdrop? = null,
+    exportedSource: GlassSource? = null,
     extraSource: GlassSource? = null
 ): Modifier {
+    val effectiveExportedBackdrop = exportedSource?.backdrop ?: exportedBackdrop
     val colors = LocalShellColors.current
     val material = LocalShellMaterial.current
     val backend = rememberGlassBackend()
@@ -300,7 +302,7 @@ fun Modifier.glassSurface(
             shadow = shadowLambda,
             innerShadow = innerShadowLambda,
             layerBlock = layerBlockLambda,
-            exportedBackdrop = exportedBackdrop,
+            exportedBackdrop = effectiveExportedBackdrop,
             onDrawSurface = onDrawSurfaceLambda,
             onDrawFront = {
                 val outline = shape.createOutline(size, layoutDirection, this)
@@ -381,7 +383,7 @@ fun Modifier.glassSurface(
                 }
             },
             layerBlock = layerBlockLambda,
-            exportedBackdrop = exportedBackdrop,
+            exportedBackdrop = effectiveExportedBackdrop,
             onDrawSurface = {
                 val outline = shape.createOutline(size, layoutDirection, this)
                 val shapePath = outline.toPath()

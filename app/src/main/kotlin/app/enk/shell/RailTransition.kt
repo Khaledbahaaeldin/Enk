@@ -169,8 +169,16 @@ class RailTransitionHost(initialP: Float) {
     var dingToken by mutableIntStateOf(0)
         private set
 
-    /** The nav bar's rectangle in window pixels, kept by the nav bar while it is on screen. */
-    var navBounds: Rect? = null
+    /** The Write button's rectangle in window pixels, kept by the button while on screen. */
+    var writeButtonBounds: Rect? = null
+
+    /** The nav bar's rectangle in window pixels, kept by the bar while it is on screen. */
+    var barBounds: Rect? = null
+
+    /** Kept for backward compatibility with transition callers. */
+    var navBounds: Rect?
+        get() = barBounds
+        set(value) { barBounds = value }
 
     /** The rail's centre line and the writer area's top, in window pixels, kept by the writer. */
     var railCenterYPx: Float? = null

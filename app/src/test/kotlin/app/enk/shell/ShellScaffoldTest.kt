@@ -162,7 +162,7 @@ class ShellScaffoldTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithTag("glass_nav_bar").assertDoesNotExist()
-        composeTestRule.onAllNodesWithText("Write").assertCountEquals(0)
+        composeTestRule.onNodeWithTag("write_button").assertDoesNotExist()
         composeTestRule.onAllNodesWithText("Box").assertCountEquals(0)
     }
 
@@ -185,10 +185,12 @@ class ShellScaffoldTest {
         }
         composeTestRule.waitForIdle()
 
-        // Under RTL layout direction, nav items mirror order: Write is on the right, Setup is on the left
-        val writeLeft = composeTestRule.onNodeWithText("Write").fetchSemanticsNode().boundsInRoot.left
-        val setupLeft = composeTestRule.onNodeWithText("Setup").fetchSemanticsNode().boundsInRoot.left
-        assertTrue("In RTL, Setup ($setupLeft) should be to the left of Write ($writeLeft)", setupLeft < writeLeft)
+        // Under RTL layout direction, nav items mirror order: Box is on the right, Setup is on the left, Write button is to the left of the bar
+        val boxLeft = composeTestRule.onNode(hasText("Box") and SemanticsMatcher.expectValue(SemanticsProperties.Role, androidx.compose.ui.semantics.Role.Tab)).fetchSemanticsNode().boundsInRoot.left
+        val setupLeft = composeTestRule.onNode(hasText("Setup") and SemanticsMatcher.expectValue(SemanticsProperties.Role, androidx.compose.ui.semantics.Role.Tab)).fetchSemanticsNode().boundsInRoot.left
+        val writeLeft = composeTestRule.onNodeWithTag("write_button").fetchSemanticsNode().boundsInRoot.left
+        assertTrue("In RTL, Setup ($setupLeft) should be to the left of Box ($boxLeft)", setupLeft < boxLeft)
+        assertTrue("In RTL, Write button ($writeLeft) should be to the left of Setup ($setupLeft)", writeLeft < setupLeft)
     }
 
     @Test
@@ -213,12 +215,16 @@ class ShellScaffoldTest {
         }
         composeTestRule.waitForIdle()
 
-        for (label in listOf("Write", "Box", "Find", "Setup")) {
+        for (label in listOf("Box", "Find", "Setup")) {
             val node = composeTestRule.onNode(hasText(label) and SemanticsMatcher.expectValue(SemanticsProperties.Role, androidx.compose.ui.semantics.Role.Tab))
             node.assertIsDisplayed()
             val bounds = node.fetchSemanticsNode().boundsInRoot
             assertTrue("Label $label must have positive size without clipping", bounds.width > 0f && bounds.height > 0f)
         }
+        val writeNode = composeTestRule.onNodeWithTag("write_button")
+        writeNode.assertIsDisplayed()
+        val writeBounds = writeNode.fetchSemanticsNode().boundsInRoot
+        assertTrue("Write button must have positive size without clipping", writeBounds.width > 0f && writeBounds.height > 0f)
     }
 
     @Test

@@ -116,7 +116,7 @@ fun ShellScaffold(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(start = 22.dp, end = 22.dp, bottom = 22.dp)
+                    .padding(bottom = 22.dp)
             )
         }
     }

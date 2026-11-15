@@ -50,6 +50,7 @@ class LiquidPressState {
     var pressProgress: Float by mutableFloatStateOf(0f)
     var offset: Offset by mutableStateOf(Offset.Zero)
     var position: Offset by mutableStateOf(Offset.Zero)
+    val isPressed: Boolean get() = pressProgress > 0f
 }
 
 @Composable
