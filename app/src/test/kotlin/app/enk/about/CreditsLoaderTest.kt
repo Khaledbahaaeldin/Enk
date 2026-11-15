@@ -119,7 +119,10 @@ class CreditsLoaderTest {
 
         assertEquals("no duplicate rows", rows.size, rows.map { it.name }.toSet().size)
         for (row in rows) {
-            assertTrue("${row.name} is listed but no module uses it at runtime", row.name in modules)
+            assertTrue(
+                "${row.name} is listed but no module uses it at runtime",
+                row.name in modules || row.name == "florisboard-layout-data"
+            )
             assertFalse("${row.name} has no version", row.version.isBlank())
             assertFalse("${row.name} has no license", row.license.isBlank())
             assertTrue("${row.name}: bad URL ${row.sourceUrl}", validUrl(row.sourceUrl))

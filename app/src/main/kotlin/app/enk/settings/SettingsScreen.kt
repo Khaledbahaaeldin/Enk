@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -113,15 +114,37 @@ fun SettingsContent(
 
                     GroupedDivider()
 
+                    val isEnkKeyboard = settings.keyboard == KeyboardMode.Enk
                     GroupedRow(
                         title = "Autocorrect",
+                        subtitle = if (isEnkKeyboard) "Only with the system keyboard." else null,
+                        modifier = if (isEnkKeyboard) Modifier.alpha(0.4f) else Modifier,
                         trailing = {
                             ShellToggle(
                                 checked = settings.autocorrect,
-                                onChange = { checked -> onSettingsChange { it.copy(autocorrect = checked) } }
+                                onChange = if (isEnkKeyboard) { {} } else { checked -> onSettingsChange { it.copy(autocorrect = checked) } }
                             )
                         }
                     )
+
+                    GroupedDivider()
+
+                    GroupedRow(
+                        title = "Keyboard",
+                        subtitle = "Enk's keyboard has no autocorrect and plays the typewriter sound itself."
+                    )
+
+                    Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp)) {
+                        ShellSegmented(
+                            items = listOf("Enk", "System"),
+                            selected = if (settings.keyboard == KeyboardMode.Enk) 0 else 1,
+                            onSelect = {
+                                onSettingsChange { s ->
+                                    s.copy(keyboard = if (it == 0) KeyboardMode.Enk else KeyboardMode.System)
+                                }
+                            }
+                        )
+                    }
                 }
             }
 
@@ -363,6 +386,7 @@ fun SettingsScreen(
                 if (updated.haptics != settings.haptics) viewModel.setHaptics(updated.haptics)
                 if (updated.reduceEffects != settings.reduceEffects) viewModel.setReduceEffects(updated.reduceEffects)
                 if (updated.darkPaper != settings.darkPaper) viewModel.setDarkPaper(updated.darkPaper)
+                if (updated.keyboard != settings.keyboard) viewModel.setKeyboard(updated.keyboard)
             },
             onExport = { exportLauncher.launch(exportFileName(LocalDate.now())) },
             onImport = { importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },

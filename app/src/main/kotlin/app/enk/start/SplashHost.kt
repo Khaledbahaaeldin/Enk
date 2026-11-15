@@ -38,13 +38,15 @@ fun SplashHost(
     shouldPlay: Boolean,
     reduceMotion: Boolean,
     modifier: Modifier = Modifier,
+    /** Space the writer leaves for the Enk keyboard, so the animation lands where the writer's rail is. */
+    reservedBottomDp: Float = 0f,
     progressMs: Float? = null,
     onFirstFrame: () -> Unit = {},
     onFinished: () -> Unit = {},
     content: @Composable (intro: WriterIntro?) -> Unit
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val targets = rememberStartTargets(maxWidth, maxHeight, firstPageText, lightSplash)
+        val targets = rememberStartTargets(maxWidth, maxHeight, firstPageText, lightSplash, reservedBottomDp)
 
         var playing by remember { mutableStateOf(shouldPlay) }
         var skipped by remember { mutableStateOf(false) }

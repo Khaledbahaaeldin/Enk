@@ -3,7 +3,25 @@ package app.enk.writer
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.platform.LocalConfiguration
+import app.enk.design.shell.glassSource
+import app.enk.design.shell.rememberGlassSource
+import app.enk.keyboard.EnkKeyboard
+import app.enk.keyboard.KeyAction
+import app.enk.keyboard.KeyboardLayout
+import app.enk.keyboard.KeyboardMetrics
+import app.enk.keyboard.KeyboardToWriter
+import app.enk.keyboard.hardwareKeyToAction
+import app.enk.settings.KeyboardMode
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -110,7 +128,8 @@ fun WriterScreen(
     soundSets: List<SoundSet> = emptyList(),
     onSettingsChange: (Settings.() -> Settings) -> Unit = {},
     /** Non-null only while the start animation runs; see [WriterIntro]. */
-    intro: WriterIntro? = null
+    intro: WriterIntro? = null,
+    keyboardLayout: KeyboardLayout? = null
 ) {
     val state by viewModel.state.collectAsState()
     val page = state.currentPage
@@ -234,14 +253,42 @@ fun WriterScreen(
     val imeBridge = remember { ImeBridge() }
     val focusRequester = remember { FocusRequester() }
 
-    // Focusing the field raises the keyboard, which resizes the writer; during the start animation
-    // that would move the rail under the overlay, so the field waits until the animation is over.
-    LaunchedEffect(intro == null) {
-        if (intro == null) focusRequester.requestFocus()
+    // Mode determination
+    var systemOverride by rememberSaveable { mutableStateOf(false) }
+    val enkWanted = if (settings.keyboard == KeyboardMode.Enk) !systemOverride else systemOverride
+    // The Enk keyboard is part of the layout from the first frame, so the paper never resizes when
+    // the start animation ends; only focus waits for the animation (see the effects below).
+    val useEnk = enkWanted && keyboardLayout != null
+    val useSystemKeyboard = !useEnk
+
+    val glassSource = rememberGlassSource()
+    val rootFocus = remember { FocusRequester() }
+    val configuration = LocalConfiguration.current
+    val keyboardMetrics = remember(configuration.screenHeightDp) {
+        KeyboardMetrics.forWindow(configuration.screenHeightDp.toFloat())
+    }
+    var columnsForKeys by remember { mutableIntStateOf(28) }
+    val bellPolicy = remember(columnsForKeys) { BellPolicy(columnsForKeys) }
+    fun ringBellAt(text: String, index: Int) {
+        val cols = columnsForKeys
+        val pos = GridLayout.caret(GridLayout.wrap(text, cols), index, cols)
+        if (bellPolicy.onCaret(pos.line, pos.col)) {
+            playSound(SoundEvent.Bell, latestSettings.bellVolume)
+        }
+    }
+
+    LaunchedEffect(useEnk) {
+        if (useEnk) keyboardController?.hide()
+    }
+    LaunchedEffect(useEnk, intro == null) {
+        if (useEnk && intro == null) rootFocus.requestFocus()
+    }
+    LaunchedEffect(useSystemKeyboard, intro == null) {
+        if (useSystemKeyboard && intro == null) focusRequester.requestFocus()
     }
 
     // Keep TextFieldValue in sync with state
-    var textFieldValue by remember {
+    var textFieldValue by remember(useEnk) {
         mutableStateOf(TextFieldValue(text = page.text, selection = TextRange(state.caret)))
     }
 
@@ -250,338 +297,472 @@ fun WriterScreen(
         textFieldValue = syncField(textFieldValue, viewModel.state.value)
     }
 
-    BoxWithConstraints(
+    Column(
         modifier = modifier
             .fillMaxSize()
             // While the start animation runs, its backdrop paints the chassis.
             .then(if (intro == null) Modifier.background(chassisBrush) else Modifier)
             .windowInsetsPadding(WindowInsets.safeDrawing)
+            .focusRequester(rootFocus)
+            .focusable()
+            .onPreviewKeyEvent { e ->
+                if (!useEnk) {
+                    false
+                } else {
+                    val st = viewModel.state.value
+                    val a = hardwareKeyToAction(e, st.caret, columnsForKeys)
+                    if (a != null) {
+                        val fb = KeyboardToWriter.feedbackFor(a, st)
+                        fb.sound?.let { playSound(it) }
+                        if (fb.pulseMs > 0) pulse(fb.pulseMs)
+
+                        if (a == KeyAction.SystemKeyboard) {
+                            systemOverride = !systemOverride
+                        } else {
+                            val out = KeyboardToWriter.outcomeFor(a, st)
+                            out.event?.let { viewModel.dispatch(it) }
+                            lastKeyMs = System.currentTimeMillis()
+                            if (out.strikes) {
+                                slugChar = out.slugChar
+                                strikeKey++
+                            }
+                            val live = viewModel.state.value
+                            ringBellAt(live.currentPage.text, live.caret)
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
     ) {
-        val density = LocalDensity.current
-        val screenWidthDp = maxWidth.value
-        val screenHeightDp = maxHeight.value
-        val fontScale = density.fontScale.coerceIn(0.85f, 1.3f)
-        val geometry = remember(screenWidthDp, screenHeightDp, fontScale) {
-            WriterGeometry.compute(screenWidthDp, screenHeightDp, fontScale)
-        }
-        val railY = geometry.railYDp
-
-        val lines = remember(page.text, geometry.cols) { GridLayout.wrap(page.text, geometry.cols) }
-        val caretPos = remember(lines, state.caret, geometry.cols) { GridLayout.caret(lines, state.caret, geometry.cols) }
-        val restingCarriageX = geometry.carriageCenterXDp(caretPos.col)
-        val currentCarriageX = dragCarriageXDp ?: restingCarriageX
-        val bellPolicy = remember(geometry.cols) { BellPolicy(geometry.cols) }
-        fun ringBellAt(text: String, index: Int) {
-            val pos = GridLayout.caret(GridLayout.wrap(text, geometry.cols), index, geometry.cols)
-            if (bellPolicy.onCaret(pos.line, pos.col)) {
-                playSound(SoundEvent.Bell, latestSettings.bellVolume)
-            }
-        }
-
-        val toggleLamp: () -> Unit = {
-            viewModel.dispatch(WriterEvent.ToggleLamp)
-            playSound(SoundEvent.LampClick)
-            pulse(14)
-            hintPolicy = hintPolicy.onLongPress()
-            if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                onSettingsChange { s -> s.copy(hintDismissed = true) }
-            }
-        }
-
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .markerGestures(
-                    geometry = geometry,
-                    pageLength = { state.currentPage.text.length },
-                    onEvent = { event ->
-                        viewModel.dispatch(event)
-                        if (event is WriterEvent.MoveCaret) ringBellAt(page.text, event.index)
-                    },
-                    onDragState = { motion, xDp ->
-                        carriageMotion = motion
-                        dragCarriageXDp = if (motion == CarriageMotion.Dragging) xDp else null
-                        if (motion == CarriageMotion.Dragging) {
-                            hintPolicy = hintPolicy.onScrub()
-                            if (hintPolicy.isDismissed && !settings.hintDismissed) {
-                                onSettingsChange { s -> s.copy(hintDismissed = true) }
-                            }
-                        }
-                    },
-                    onLongPress = toggleLamp,
-                    currentCarriageXDp = { dragCarriageXDp ?: geometry.carriageCenterXDp(caretPos.col) }
-                )
+                .weight(1f)
+                .fillMaxWidth()
+                .glassSource(glassSource)
         ) {
-            // PaperSheet with PaperText and Caret
-            PaperSheet(
-                nightProgress = nightProgress,
-                reduceEffects = reduceMotion,
-                drawChassis = false,
-                paperTopDp = geometry.paperTopDp,
-                fadeHeightDp = if (WriterGeometry.isCompact(screenHeightDp)) 8f else 70f,
-                modifier = Modifier.fillMaxSize().introPaper(intro)
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxSize()
             ) {
+                val density = LocalDensity.current
+                val screenWidthDp = maxWidth.value
+                val screenHeightDp = maxHeight.value
+                val fontScale = density.fontScale.coerceIn(0.85f, 1.3f)
+                val geometry = remember(screenWidthDp, screenHeightDp, fontScale) {
+                    WriterGeometry.compute(screenWidthDp, screenHeightDp, fontScale)
+                }
+                SideEffect { columnsForKeys = geometry.cols }
+                val railY = geometry.railYDp
+
+                val lines = remember(page.text, geometry.cols) { GridLayout.wrap(page.text, geometry.cols) }
+                val caretPos = remember(lines, state.caret, geometry.cols) { GridLayout.caret(lines, state.caret, geometry.cols) }
+                val restingCarriageX = geometry.carriageCenterXDp(caretPos.col)
+                val currentCarriageX = dragCarriageXDp ?: restingCarriageX
+
+                val toggleLamp: () -> Unit = {
+                    viewModel.dispatch(WriterEvent.ToggleLamp)
+                    playSound(SoundEvent.LampClick)
+                    pulse(14)
+                    hintPolicy = hintPolicy.onLongPress()
+                    if (hintPolicy.isDismissed && !settings.hintDismissed) {
+                        onSettingsChange { s -> s.copy(hintDismissed = true) }
+                    }
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(geometry, page.text) {
-                            detectTapGestures { offset ->
-                                focusRequester.requestFocus()
-                                keyboardController?.show()
-                                val tapXDp = offset.x.toDp().value + WriterGeometry.PAPER_SIDE_DP
-                                val tapYDp = offset.y.toDp().value + geometry.paperTopDp
-                                val paperLines = GridLayout.wrap(page.text, geometry.cols)
-                                val gridLines = paperLines.map { span ->
-                                    val t = if (span.start <= page.text.length) {
-                                        page.text.substring(span.start, minOf(span.end, page.text.length))
-                                    } else ""
-                                    GridLine(span.start, span.end, t)
+                        .markerGestures(
+                            geometry = geometry,
+                            pageLength = { state.currentPage.text.length },
+                            onEvent = { event ->
+                                viewModel.dispatch(event)
+                                if (event is WriterEvent.MoveCaret) ringBellAt(page.text, event.index)
+                            },
+                            onDragState = { motion, xDp ->
+                                carriageMotion = motion
+                                dragCarriageXDp = if (motion == CarriageMotion.Dragging) xDp else null
+                                if (motion == CarriageMotion.Dragging) {
+                                    hintPolicy = hintPolicy.onScrub()
+                                    if (hintPolicy.isDismissed && !settings.hintDismissed) {
+                                        onSettingsChange { s -> s.copy(hintDismissed = true) }
+                                    }
                                 }
-                                val targetIndex = TapCaretPolicy.indexAtTap(
-                                    xDp = tapXDp,
-                                    yDp = tapYDp,
-                                    geometry = geometry,
-                                    lines = gridLines,
-                                    feedOffsetDp = geometry.textTopOffsetDp(caretPos.line),
-                                    paperTopDp = geometry.paperTopDp
-                                )
-                                viewModel.dispatch(WriterEvent.MoveCaret(targetIndex))
-                                ringBellAt(page.text, targetIndex)
-                            }
-                        }
+                            },
+                            onLongPress = toggleLamp,
+                            currentCarriageXDp = { dragCarriageXDp ?: geometry.carriageCenterXDp(caretPos.col) }
+                        )
                 ) {
-                    PaperText(
-                        page = page,
-                        caret = state.caret,
-                        lastTypedIndex = state.lastTypedIndex,
-                        geometry = geometry,
-                        textColor = textColor(nightProgress, lampRgb),
-                        reduceMotion = reduceMotion,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .introAlpha(intro?.textAlpha)
-                            .lampTextMask(
-                                carriageXDp = currentCarriageX,
-                                railYDp = railY,
-                                paperTopDp = geometry.paperTopDp,
-                                settings = lampSettings,
-                                active = state.lampOn
+                    // PaperSheet with PaperText and Caret
+                    PaperSheet(
+                        nightProgress = nightProgress,
+                        reduceEffects = reduceMotion,
+                        drawChassis = false,
+                        paperTopDp = geometry.paperTopDp,
+                        fadeHeightDp = if (WriterGeometry.isCompact(screenHeightDp)) 8f else 70f,
+                        modifier = Modifier.fillMaxSize().introPaper(intro)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(geometry, page.text) {
+                                    detectTapGestures { offset ->
+                                        if (useSystemKeyboard) {
+                                            focusRequester.requestFocus()
+                                            keyboardController?.show()
+                                        } else {
+                                            rootFocus.requestFocus()
+                                        }
+                                        val tapXDp = offset.x.toDp().value + WriterGeometry.PAPER_SIDE_DP
+                                        val tapYDp = offset.y.toDp().value + geometry.paperTopDp
+                                        val paperLines = GridLayout.wrap(page.text, geometry.cols)
+                                        val gridLines = paperLines.map { span ->
+                                            val t = if (span.start <= page.text.length) {
+                                                page.text.substring(span.start, minOf(span.end, page.text.length))
+                                            } else ""
+                                            GridLine(span.start, span.end, t)
+                                        }
+                                        val targetIndex = TapCaretPolicy.indexAtTap(
+                                            xDp = tapXDp,
+                                            yDp = tapYDp,
+                                            geometry = geometry,
+                                            lines = gridLines,
+                                            feedOffsetDp = geometry.textTopOffsetDp(caretPos.line),
+                                            paperTopDp = geometry.paperTopDp
+                                        )
+                                        viewModel.dispatch(WriterEvent.MoveCaret(targetIndex))
+                                        ringBellAt(page.text, targetIndex)
+                                    }
+                                }
+                        ) {
+                            PaperText(
+                                page = page,
+                                caret = state.caret,
+                                lastTypedIndex = state.lastTypedIndex,
+                                geometry = geometry,
+                                textColor = textColor(nightProgress, lampRgb),
+                                reduceMotion = reduceMotion,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .introAlpha(intro?.textAlpha)
+                                    .lampTextMask(
+                                        carriageXDp = currentCarriageX,
+                                        railYDp = railY,
+                                        paperTopDp = geometry.paperTopDp,
+                                        settings = lampSettings,
+                                        active = state.lampOn
+                                    )
                             )
+                            Caret(
+                                geometry = geometry,
+                                pos = caretPos,
+                                typing = isTyping,
+                                reduceMotion = reduceMotion,
+                                modifier = Modifier.introAlpha(intro?.ownPartsAlpha)
+                            )
+                        }
+                    }
+
+                    // LampLight
+                    LampLight(
+                        carriageXDp = currentCarriageX,
+                        railYDp = railY,
+                        settings = lampSettings,
+                        visible = state.lampOn,
+                        reduceEffects = reduceMotion
                     )
-                    Caret(
-                        geometry = geometry,
-                        pos = caretPos,
-                        typing = isTyping,
-                        reduceMotion = reduceMotion,
+
+                    // Rail
+                    Rail(railYDp = railY, modifier = Modifier.introAlpha(intro?.ownPartsAlpha))
+
+                    // Carriage
+                    Carriage(
+                        railYDp = railY,
+                        centerXDp = currentCarriageX,
+                        mode = carriageMotion,
+                        slugChar = slugChar ?: (state.lastTypedIndex?.let { idx -> page.text.getOrNull(idx) }),
+                        strikeKey = strikeKey,
+                        night = state.lampOn,
+                        reduceEffects = reduceMotion,
+                        lampIntensity = settings.intensity / 100f,
+                        lamp = lampRgb,
+                        onToggleLamp = toggleLamp,
                         modifier = Modifier.introAlpha(intro?.ownPartsAlpha)
                     )
-                }
-            }
 
-            // LampLight
-            LampLight(
-                carriageXDp = currentCarriageX,
-                railYDp = railY,
-                settings = lampSettings,
-                visible = state.lampOn,
-                reduceEffects = reduceMotion
-            )
-
-            // Rail
-            Rail(railYDp = railY, modifier = Modifier.introAlpha(intro?.ownPartsAlpha))
-
-            // Carriage
-            Carriage(
-                railYDp = railY,
-                centerXDp = currentCarriageX,
-                mode = carriageMotion,
-                slugChar = slugChar ?: (state.lastTypedIndex?.let { idx -> page.text.getOrNull(idx) }),
-                strikeKey = strikeKey,
-                night = state.lampOn,
-                reduceEffects = reduceMotion,
-                lampIntensity = settings.intensity / 100f,
-                lamp = lampRgb,
-                onToggleLamp = toggleLamp,
-                modifier = Modifier.introAlpha(intro?.ownPartsAlpha)
-            )
-
-            // Top bar (DS 6.1, Finding 11)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(if (WriterGeometry.isCompact(screenHeightDp)) WriterGeometry.COMPACT_TOP_BAR_DP.dp else 60.dp)
-                    .introAlpha(intro?.topBarAlpha)
-                    .padding(horizontal = 26.dp)
-            ) {
-                // Left: dot + gap + wordmark
-                Row(
-                    modifier = Modifier.align(Alignment.CenterStart),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                    // Top bar (DS 6.1, Finding 11)
                     Box(
                         modifier = Modifier
-                            .size(10.dp)
-                            .background(EnkColors.accent, CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            .testTag("wordmark")
-                            .semantics {
-                                role = Role.Button
-                                contentDescription = "Open the Box"
-                            }
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onOpenBox
-                            ),
-                        contentAlignment = Alignment.CenterStart
+                            .fillMaxWidth()
+                            .height(if (WriterGeometry.isCompact(screenHeightDp)) WriterGeometry.COMPACT_TOP_BAR_DP.dp else 60.dp)
+                            .introAlpha(intro?.topBarAlpha)
+                            .padding(horizontal = 26.dp)
                     ) {
-                        EnkWordmark(
-                            modifier = Modifier.height(18.dp),
-                            onDark = true
+                        // Left: dot + gap + wordmark
+                        Row(
+                            modifier = Modifier.align(Alignment.CenterStart),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .background(EnkColors.accent, CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                                    .testTag("wordmark")
+                                    .semantics {
+                                        role = Role.Button
+                                        contentDescription = "Open the Box"
+                                    }
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = onOpenBox
+                                    ),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                EnkWordmark(
+                                    modifier = Modifier.height(18.dp),
+                                    onDark = true
+                                )
+                            }
+                        }
+
+                        // Right: Meta line (Finding 11) and the visible way into the Box
+                        Row(
+                            modifier = Modifier.align(Alignment.CenterEnd),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = TopBarFormatter.formatMeta(state.pageIndex, page.text.length),
+                                style = EnkType.meta.copy(fontFamily = LocalMonoFont.current)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            if (keyboardLayout != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clickable(role = Role.Button) {
+                                            systemOverride = !systemOverride
+                                        }
+                                        .semantics {
+                                            contentDescription = "Switch keyboard"
+                                        }
+                                        .testTag("keyboard_switch"),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    KeyboardSwitchGlyph(modifier = Modifier.size(24.dp))
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .testTag("box_button")
+                                    .semantics {
+                                        role = Role.Button
+                                        contentDescription = "Open the Box"
+                                    }
+                                    .clickable(onClick = onOpenBox),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                BoxGlyph(modifier = Modifier.size(26.dp))
+                            }
+                        }
+                    }
+
+                    // ControlPanel
+                    ControlPanel(
+                        visible = state.lampOn,
+                        lampColor = lampColor,
+                        settings = lampSettings,
+                        onChange = { lamp ->
+                            onSettingsChange { s ->
+                                s.copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
+                            }
+                        },
+                        onDetent = { pos ->
+                            if (!latestSettings.muted) player.playTick(pos, 1f)
+                            pulse(4)
+                        },
+                        reduceEffects = reduceMotion,
+                        modifier = Modifier.testTag("control_panel")
+                    )
+
+                    // Hint text (DS 6.9, Finding 5): hidden when paper is short (landscape keyboard, etc.)
+                    val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
+                    if (showAsk) {
+                        DarkPaperAsk(
+                            onLamp = { onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Lamp) } },
+                            onNormal = { onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Normal) } },
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(horizontal = 20.dp, vertical = 16.dp)
+                        )
+                    }
+
+                    if (!showAsk && !isShortPaper && !hintPolicy.isDismissed && !settings.hintDismissed && !state.lampOn) {
+                        Text(
+                            text = stringResource(R.string.writer_hint),
+                            style = EnkType.hint.copy(fontFamily = LocalMonoFont.current),
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .introAlpha(intro?.textAlpha)
+                                .padding(bottom = 22.dp)
+                        )
+                    }
+
+                    // IME input: transparent BasicTextField (Finding 10)
+                    if (useSystemKeyboard) {
+                        BasicTextField(
+                            value = textFieldValue,
+                            onValueChange = { newValue ->
+                                val oldText = textFieldValue.text
+                                val events = imeBridge.onTextChanged(
+                                    old = oldText,
+                                    new = newValue,
+                                    composingNow = newValue.composition != null
+                                )
+                                for (event in events) {
+                                    when (event) {
+                                        is WriterEvent.Insert -> {
+                                            // The bridge reports every typed character as its own insert, so the sound
+                                            // follows the text, never a commit.
+                                            val sound = InsertFeedback.soundFor(
+                                                text = event.text,
+                                                composing = false,
+                                                previousComposingLength = 0,
+                                                wasComposing = false
+                                            )
+
+                                            viewModel.dispatch(event)
+                                            lastKeyMs = System.currentTimeMillis()
+                                            if (InsertFeedback.strikes(sound)) {
+                                                slugChar = event.text.lastCodePointOrNull()?.takeIf { it <= 0xFFFF }?.toChar()
+                                                strikeKey++
+                                            }
+                                            if (sound != null) {
+                                                playSound(sound)
+                                                pulse(InsertFeedback.pulseMs(sound))
+                                            }
+
+                                            val live = viewModel.state.value
+                                            ringBellAt(live.currentPage.text, live.caret)
+                                        }
+                                        is WriterEvent.Backspace -> {
+                                            val before = viewModel.state.value
+                                            val canBackspace = !(before.pageIndex == 0 && before.caret == 0)
+                                            viewModel.dispatch(event)
+                                            lastKeyMs = System.currentTimeMillis()
+                                            if (canBackspace) {
+                                                playSound(SoundEvent.Backspace)
+                                                pulse(8)
+                                            }
+                                        }
+                                        is WriterEvent.MoveCaret -> {
+                                            viewModel.dispatch(event)
+                                            ringBellAt(viewModel.state.value.currentPage.text, event.index)
+                                        }
+                                        else -> viewModel.dispatch(event)
+                                    }
+                                }
+                                // Reconcile right away against the live state so a later keystroke never sees
+                                // a stale field.
+                                textFieldValue = syncField(newValue, viewModel.state.value)
+                            },
+                            modifier = Modifier
+                                .size(1.dp)
+                                .testTag("writer_input")
+                                .focusRequester(focusRequester),
+                            textStyle = TextStyle(color = Color.Transparent),
+                            cursorBrush = SolidColor(Color.Transparent),
+                            keyboardOptions = KeyboardOptions(
+                                autoCorrectEnabled = settings.autocorrect,
+                                capitalization = KeyboardCapitalization.None
+                            )
                         )
                     }
                 }
-
-                // Right: Meta line (Finding 11) and the visible way into the Box
-                Row(
-                    modifier = Modifier.align(Alignment.CenterEnd),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = TopBarFormatter.formatMeta(state.pageIndex, page.text.length),
-                        style = EnkType.meta.copy(fontFamily = LocalMonoFont.current)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .testTag("box_button")
-                            .semantics {
-                                role = Role.Button
-                                contentDescription = "Open the Box"
-                            }
-                            .clickable(onClick = onOpenBox),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        BoxGlyph(modifier = Modifier.size(26.dp))
-                    }
-                }
             }
+        }
 
-            // ControlPanel
-            ControlPanel(
-                visible = state.lampOn,
-                lampColor = lampColor,
-                settings = lampSettings,
-                onChange = { lamp ->
-                    onSettingsChange { s ->
-                        s.copy(warmth = lamp.warmth, intensity = lamp.intensity, beam = lamp.beam)
+        if (useEnk) {
+            EnkKeyboard(
+                layout = keyboardLayout,
+                metrics = keyboardMetrics,
+                onFeedback = { action ->
+                    val fb = KeyboardToWriter.feedbackFor(action, viewModel.state.value)
+                    fb.sound?.let { playSound(it) }
+                    if (fb.pulseMs > 0) pulse(fb.pulseMs)
+                },
+                onApply = { action ->
+                    if (action == KeyAction.SystemKeyboard) {
+                        systemOverride = !systemOverride
+                        return@EnkKeyboard
                     }
-                },
-                onDetent = { pos ->
-                    if (!latestSettings.muted) player.playTick(pos, 1f)
-                    pulse(4)
-                },
-                reduceEffects = reduceMotion,
-                modifier = Modifier.testTag("control_panel")
-            )
-
-            // Hint text (DS 6.9, Finding 5): hidden when paper is short (landscape keyboard, etc.)
-            val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
-            if (showAsk) {
-                DarkPaperAsk(
-                    onLamp = { onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Lamp) } },
-                    onNormal = { onSettingsChange { s -> s.copy(darkPaper = DarkPaper.Normal) } },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                )
-            }
-
-            if (!showAsk && !isShortPaper && !hintPolicy.isDismissed && !settings.hintDismissed && !state.lampOn) {
-                Text(
-                    text = stringResource(R.string.writer_hint),
-                    style = EnkType.hint.copy(fontFamily = LocalMonoFont.current),
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .introAlpha(intro?.textAlpha)
-                        .padding(bottom = 22.dp)
-                )
-            }
-
-            // IME input: transparent BasicTextField (Finding 10)
-            BasicTextField(
-                value = textFieldValue,
-                onValueChange = { newValue ->
-                    val oldText = textFieldValue.text
-                    val events = imeBridge.onTextChanged(
-                        old = oldText,
-                        new = newValue,
-                        composingNow = newValue.composition != null
-                    )
-                    for (event in events) {
-                        when (event) {
-                            is WriterEvent.Insert -> {
-                                // The bridge reports every typed character as its own insert, so the sound
-                                // follows the text, never a commit.
-                                val sound = InsertFeedback.soundFor(
-                                    text = event.text,
-                                    composing = false,
-                                    previousComposingLength = 0,
-                                    wasComposing = false
-                                )
-
-                                viewModel.dispatch(event)
-                                lastKeyMs = System.currentTimeMillis()
-                                if (InsertFeedback.strikes(sound)) {
-                                    slugChar = event.text.lastCodePointOrNull()?.takeIf { it <= 0xFFFF }?.toChar()
-                                    strikeKey++
-                                }
-                                if (sound != null) {
-                                    playSound(sound)
-                                    pulse(InsertFeedback.pulseMs(sound))
-                                }
-
-                                val live = viewModel.state.value
-                                ringBellAt(live.currentPage.text, live.caret)
-                            }
-                            is WriterEvent.Backspace -> {
-                                val before = viewModel.state.value
-                                val canBackspace = !(before.pageIndex == 0 && before.caret == 0)
-                                viewModel.dispatch(event)
-                                lastKeyMs = System.currentTimeMillis()
-                                if (canBackspace) {
-                                    playSound(SoundEvent.Backspace)
-                                    pulse(8)
-                                }
-                            }
-                            is WriterEvent.MoveCaret -> {
-                                viewModel.dispatch(event)
-                                ringBellAt(viewModel.state.value.currentPage.text, event.index)
-                            }
-                            else -> viewModel.dispatch(event)
-                        }
+                    val out = KeyboardToWriter.outcomeFor(action, viewModel.state.value)
+                    out.event?.let { viewModel.dispatch(it) }
+                    lastKeyMs = System.currentTimeMillis()
+                    if (out.strikes) {
+                        slugChar = out.slugChar
+                        strikeKey++
                     }
-                    // Reconcile right away against the live state so a later keystroke never sees
-                    // a stale field.
-                    textFieldValue = syncField(newValue, viewModel.state.value)
+                    val live = viewModel.state.value
+                    ringBellAt(live.currentPage.text, live.caret)
                 },
-                modifier = Modifier
-                    .size(1.dp)
-                    .testTag("writer_input")
-                    .focusRequester(focusRequester),
-                textStyle = TextStyle(color = Color.Transparent),
-                cursorBrush = SolidColor(Color.Transparent),
-                keyboardOptions = KeyboardOptions(
-                    autoCorrectEnabled = settings.autocorrect,
-                    capitalization = KeyboardCapitalization.None
-                )
+                onAlternative = { base, alt ->
+                    val st = viewModel.state.value
+                    val before = st.caret - base.length
+                    viewModel.dispatch(KeyboardToWriter.alternativeEvent(base, alt, before, st))
+                    val live = viewModel.state.value
+                    ringBellAt(live.currentPage.text, live.caret)
+                },
+                caretProvider = { viewModel.state.value.caret },
+                glassSource = glassSource
             )
         }
+    }
+}
+
+/** A keyboard glyph for the switch chip. */
+@Composable
+private fun KeyboardSwitchGlyph(modifier: Modifier = Modifier) {
+    val ink = LogoSpec.CREAM
+    Canvas(modifier = modifier) {
+        val w = 22.dp.toPx()
+        val h = 14.dp.toPx()
+        val strokeWidth = 1.7.dp.toPx()
+        val left = (size.width - w) / 2f
+        val top = (size.height - h) / 2f
+        val cornerRadius = CornerRadius(2.5.dp.toPx(), 2.5.dp.toPx())
+        drawRoundRect(
+            color = ink,
+            topLeft = Offset(left, top),
+            size = Size(w, h),
+            cornerRadius = cornerRadius,
+            style = Stroke(width = strokeWidth)
+        )
+        // Three small dots in a row inside
+        val dotRadius = 1.dp.toPx()
+        val dotY = top + h * 0.38f
+        val dotSpacing = w * 0.22f
+        val centerX = left + w / 2f
+        drawCircle(color = ink, radius = dotRadius, center = Offset(centerX - dotSpacing, dotY))
+        drawCircle(color = ink, radius = dotRadius, center = Offset(centerX, dotY))
+        drawCircle(color = ink, radius = dotRadius, center = Offset(centerX + dotSpacing, dotY))
+        // Short bar under them
+        val barY = top + h * 0.72f
+        val barHalfWidth = w * 0.25f
+        drawLine(
+            color = ink,
+            start = Offset(centerX - barHalfWidth, barY),
+            end = Offset(centerX + barHalfWidth, barY),
+            strokeWidth = 1.4.dp.toPx(),
+            cap = StrokeCap.Round
+        )
     }
 }
 

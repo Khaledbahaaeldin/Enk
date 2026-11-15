@@ -91,6 +91,7 @@ fun EnkNavHost(
 
                 val settings by container.settingsStore.settings.collectAsState(initial = mainViewModel.initialSettings)
                 val scope = rememberCoroutineScope()
+                val keyboardLayout = remember { runCatching { app.enk.keyboard.LayoutLoader.load(context) }.getOrNull() }
 
                 WriterScreen(
                     viewModel = writerVm,
@@ -102,7 +103,8 @@ fun EnkNavHost(
                     onOpenBox = { mainViewModel.navigate(Route.Box) },
                     onSettingsChange = { change ->
                         scope.launch { container.settingsStore.update { it.change() } }
-                    }
+                    },
+                    keyboardLayout = keyboardLayout
                 )
             } else {
                 Box(modifier = modifier.fillMaxSize())

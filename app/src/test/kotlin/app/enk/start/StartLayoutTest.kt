@@ -109,4 +109,15 @@ class StartLayoutTest {
         assertTrue(targets(light = true).lightSplash)
         assertFalse(targets(light = false).lightSplash)
     }
+
+    @Test
+    fun theSpaceReservedForTheKeyboardMovesTheRailLikeTheWritersOwnLayout() {
+        val reserved = 232f
+        val g = WriterGeometry.compute(400f, 820f - reserved, 1f)
+        val t = StartLayout.targets(400f, 820f, InsetsDp.None, 1f, "Hello", false, reserved)
+        assertEquals(g.railYDp, t.railY, 0.001f)
+        assertTrue(t.railY < targets(text = "Hello").railY)
+        // The paper still rises from below the real screen edge.
+        assertEquals(820f, t.screenHeight, 0.001f)
+    }
 }

@@ -118,6 +118,12 @@ class SettingsViewModel(
         }
     }
 
+    fun setKeyboard(m: KeyboardMode) {
+        scope.launch(ioDispatcher) {
+            store.update { it.copy(keyboard = m) }
+        }
+    }
+
     /** Saves the choice, prepares the set off the main thread and plays one key so it can be heard. */
     fun setSoundSet(id: SoundSetId) {
         scope.launch(ioDispatcher) {

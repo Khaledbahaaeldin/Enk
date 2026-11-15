@@ -111,6 +111,13 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun keyboardChangePersists() = runBlocking {
+        val vm = viewModel()
+        vm.setKeyboard(KeyboardMode.System)
+        assertEquals(KeyboardMode.System, container.settingsStore.settings.first { it.keyboard == KeyboardMode.System }.keyboard)
+    }
+
+    @Test
     fun settingChangesPersistWithoutOverwritingEachOther() = runBlocking {
         val vm = viewModel()
         vm.setCorrection(CorrectionMode.StrikeThrough)

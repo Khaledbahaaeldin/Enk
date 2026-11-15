@@ -41,6 +41,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
             prefs[Keys.BEAM] = updated.beam
             prefs[Keys.HINT_DISMISSED] = updated.hintDismissed
             prefs[Keys.DARK_PAPER] = updated.darkPaper.name
+            prefs[Keys.KEYBOARD_MODE] = updated.keyboard.name
         }
     }
 
@@ -59,6 +60,7 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val BEAM = intPreferencesKey("beam")
         val HINT_DISMISSED = booleanPreferencesKey("hint_dismissed")
         val DARK_PAPER = stringPreferencesKey("dark_paper")
+        val KEYBOARD_MODE = stringPreferencesKey("keyboard_mode")
     }
 
     companion object {
@@ -101,7 +103,8 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
                 intensity = sanitizeIntensity(prefs[Keys.INTENSITY]),
                 beam = sanitizeBeam(prefs[Keys.BEAM]),
                 hintDismissed = prefs[Keys.HINT_DISMISSED] ?: false,
-                darkPaper = safeEnumValueOf(prefs[Keys.DARK_PAPER], DarkPaper.Ask)
+                darkPaper = safeEnumValueOf(prefs[Keys.DARK_PAPER], DarkPaper.Ask),
+                keyboard = safeEnumValueOf(prefs[Keys.KEYBOARD_MODE], KeyboardMode.Enk)
             )
         }
     }

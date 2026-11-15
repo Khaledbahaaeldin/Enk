@@ -81,6 +81,10 @@ class MainActivity : ComponentActivity() {
                     lightSplash = lightSplash,
                     shouldPlay = play,
                     reduceMotion = rememberReduceMotion(settings.reduceEffects),
+                    reservedBottomDp = app.enk.keyboard.enkKeyboardReservedDp(
+                        settings.keyboard,
+                        androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.toFloat()
+                    ),
                     onFirstFrame = ::releaseSystemSplash
                 ) { intro ->
                     EnkNavHost(container = container, mainViewModel = mainViewModel, intro = intro)

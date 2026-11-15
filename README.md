@@ -2,6 +2,10 @@
 
 Enk is a private, offline typewriter notebook for Android: an authentic mechanical writing experience (rail, carriage, type-slug, stamp, night lamp with control panel) paired with a modern glass-shell interface (Box with dividers, search, Setup, trash, home-screen widget), five interface themes plus Android dynamic color, archive export/import, and multiple acoustic typewriter sound sets.
 
+### In-App Mechanical Keyboard
+
+Enk features an integrated in-app keyboard calibrated to the rhythm of a mechanical typewriter. Every key triggers tactile feedback and authentic acoustic strike samples immediately on touch-down (prior to finger release), complemented by spring animations, long-press accent callouts, space-bar cursor scrubbing, and accelerating backspace repeat. Writers who prefer third-party input methods, multilingual input, or system autocomplete can toggle between Enk's mechanical keyboard and the system IME at any time via the top-bar switch button, the globe key, or the Writing preference in Setup. Hardware keyboards are fully supported with direct typewriter acoustics and cursor navigation.
+
 ## Architecture
 
 Enk is architected into modular components:
