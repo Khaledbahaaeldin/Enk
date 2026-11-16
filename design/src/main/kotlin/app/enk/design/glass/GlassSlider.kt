@@ -30,7 +30,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
@@ -148,9 +150,8 @@ fun GlassSlider(
                     isDragging = true
                     currentOnTouchChange?.invoke(true)
 
-                    val targetPress = if (reduceEffects) 1f else 1f
-                    dampedDrag.animatePress(scope, targetPress)
-                    thumbPressState.pressProgress = targetPress
+                    dampedDrag.animatePress(scope, 1f)
+                    thumbPressState.animatePress(scope, 1f, instant = reduceEffects)
 
                     val grabOffset = if (hitThumb) touchOffsetInsideThumb else thumbPx / 2f
 
@@ -199,7 +200,7 @@ fun GlassSlider(
                             thumbInteraction.stretchX = 1f
                             thumbInteraction.stretchY = 1f
                             dampedDrag.animatePress(scope, 0f)
-                            thumbPressState.pressProgress = 0f
+                            thumbPressState.animatePress(scope, 0f, instant = reduceEffects)
                             break
                         }
 
@@ -210,11 +211,16 @@ fun GlassSlider(
                 }
             }
     ) {
-        val thumbPx = with(density) { thumbWidthPressedDp.toPx() }
-        val travelPx = maxOf(0f, trackWidthPx - thumbPx)
-        val currentFrac = fractionAnim.value
-        val thumbLeftPx = currentFrac * travelPx
-        val thumbLeftDp = with(density) { thumbLeftPx.toDp() }
+        // Positions and sizes are read in layout and draw lambdas only: dragging the thumb
+        // or springing its press never recomposes the slider.
+        fun thumbPx(): Float = with(density) { thumbWidthPressedDp.toPx() }
+        fun thumbLeftPx(): Float = fractionAnim.value * maxOf(0f, trackWidthPx - thumbPx())
+        fun thumbWidthPx(): Float = with(density) {
+            androidx.compose.ui.unit.lerp(thumbWidthRestDp, thumbWidthPressedDp, dampedDrag.press).toPx()
+        }
+        fun thumbHeightPx(): Float = with(density) {
+            androidx.compose.ui.unit.lerp(thumbHeightRestDp, thumbHeightPressedDp, dampedDrag.press).toPx()
+        }
 
         // Track (6 dp tall capsule)
         Box(
@@ -226,32 +232,29 @@ fun GlassSlider(
                 .clip(trackShape)
                 .background(material.track)
         ) {
-            val filledWidthDp = thumbLeftDp + thumbWidthPressedDp / 2
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .width(filledWidthDp)
-                    .height(trackHeightDp)
+                    .layout { measurable, constraints ->
+                        val w = (thumbLeftPx() + thumbPx() / 2f).roundToInt().coerceIn(0, constraints.maxWidth)
+                        val placeable = measurable.measure(Constraints.fixed(w, constraints.maxHeight))
+                        layout(w, constraints.maxHeight) { placeable.place(0, 0) }
+                    }
                     .background(accent)
             )
         }
 
-        val pressP = dampedDrag.press
-        val currentWidthDp = androidx.compose.ui.unit.lerp(thumbWidthRestDp, thumbWidthPressedDp, pressP)
-        val currentHeightDp = androidx.compose.ui.unit.lerp(thumbHeightRestDp, thumbHeightPressedDp, pressP)
-
-        val showNeck = LiquidControlsMath.shouldShowNeck(overshootDp, isDragging)
         val neckShapes: () -> List<LiquidShape> = {
-            val thumbCenterX = thumbLeftPx + thumbPx / 2f
+            val thumbCenterX = thumbLeftPx() + thumbPx() / 2f
             val thumbCenterY = with(density) { 24.dp.toPx() }
             val thumbShapeObj = LiquidShape(
                 cx = thumbCenterX,
                 cy = thumbCenterY,
-                halfW = with(density) { (currentWidthDp / 2f).toPx() },
-                halfH = with(density) { (currentHeightDp / 2f).toPx() },
+                halfW = thumbWidthPx() / 2f,
+                halfH = thumbHeightPx() / 2f,
                 radius = with(density) { 12.dp.toPx() }
             )
-            if (showNeck) {
+            if (LiquidControlsMath.shouldShowNeck(overshootDp, isDragging)) {
                 val pinnedCapsule = LiquidShape(
                     cx = if (fractionAnim.value <= 0f) with(density) { 3.dp.toPx() } else trackWidthPx - with(density) { 3.dp.toPx() },
                     cy = thumbCenterY,
@@ -270,15 +273,21 @@ fun GlassSlider(
             shapes = neckShapes,
             spec = LiquidSpecs.Thumb,
             source = glassSource,
-            pressed = { isDragging }
+            pressed = { isDragging },
+            modifier = Modifier.matchParentSize()
         )
 
         // Thumb
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .offset { IntOffset(thumbLeftPx.roundToInt(), 0) }
-                .size(currentWidthDp, currentHeightDp)
+                .offset { IntOffset(thumbLeftPx().roundToInt(), 0) }
+                .layout { measurable, _ ->
+                    val w = thumbWidthPx().roundToInt()
+                    val h = thumbHeightPx().roundToInt()
+                    val placeable = measurable.measure(Constraints.fixed(w, h))
+                    layout(w, h) { placeable.place(0, 0) }
+                }
                 .graphicsLayer {
                     alpha = if (neckGroupState.merging) 0f else 1f
                 }

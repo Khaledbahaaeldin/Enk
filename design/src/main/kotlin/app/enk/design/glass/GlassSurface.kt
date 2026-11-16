@@ -179,37 +179,29 @@ fun Modifier.glassSurface(
         val resolvedLiquid = if (isBalanced) LiquidSpecs.balanced(liquid) else liquid
         val tunedLiquid = LiquidSpecs.tuned(resolvedLiquid, liquidTuning)
         val isPressedSpec = liquid == LiquidSpecs.BarLens || liquid == LiquidSpecs.Thumb
-        val p = press?.pressProgress ?: 0f
+        val fillColor = LiquidSurfaceFill.color(colors.g1, tunedLiquid, liquidTuning)
+        val restLens = material.lensA
 
-        val actualBlurDp = if (press != null && isPressedSpec) {
-            8f * (1f - p) + tunedLiquid.blurDp * p
-        } else {
-            tunedLiquid.blurDp
-        }
-
-        val actualLensHeightDp = if (press != null && isPressedSpec) {
-            tunedLiquid.lensHeightDp * p
-        } else {
-            tunedLiquid.lensHeightDp
-        }
-
-        val actualLensAmountDp = if (press != null && isPressedSpec) {
-            tunedLiquid.lensAmountDp * p
-        } else {
-            tunedLiquid.lensAmountDp
-        }
+        // Every press-driven value below is read inside a Backdrop lambda (effect, highlight,
+        // shadow and surface phases), never in composition: a press animates without
+        // recomposing the caller.
+        fun pressP(): Float = if (press != null && isPressedSpec) press.pressProgress.coerceIn(0f, 1f) else 1f
 
         val effectsLambda: BackdropEffectScope.() -> Unit = {
+            val p = pressP()
+            val blurDp = if (isPressedSpec && press != null) 8f * (1f - p) + tunedLiquid.blurDp * p else tunedLiquid.blurDp
+            val lensH = tunedLiquid.lensHeightDp * p
+            val lensA = tunedLiquid.lensAmountDp * p
             if (tunedLiquid.vibrancy) {
                 vibrancy()
             }
-            if (actualBlurDp > 0f) {
-                blur(actualBlurDp.dp.toPx())
+            if (blurDp > 0f) {
+                blur(blurDp.dp.toPx())
             }
-            if (actualLensHeightDp > 0f && actualLensAmountDp > 0f) {
+            if (lensH > 0f && lensA > 0f) {
                 lens(
-                    refractionHeight = actualLensHeightDp.dp.toPx(),
-                    refractionAmount = actualLensAmountDp.dp.toPx(),
+                    refractionHeight = lensH.dp.toPx(),
+                    refractionAmount = lensA.dp.toPx(),
                     depthEffect = tunedLiquid.depth,
                     chromaticAberration = tunedLiquid.fringe
                 )
@@ -249,17 +241,14 @@ fun Modifier.glassSurface(
 
         val shadowLambda: () -> Shadow? = {
             if (tunedLiquid.shadowDp > 0f) {
-                if (isPressedSpec) {
-                    val prog = press?.pressProgress ?: 0f
+                val prog = if (isPressedSpec) (press?.pressProgress ?: 0f).coerceIn(0f, 1f) else 1f
+                if (prog > 0f) {
                     Shadow(
                         radius = (tunedLiquid.shadowDp * prog).dp,
-                        color = Color.Black.copy(alpha = 0.05f * prog)
+                        color = Color.Black.copy(alpha = tunedLiquid.shadowAlpha * prog)
                     )
                 } else {
-                    Shadow(
-                        radius = tunedLiquid.shadowDp.dp,
-                        color = Color.Black.copy(alpha = 0.05f)
-                    )
+                    null
                 }
             } else {
                 null
@@ -268,7 +257,7 @@ fun Modifier.glassSurface(
 
         val innerShadowLambda: () -> InnerShadow? = {
             if (tunedLiquid.innerShadowDp > 0f) {
-                val prog = press?.pressProgress ?: 1f
+                val prog = (press?.pressProgress ?: 1f).coerceIn(0f, 1f)
                 InnerShadow(
                     radius = (tunedLiquid.innerShadowDp * prog).dp,
                     color = material.glassEdge,
@@ -286,10 +275,12 @@ fun Modifier.glassSurface(
                 if (solidColor != null) {
                     drawRect(color = solidColor)
                 } else if (press != null && isPressedSpec) {
-                    val prog = press.pressProgress
-                    drawRect(color = Color.White.copy(alpha = 1f - prog))
+                    // At rest a thumb, bead or tab lens is a tinted pill (the theme's lens
+                    // colour, so dark themes keep light ink legible); pressed, it clears into a lens.
+                    val prog = press.pressProgress.coerceIn(0f, 1f)
+                    drawRect(color = restLens.copy(alpha = restLens.alpha * (1f - prog)))
                 } else {
-                    drawRect(color = colors.g1.copy(alpha = liquidTuning.tint.coerceIn(0f, 1f)))
+                    drawRect(color = fillColor)
                 }
             }
         }

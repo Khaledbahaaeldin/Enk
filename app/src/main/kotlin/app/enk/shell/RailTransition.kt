@@ -64,8 +64,9 @@ object RailTransitionMath {
         startW + (endW - startW) * ez(seg(p, 0.05f, 0.60f))
     fun writeHeight(p: Float, startH: Float, endH: Float = 16f): Float =
         startH + (endH - startH) * ez(seg(p, 0.05f, 0.60f))
-    fun writeTop(p: Float, startTop: Float, railY: Float): Float =
-        startTop + ((railY - 8f) - startTop) * ez(seg(p, 0.05f, 0.60f))
+    /** [halfRailPx] is half the 16 dp rail rectangle's height, in the same unit as [railY]. */
+    fun writeTop(p: Float, startTop: Float, railY: Float, halfRailPx: Float = 8f): Float =
+        startTop + ((railY - halfRailPx) - startTop) * ez(seg(p, 0.05f, 0.60f))
     fun writeRadius(p: Float, startR: Float = 31f, endR: Float = 8f): Float =
         startR + (endR - startR) * ez(seg(p, 0.05f, 0.60f))
 
@@ -309,7 +310,7 @@ fun RailMorphOverlay(host: RailTransitionHost, modifier: Modifier = Modifier) {
         val width = RailTransitionMath.writeWidth(p, writeBtn.width, size.width)
         val h = 16.dp.toPx()
         val height = RailTransitionMath.writeHeight(p, writeBtn.height, h)
-        val top = RailTransitionMath.writeTop(p, writeBtn.top, railY)
+        val top = RailTransitionMath.writeTop(p, writeBtn.top, railY, h / 2f)
         val radius = RailTransitionMath.writeRadius(p, writeBtn.width / 2f, 8.dp.toPx())
         val alpha = 1f - RailTransitionMath.steelRailAlpha(p)
         if (alpha <= 0f) return@Canvas

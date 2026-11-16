@@ -105,6 +105,20 @@ val LiquidFieldShader: String = """
         return d;
     }
 
+    float2 nearestCentre(float2 p) {
+        float best = sdRoundRect(p, shapes[0], radii[0]);
+        float2 c = shapes[0].xy;
+        for (int i = 1; i < 6; ++i) {
+            if (i >= count) break;
+            float d = sdRoundRect(p, shapes[i], radii[i]);
+            if (d < best) {
+                best = d;
+                c = shapes[i].xy;
+            }
+        }
+        return c;
+    }
+
     float2 gradField(float2 p) {
         float eps = 1.0;
         float dx = liquidField(float2(p.x + eps, p.y)) - liquidField(float2(p.x - eps, p.y));
@@ -129,7 +143,14 @@ val LiquidFieldShader: String = """
 
         if (-sd < refractionHeight && refractionHeight > 0.0) {
             float d = circleMap(1.0 - -sd / refractionHeight) * refractionAmount;
-            float2 n = normalize(grad + depthEffect * normalize(coord - shapes[0].xy));
+            float2 n = grad;
+            if (depthEffect > 0.0) {
+                float2 c = nearestCentre(coord);
+                float2 toCoord = coord - c;
+                if (length(toCoord) > 0.001) {
+                    n = normalize(grad + depthEffect * normalize(toCoord));
+                }
+            }
             refractedCoord = coord + d * n;
 
             float dispersionIntensity = chromaticAberration * 0.1;

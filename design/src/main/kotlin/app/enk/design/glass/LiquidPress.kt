@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalDensity
 import app.enk.design.effects.LocalEffects
 import app.enk.design.effects.ResolvedEffects
 import app.enk.design.shell.LocalReduceEffects
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.tanh
@@ -51,6 +52,24 @@ class LiquidPressState {
     var offset: Offset by mutableStateOf(Offset.Zero)
     var position: Offset by mutableStateOf(Offset.Zero)
     val isPressed: Boolean get() = pressProgress > 0f
+
+    private val progressAnim = Animatable(0f)
+
+    /** Springs [pressProgress] to [target] (the Catalog press spring), or snaps it when [instant]. */
+    fun animatePress(scope: CoroutineScope, target: Float, instant: Boolean = false) {
+        scope.launch {
+            if (instant) {
+                progressAnim.snapTo(target)
+                pressProgress = target
+            } else {
+                progressAnim.animateTo(target, PRESS_SPRING) { pressProgress = value }
+            }
+        }
+    }
+
+    companion object {
+        val PRESS_SPRING = spring<Float>(dampingRatio = 1f, stiffness = 1000f)
+    }
 }
 
 @Composable

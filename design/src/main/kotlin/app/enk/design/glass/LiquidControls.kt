@@ -1,6 +1,7 @@
 package app.enk.design.glass
 
 import androidx.compose.runtime.Composable
+import kotlin.math.abs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -29,10 +30,14 @@ object LiquidControlsMath {
     fun toggleBeadScale(pressProgress: Float): Float =
         1f + 0.5f * pressProgress.coerceIn(0f, 1f)
 
-    fun velocityStretch(velocity: Float): Pair<Float, Float> {
-        val v = (velocity / 10f).coerceIn(-0.2f, 0.2f)
-        val clampX = (v * 0.75f).coerceIn(-0.2f, 0.2f)
-        val clampY = (v * 0.25f).coerceIn(-0.2f, 0.2f)
+    /** Drag speed (dp/s) that counts as 1 in the Catalog stretch; the stretch tops out near 1000 dp/s. */
+    const val STRETCH_VELOCITY_DP_S = 4000f
+
+    /** Catalog velocity stretch: width grows and height shrinks with drag speed (either direction). */
+    fun velocityStretch(velocityDpS: Float): Pair<Float, Float> {
+        val v = abs(velocityDpS) / STRETCH_VELOCITY_DP_S
+        val clampX = (v * 0.75f).coerceIn(0f, 0.2f)
+        val clampY = (v * 0.25f).coerceIn(0f, 0.2f)
         val sx = 1f / (1f - clampX)
         val sy = 1f - clampY
         return Pair(sx, sy)

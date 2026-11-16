@@ -1,5 +1,16 @@
 package app.enk.settings
 
+import app.enk.design.shell.LocalReduceEffects
+import app.enk.design.motion.ShellMotion
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
@@ -107,13 +118,13 @@ fun SettingsContent(
                     onModeSelect = { mode -> onSettingsChange { it.copy(themeMode = mode) } },
                     darkPaper = settings.darkPaper,
                     onDarkPaperSelect = { paper -> onSettingsChange { it.copy(darkPaper = paper) } },
-                    modifier = Modifier.testTag("group_appearance")
+                    modifier = Modifier.testTag("group_appearance").settingsEntrance(0)
                 )
             }
 
             // 2. Writing Group
             item(key = "group_writing") {
-                GroupedSection(title = "Writing", footer = WRITING_FOOTER) {
+                GroupedSection(title = "Writing", footer = WRITING_FOOTER, modifier = Modifier.settingsEntrance(1)) {
                     Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         val corrItems = listOf("Clean erase", "Strike-through")
                         val corrIndex = if (settings.correction == CorrectionMode.CleanErase) 0 else 1
@@ -130,10 +141,15 @@ fun SettingsContent(
                     GroupedDivider()
 
                     val isEnkKeyboard = settings.keyboard == KeyboardMode.Enk
+                    val autocorrectAlpha = animateFloatAsState(
+                        targetValue = if (isEnkKeyboard) 0.4f else 1f,
+                        animationSpec = tween(160),
+                        label = "autocorrect_alpha"
+                    )
                     GroupedRow(
                         title = "Autocorrect",
                         subtitle = if (isEnkKeyboard) "Only with the system keyboard." else null,
-                        modifier = if (isEnkKeyboard) Modifier.alpha(0.4f) else Modifier,
+                        modifier = Modifier.graphicsLayer { alpha = autocorrectAlpha.value },
                         trailing = {
                             ShellToggle(
                                 checked = settings.autocorrect,
@@ -166,7 +182,7 @@ fun SettingsContent(
             // 3. Sound Group
             item(key = "group_sound") {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    GroupedSection(title = "Sound") {
+                    GroupedSection(title = "Sound", modifier = Modifier.settingsEntrance(2)) {
                         val soundSets = SoundSetId.entries
                         soundSets.forEachIndexed { index, set ->
                             val isSelected = settings.soundSet == set
@@ -263,7 +279,7 @@ fun SettingsContent(
                 val effectiveLook = resolveGlassLook(settings.glassLook, Build.VERSION.SDK_INT)
                 var advancedExpanded by remember { mutableStateOf(false) }
 
-                GroupedSection(title = "Display", footer = DISPLAY_FOOTER) {
+                GroupedSection(title = "Display", footer = DISPLAY_FOOTER, modifier = Modifier.settingsEntrance(3)) {
                     GroupedRow(
                         title = "Glass",
                         subtitle = "Choose how glass reflects and refracts."
@@ -306,6 +322,11 @@ fun SettingsContent(
 
                     GroupedDivider()
 
+                    val chevron = animateFloatAsState(
+                        targetValue = if (advancedExpanded) 90f else 0f,
+                        animationSpec = ShellMotion.default.toSpec(),
+                        label = "advanced_chevron"
+                    )
                     GroupedRow(
                         title = "Advanced",
                         onClick = { advancedExpanded = !advancedExpanded },
@@ -314,16 +335,28 @@ fun SettingsContent(
                                 text = "›",
                                 color = colors.t2,
                                 fontSize = 18.sp,
-                                modifier = Modifier.graphicsLayer { rotationZ = if (advancedExpanded) 90f else 0f }
+                                modifier = Modifier.graphicsLayer { rotationZ = chevron.value }
                             )
                         }
                     )
 
-                    if (advancedExpanded) {
+                    AnimatedVisibility(
+                        visible = advancedExpanded,
+                        enter = fadeIn(ShellMotion.default.toSpec()),
+                        exit = fadeOut(tween(90))
+                    ) {
                         Column(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            if (effectiveLook == GlassLook.Liquid) {
+                            AnimatedContent(
+                                targetState = effectiveLook,
+                                transitionSpec = {
+                                    fadeIn(tween(140, delayMillis = 60)) togetherWith fadeOut(tween(90))
+                                },
+                                label = "advanced_look"
+                            ) { look ->
+                            Column {
+                            if (look == GlassLook.Liquid) {
                                 // Liquid sliders: Refraction, Lens depth, Colour fringe, Frost, Tint, Edge light
                                 val refPct = ((settings.liquidTuning.refraction - 0f) / 2f * 100).roundToInt().coerceIn(0, 100)
                                 AdvancedSliderRow(
@@ -425,6 +458,8 @@ fun SettingsContent(
                                     }
                                 )
                             }
+                            }
+                            }
 
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
@@ -448,7 +483,7 @@ fun SettingsContent(
 
             // 5. Data Group
             item(key = "group_data") {
-                GroupedSection(title = "Data") {
+                GroupedSection(title = "Data", modifier = Modifier.settingsEntrance(4)) {
                     GroupedRow(
                         title = "Export all notes",
                         trailing = {
@@ -490,6 +525,7 @@ fun SettingsContent(
             // 6. About Group
             item(key = "group_about") {
                 GroupedSection(
+                    modifier = Modifier.settingsEntrance(5),
                     title = "About",
                     footer = "Free and open source · Apache-2.0\nNo network, no tracking."
                 ) {
@@ -636,5 +672,31 @@ private fun AdvancedSliderRow(
             accent = EnkColors.accent,
             label = label
         )
+    }
+}
+
+/** Session flag: Setup's groups rise in once per app session, not on every tab revisit. */
+private object SettingsEntrance {
+    var played = false
+}
+
+@Composable
+private fun Modifier.settingsEntrance(index: Int): Modifier {
+    val skip = SettingsEntrance.played || LocalReduceEffects.current
+    val progress = remember { Animatable(if (skip) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        if (!skip) {
+            delay(index * 25L)
+            progress.animateTo(1f, ShellMotion.default.toSpec())
+        }
+    }
+    LaunchedEffect(Unit) {
+        delay(900)
+        SettingsEntrance.played = true
+    }
+    val rise = with(LocalDensity.current) { 8.dp.toPx() }
+    return this.graphicsLayer {
+        alpha = progress.value
+        translationY = rise * (1f - progress.value)
     }
 }

@@ -1,5 +1,11 @@
 package app.enk.design.glass
 
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.geometry.Size
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.LinearEasing
@@ -126,6 +132,7 @@ fun GlassMorph(
     val effects = LocalEffects.current
     val reduceEffects = LocalReduceEffects.current
     val colors = LocalShellColors.current
+    val densityPx = LocalDensity.current.density
 
     LaunchedEffect(expanded, effects, reduceEffects) {
         val targetVal = if (expanded) 1f else 0f
@@ -159,6 +166,7 @@ fun GlassMorph(
             LiquidGroup(
                 state = liquidGroupState,
                 shapes = {
+                    // Pixels, in this overlay's space (the melt shader works in pixels).
                     val p = anim.value
                     val frame = morphFrame(
                         p = p,
@@ -169,27 +177,33 @@ fun GlassMorph(
                         target = target,
                         itemCount = itemCount
                     )
-                    val s1 = LiquidShape(
-                        cx = anchor.left.value + anchor.width.value / 2f,
-                        cy = anchor.top.value + anchor.height.value / 2f,
-                        halfW = anchor.width.value / 2f,
-                        halfH = anchor.height.value / 2f,
-                        radius = collapsedRadius.value
-                    )
                     val morphLeft = anchor.left.value + frame.offsetXDp
                     val morphTop = anchor.top.value + frame.offsetYDp
-                    val s2 = LiquidShape(
-                        cx = morphLeft + frame.widthDp / 2f,
-                        cy = morphTop + frame.heightDp / 2f,
-                        halfW = frame.widthDp / 2f,
-                        halfH = frame.heightDp / 2f,
-                        radius = frame.radiusDp
+                    val panel = LiquidShape(
+                        cx = (morphLeft + frame.widthDp / 2f) * densityPx,
+                        cy = (morphTop + frame.heightDp / 2f) * densityPx,
+                        halfW = frame.widthDp / 2f * densityPx,
+                        halfH = frame.heightDp / 2f * densityPx,
+                        radius = frame.radiusDp * densityPx
                     )
-                    listOf(s1, s2)
+                    if (!anim.isRunning || collapsedAlpha <= 0f) {
+                        listOf(panel)
+                    } else {
+                        // The bud's root: the opener's glass, shrinking as the panel pulls free.
+                        val root = (1f - p).coerceIn(0f, 1f)
+                        val opener = LiquidShape(
+                            cx = (anchor.left.value + anchor.width.value / 2f) * densityPx,
+                            cy = (anchor.top.value + anchor.height.value / 2f) * densityPx,
+                            halfW = anchor.width.value / 2f * densityPx * root,
+                            halfH = anchor.height.value / 2f * densityPx * root,
+                            radius = collapsedRadius.value * densityPx * root
+                        )
+                        listOf(opener, panel)
+                    }
                 },
                 spec = LiquidSpecs.Panel,
                 source = source,
-                pressed = { anim.value < 1f }
+                pressed = { anim.isRunning }
             )
 
             if (collapsedAlpha > 0f) {
@@ -199,7 +213,7 @@ fun GlassMorph(
                         .size(width = anchor.width, height = anchor.height)
                         .graphicsLayer {
                             val p = anim.value
-                            alpha = (1f - p * 3f).coerceIn(0f, 1f)
+                            alpha = if (liquidGroupState.merging) 0f else (1f - p * 3f).coerceIn(0f, 1f)
                         }
                         .glassSurface(
                             spec = GlassSpecs.Floating,
@@ -210,7 +224,50 @@ fun GlassMorph(
                 )
             }
 
-            val shape = RoundedCornerShape(expandedRadius)
+            // The corner radius runs from the opener's to the panel's on the same progress as the
+            // size, so the glass, the clip and the melt all share one shape.
+            fun liveRadiusPx(): Float {
+                val t = anim.value.coerceIn(0f, 1f)
+                return (collapsedRadius.value + (expandedRadius.value - collapsedRadius.value) * t) * densityPx
+            }
+            val shape = RoundedCornerShape(
+                object : CornerSize {
+                    override fun toPx(shapeSize: Size, density: Density): Float =
+                        minOf(liveRadiusPx(), shapeSize.minDimension / 2f)
+                }
+            )
+            // The glass, in its own layer so it can hand over to the melt shader without
+            // hiding the menu's labels.
+            Box(
+                modifier = Modifier
+                    .layout { measurable, _ ->
+                        val p = anim.value
+                        val frame = morphFrame(
+                            p = p,
+                            collapsed = DpSize(anchor.width, anchor.height),
+                            expanded = expandedSize,
+                            collapsedRadiusDp = collapsedRadius.value,
+                            expandedRadiusDp = expandedRadius.value,
+                            target = target,
+                            itemCount = itemCount
+                        )
+                        val wPx = (frame.widthDp * density).roundToInt()
+                        val hPx = (frame.heightDp * density).roundToInt()
+                        val placeable = measurable.measure(Constraints.fixed(wPx, hPx))
+                        val xPx = ((anchor.left.value + frame.offsetXDp) * density).roundToInt()
+                        val yPx = ((anchor.top.value + frame.offsetYDp) * density).roundToInt()
+                        layout(wPx, hPx) {
+                            placeable.place(xPx, yPx)
+                        }
+                    }
+                    .graphicsLayer { alpha = if (liquidGroupState.merging) 0f else 1f }
+                    .glassSurface(
+                        spec = GlassSpecs.Floating,
+                        liquid = LiquidSpecs.Panel,
+                        shape = shape,
+                        source = source
+                    )
+            )
             Box(
                 modifier = Modifier
                     .layout { measurable, _ ->
@@ -234,13 +291,10 @@ fun GlassMorph(
                         }
                     }
                     .testTag("glass_morph_surface")
-                    .glassSurface(
-                        spec = GlassSpecs.Floating,
-                        liquid = LiquidSpecs.Panel,
-                        shape = shape,
-                        source = source
-                    )
-                    .clip(shape)
+                    .graphicsLayer {
+                        clip = true
+                        this.shape = RoundedCornerShape(minOf(liveRadiusPx(), minOf(size.width, size.height) / 2f))
+                    }
             ) {
                 Box(
                     modifier = Modifier
@@ -255,7 +309,8 @@ fun GlassMorph(
 
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .wrapContentSize(Alignment.TopStart, unbounded = true)
+                        .requiredSize(expandedSize.width, expandedSize.height)
                         .graphicsLayer {
                             val p = anim.value
                             alpha = ((p - 0.2f) * 2f).coerceIn(0f, 1f)

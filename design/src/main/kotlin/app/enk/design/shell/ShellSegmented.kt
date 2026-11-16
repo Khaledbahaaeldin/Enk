@@ -1,5 +1,7 @@
 package app.enk.design.shell
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -98,26 +100,30 @@ fun ShellSegmented(
 
     var controlWidthPx by remember { mutableIntStateOf(0) }
     var isDragging by remember { mutableStateOf(false) }
-    var dragXPx by remember { mutableStateOf(0f) }
+    var dragXPx by remember { mutableFloatStateOf(0f) }
     var lensVelocityPx by remember { mutableFloatStateOf(0f) }
 
     val itemCount = maxOf(1, items.size)
     val itemWidthPx = if (controlWidthPx > 0) controlWidthPx.toFloat() / itemCount else 0f
+    val restXPx = selected.coerceIn(0, maxOf(0, items.size - 1)) * itemWidthPx
 
-    val targetXPx = if (isDragging) {
-        dragXPx - itemWidthPx / 2f
-    } else {
-        selected.coerceIn(0, items.size - 1) * itemWidthPx
+    // The lens position lives in an Animatable read only in layout and draw lambdas, so a drag
+    // or a spring never recomposes the control.
+    val lensX = remember { Animatable(restXPx) }
+    // The lens stays inside the control while dragged.
+    fun clampLensX(x: Float): Float = x.coerceIn(0f, maxOf(0f, controlWidthPx - itemWidthPx))
+    LaunchedEffect(restXPx) {
+        if (!isDragging) {
+            if (reduceEffects || controlWidthPx == 0) {
+                lensX.snapTo(restXPx)
+            } else {
+                lensX.animateTo(
+                    restXPx,
+                    spring(dampingRatio = ShellMotion.default.damping, stiffness = ShellMotion.default.stiffness)
+                )
+            }
+        }
     }
-
-    val animatedXPx by animateFloatAsState(
-        targetValue = targetXPx,
-        animationSpec = spring(
-            dampingRatio = ShellMotion.default.damping,
-            stiffness = ShellMotion.default.stiffness
-        ),
-        label = "segmented_lens_x"
-    )
 
     val trackShape = RoundedCornerShape(18.dp)
     val lensShape = RoundedCornerShape(16.dp)
@@ -128,8 +134,6 @@ fun ShellSegmented(
     val bodyBackdrop = rememberLayerBackdrop()
     val meltGroupState = rememberLiquidGroupState()
 
-    val isMoving = isDragging || abs(animatedXPx - targetXPx) > 0.5f || abs(lensVelocityPx) > 5f
-
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -137,7 +141,8 @@ fun ShellSegmented(
             .testTag("shell_segmented"),
         contentAlignment = Alignment.Center
     ) {
-        // Control track (36 dp) with SegmentedBody
+        // Control body (36 dp). It records the body backdrop the lens samples, so the lens is
+        // drawn in a sibling layer above it, never as its child (that would recurse).
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -156,14 +161,17 @@ fun ShellSegmented(
                         val centers = List(items.size) { i -> (i + 0.5f) * itemWidthPx }
                         isDragging = true
                         dragXPx = down.position.x
-                        lensPressState.pressProgress = 1f
+                        lensPressState.animatePress(scope, 1f, instant = reduceEffects)
+                        scope.launch { lensX.snapTo(clampLensX(dragXPx - itemWidthPx / 2f)) }
 
                         var lastX = down.position.x
                         var lastTime = System.currentTimeMillis()
 
                         val targetPress = if (reduceEffects) 1f else GlassLensMath.SEGMENTED_PRESS
                         scope.launch {
-                            pressScaleAnim.animateTo(targetPress, ShellMotion.press.toSpec())
+                            pressScaleAnim.animateTo(targetPress, ShellMotion.press.toSpec()) {
+                                lensInteraction.pressScale = value
+                            }
                         }
 
                         while (true) {
@@ -184,45 +192,65 @@ fun ShellSegmented(
                             lensInteraction.specularAngleDeg = GlassLensMath.specularAngleDeg(
                                 centreX = itemWidthPx / 2f,
                                 centreY = hPx / 2f,
-                                touchX = change.position.x - animatedXPx,
+                                touchX = change.position.x - lensX.value,
                                 touchY = change.position.y
                             )
 
                             if (!change.pressed) {
                                 isDragging = false
-                                lensPressState.pressProgress = 0f
+                                lensPressState.animatePress(scope, 0f, instant = reduceEffects)
                                 lensVelocityPx = 0f
                                 lensInteraction.stretchX = 1f
                                 lensInteraction.stretchY = 1f
                                 lensInteraction.specularAngleDeg = null
                                 scope.launch {
-                                    pressScaleAnim.animateTo(1f, ShellMotion.release.toSpec())
+                                    pressScaleAnim.animateTo(1f, ShellMotion.release.toSpec()) {
+                                        lensInteraction.pressScale = value
+                                    }
                                 }
                                 val nearest = ShellSegmentedMath.nearestItem(dragXPx, centers)
+                                val target = (if (currentEnabled(nearest)) nearest else selected) * itemWidthPx
+                                scope.launch {
+                                    if (reduceEffects) {
+                                        lensX.snapTo(target)
+                                    } else {
+                                        lensX.animateTo(
+                                            target,
+                                            spring(dampingRatio = ShellMotion.default.damping, stiffness = ShellMotion.default.stiffness)
+                                        )
+                                    }
+                                }
                                 if (currentEnabled(nearest)) {
                                     currentOnSelect(nearest)
                                 }
                                 break
                             }
                             dragXPx = change.position.x
+                            scope.launch { lensX.snapTo(clampLensX(dragXPx - itemWidthPx / 2f)) }
                         }
                     }
                 }
-        ) {
-            lensInteraction.pressScale = pressScaleAnim.value
+        )
 
+        // Lens and labels layer, same bounds as the body, drawn above it.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(ShellSegmentedMath.controlHeightDp.dp)
+        ) {
             val movingShapes: () -> List<LiquidShape> = {
                 val hPx = with(density) { (ShellSegmentedMath.controlHeightDp - 4f).dp.toPx() }
                 val halfW = itemWidthPx / 2f
                 val halfH = hPx / 2f
-                val cx = animatedXPx + halfW
+                val cx = lensX.value + halfW
                 val cy = with(density) { (ShellSegmentedMath.controlHeightDp / 2f).dp.toPx() }
                 val mainShape = LiquidShape(cx, cy, halfW, halfH, with(density) { 16.dp.toPx() })
 
+                val isMoving = isDragging || lensX.isRunning || abs(lensVelocityPx) > 5f
                 if (isMoving) {
                     val trailOffset = LiquidControlsMath.segmentTrailOffset(lensVelocityPx, itemWidthPx)
                     val trailShape = LiquidShape(
-                        cx = cx - trailOffset,
+                        cx = (cx - trailOffset).coerceIn(halfW * 0.8f, maxOf(halfW * 0.8f, controlWidthPx - halfW * 0.8f)),
                         cy = cy,
                         halfW = halfW * 0.8f,
                         halfH = halfH * 0.8f,
@@ -239,7 +267,8 @@ fun ShellSegmented(
                 shapes = movingShapes,
                 spec = LiquidSpecs.BarLens,
                 source = glassSource,
-                pressed = { isDragging }
+                pressed = { isDragging },
+                modifier = Modifier.fillMaxSize()
             )
 
             // Lens behind selected item with SegmentedLens
@@ -247,7 +276,7 @@ fun ShellSegmented(
                 val itemWidthDp = with(density) { itemWidthPx.toDp() }
                 Box(
                     modifier = Modifier
-                        .offset { IntOffset(animatedXPx.roundToInt(), 0) }
+                        .offset { IntOffset(lensX.value.roundToInt(), 0) }
                         .width(itemWidthDp)
                         .fillMaxHeight()
                         .padding(2.dp)

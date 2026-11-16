@@ -1,5 +1,11 @@
 package app.enk.design.shell
 
+import app.enk.design.motion.ShellMotion
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -49,16 +55,23 @@ fun ThemeTile(
     val colors = LocalShellColors.current
     val shape = RoundedCornerShape(16.dp)
 
-    val scale by animateFloatAsState(
+    // All three are read in layer and draw lambdas, so a selection change eases without recomposing.
+    val scale = animateFloatAsState(
         targetValue = if (selected) 1.03f else 1.0f,
-        animationSpec = tween(200),
+        animationSpec = ShellMotion.default.toSpec(),
         label = "theme_tile_scale"
     )
 
-    val indexMarkScaleX by animateFloatAsState(
+    val indexMarkScaleX = animateFloatAsState(
         targetValue = if (selected) 1.0f else 0.0f,
-        animationSpec = tween(200),
+        animationSpec = ShellMotion.default.toSpec(),
         label = "theme_tile_index_mark_scale"
+    )
+
+    val ring = animateFloatAsState(
+        targetValue = if (selected) 1.0f else 0.0f,
+        animationSpec = ShellMotion.default.toSpec(),
+        label = "theme_tile_ring"
     )
 
     val swatchBrush = when (theme) {
@@ -109,18 +122,25 @@ fun ThemeTile(
                 .fillMaxWidth()
                 .height(62.dp)
                 .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
+                    scaleX = scale.value
+                    scaleY = scale.value
                 }
-                .then(
-                    if (selected) {
-                        Modifier
-                            .border(3.5.dp, colors.ui, shape)
-                            .border(2.dp, colors.g1, shape)
-                    } else {
-                        Modifier.border(0.5.dp, colors.hair, shape)
+                .border(0.5.dp, colors.hair, shape)
+                .drawWithContent {
+                    drawContent()
+                    val a = ring.value.coerceIn(0f, 1f)
+                    if (a > 0f) {
+                        val r = 16.dp.toPx()
+                        val outer = 3.5.dp.toPx()
+                        drawRoundRect(
+                            color = colors.ui.copy(alpha = colors.ui.alpha * a),
+                            topLeft = Offset(outer / 2f, outer / 2f),
+                            size = Size(size.width - outer, size.height - outer),
+                            cornerRadius = CornerRadius(r - outer / 2f),
+                            style = Stroke(width = outer)
+                        )
                     }
-                )
+                }
                 .clip(shape)
                 .background(swatchBrush)
         )
@@ -145,11 +165,11 @@ fun ThemeTile(
                 .width(14.dp)
                 .height(3.dp)
                 .graphicsLayer {
-                    scaleX = indexMarkScaleX
+                    scaleX = indexMarkScaleX.value
                     scaleY = 1.0f
                 }
                 .clip(RoundedCornerShape(2.dp))
-                .background(if (selected) colors.ui else Color.Transparent)
+                .background(colors.ui)
         )
     }
 }

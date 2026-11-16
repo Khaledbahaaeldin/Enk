@@ -142,6 +142,7 @@ tasks.withType<Test>().matching { it.name == "testReleaseUnitTest" }.configureEa
     exclude("**/GlassNavBarTest*")
     exclude("**/RailNavigationTest*")
     exclude("**/TopIslandDismissTest*")
+    exclude("**/NavWriteButtonTest*")
     exclude("**/ShellScaffoldTest*")
     exclude("**/StartHandoffTest*")
     exclude("**/SystemBarIconsTest*")
