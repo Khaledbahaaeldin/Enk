@@ -78,3 +78,23 @@
 | 7. Change tabs (Box, Find, Setup) | Liquid Full | 120 Hz | PENDING-DEVICE | PENDING-DEVICE | PENDING-DEVICE | PENDING-DEVICE | PENDING-DEVICE |
 | 7. Change tabs (Box, Find, Setup) | Liquid Balanced | 60 Hz | PENDING-DEVICE | PENDING-DEVICE | PENDING-DEVICE | PENDING-DEVICE | PENDING-DEVICE |
 | 7. Change tabs (Box, Find, Setup) | Frost Full | 60 Hz | PENDING-DEVICE | PENDING-DEVICE | PENDING-DEVICE | PENDING-DEVICE | PENDING-DEVICE |
+
+## Motion polish (batch 16): the author's eye on the Note 20 Ultra
+
+Look at each at normal speed, then once more with Developer options > Animator duration scale 5x. Mark each OK or write what is off.
+
+| Piece | What to look for | Result |
+|---|---|---|
+| Lamp panel opens | grows out of the round Lamp button, right edge never moves, content stays still and is revealed, rows fade in one after another, a hair of settle at the bottom | PENDING-DEVICE |
+| Lamp panel closes | rows fade first, the glass drains into the button, no panel left floating where the button used to be | PENDING-DEVICE |
+| Lamp panel interrupted | tap Lamp again mid-growth, or tap outside: it reverses from where it is, no jump | PENDING-DEVICE |
+| Island open and fold | the capsule stretches into the toolbar, the Lamp button pinches off, no blank beat between the two contents | PENDING-DEVICE |
+| Nav: tap a tab | the lens slides to the tab (it does not dissolve), the bar stays solid and does not dim, the icon under the lens is accent coloured | PENDING-DEVICE |
+| Nav: drag the lens | bar swells and leans toward the finger, glyph and label under the lens grow and are coloured, the lens stretches with speed, a light tick at each tab boundary | PENDING-DEVICE |
+| Nav: release | lens settles on the nearest tab (with a flick, the one it was thrown to) | PENDING-DEVICE |
+| Tab content | the new tab fades in over the old one; the bar does not slide | PENDING-DEVICE |
+| Setup: Advanced | opens by growing, rows below glide down, chevron turns smoothly; Liquid and Frost slider sets cross-fade | PENDING-DEVICE |
+| Setup: theme tiles | ring fades in and out between tiles, tile settles with a spring | PENDING-DEVICE |
+| Setup: entrance | groups rise in once after the app starts, not on every visit | PENDING-DEVICE |
+| Context menu and alert | content keeps its shape while the glass grows from the opener (no stretching text) | PENDING-DEVICE |
+| Light and Reduce motion | everything is a quick 100 ms fade, nothing swells or slides | PENDING-DEVICE |
