@@ -1,5 +1,7 @@
 package app.enk.design.shell
 
+import app.enk.design.motion.ShellMotion
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -58,6 +60,8 @@ fun GroupedSection(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
                 .clip(shape)
+                // Rows that appear or disappear (Advanced, disabled states) glide, the rows below follow.
+                .animateContentSize(animationSpec = ShellMotion.default.toSpec())
                 .background(colors.g1)
                 .border(0.5.dp, colors.hair, shape)
         ) {

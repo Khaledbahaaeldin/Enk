@@ -38,7 +38,10 @@ import androidx.compose.ui.unit.sp
 import app.enk.design.effects.LocalEffects
 import app.enk.design.effects.ResolvedEffects
 import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.LiquidSpecs
 import app.enk.design.glass.glassSurface
+import app.enk.design.glass.liquidPress
+import app.enk.design.glass.rememberLiquidPressState
 import app.enk.design.motion.ShellMotion
 import app.enk.design.shell.GlassSource
 import app.enk.design.shell.LocalReduceEffects
@@ -81,13 +84,21 @@ fun SearchField(
     )
 
     val shape = RoundedCornerShape(22.dp)
+    val pressState = rememberLiquidPressState()
 
     Box(
         modifier = modifier
             .testTag("search_field")
             .fillMaxWidth()
             .height(animatedHeight)
-            .glassSurface(spec = GlassSpecs.Field, shape = shape, source = glassSource)
+            .liquidPress(pressState)
+            .glassSurface(
+                spec = GlassSpecs.Field,
+                liquid = LiquidSpecs.Button,
+                shape = shape,
+                source = glassSource,
+                press = pressState
+            )
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart
     ) {

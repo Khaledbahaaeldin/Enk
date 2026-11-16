@@ -1,6 +1,9 @@
 package app.enk.settings
 
 import app.enk.design.effects.EffectsLevel
+import app.enk.design.effects.FrostTuning
+import app.enk.design.effects.GlassLook
+import app.enk.design.effects.LiquidTuning
 import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 
@@ -37,6 +40,9 @@ data class Settings(
     val bellVolume: Float = 0.6f,
     val haptics: Boolean = true,
     val effects: EffectsLevel = EffectsLevel.Auto,
+    val glassLook: GlassLook = GlassLook.Liquid,
+    val liquidTuning: LiquidTuning = LiquidTuning(),
+    val frostTuning: FrostTuning = FrostTuning(),
     val theme: ThemeId = ThemeId.Graphite,
     val themeMode: ThemeMode = ThemeMode.System,
     val warmth: Int = 25,

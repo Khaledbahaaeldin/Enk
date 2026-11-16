@@ -2,7 +2,6 @@ package app.enk.design.glass
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CornerBasedShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -10,16 +9,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import app.enk.design.effects.GlassLook
 import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.LocalFrostTuning
+import app.enk.design.effects.LocalGlassLook
+import app.enk.design.effects.LocalLiquidTuning
 import app.enk.design.effects.ResolvedEffects
 import app.enk.design.enkShadow
 import app.enk.design.shell.GlassBackendKind
@@ -28,14 +35,20 @@ import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.shell.rememberGlassBackend
 import app.enk.design.theme.LocalShellColors
 import app.enk.design.theme.LocalShellMaterial
+import com.kyant.backdrop.BackdropEffectScope
+import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.emptyBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.highlight.HighlightStyle
 import com.kyant.backdrop.shadow.InnerShadow
+import com.kyant.backdrop.shadow.Shadow
+import kotlin.math.atan2
 
 class GlassInteraction {
     var pressScale: Float by mutableFloatStateOf(1f)
@@ -50,13 +63,43 @@ fun Modifier.glassSurface(
     shape: CornerBasedShape,
     source: GlassSource,
     interaction: GlassInteraction? = null,
-    solidColor: androidx.compose.ui.graphics.Color? = null
+    solidColor: Color? = null
+): Modifier = glassSurface(
+    spec = spec,
+    liquid = LiquidSpecs.Panel,
+    shape = shape,
+    source = source,
+    interaction = interaction,
+    solidColor = solidColor,
+    press = null,
+    exportedBackdrop = null,
+    extraSource = null
+)
+
+@Composable
+fun Modifier.glassSurface(
+    spec: GlassSpec,
+    liquid: LiquidSpec = LiquidSpecs.Panel,
+    shape: CornerBasedShape,
+    source: GlassSource,
+    interaction: GlassInteraction? = null,
+    solidColor: Color? = null,
+    press: LiquidPressState? = null,
+    exportedBackdrop: LayerBackdrop? = null,
+    exportedSource: GlassSource? = null,
+    extraSource: GlassSource? = null
 ): Modifier {
+    val effectiveExportedBackdrop = exportedSource?.backdrop ?: exportedBackdrop
     val colors = LocalShellColors.current
     val material = LocalShellMaterial.current
     val backend = rememberGlassBackend()
     val level = LocalEffects.current
     val reduceEffects = LocalReduceEffects.current
+    val glassLook = LocalGlassLook.current
+    val liquidTuning = LocalLiquidTuning.current
+    val frostTuning = LocalFrostTuning.current
+    val density = LocalDensity.current.density
+    val isLight = level == ResolvedEffects.Light || reduceEffects
 
     if (backend == GlassBackendKind.Solid) {
         val solidModifier = if (solidColor != null) {
@@ -82,8 +125,19 @@ fun Modifier.glassSurface(
             val ps = if (reduceEffects) 1f else (interaction?.pressScale ?: 1f)
             val sx = if (reduceEffects) 1f else (interaction?.stretchX ?: 1f)
             val sy = if (reduceEffects) 1f else (interaction?.stretchY ?: 1f)
-            scaleX = ps * sx
-            scaleY = ps * sy
+            if (press != null && !isLight) {
+                val p = press.pressProgress
+                val swell = LiquidPressMath.swellScale(size.height, density, p)
+                val (sxAdd, syAdd) = LiquidPressMath.stretch(press.offset, size, density)
+                val maxDim = maxOf(size.width, size.height)
+                scaleX = ps * sx * (swell + sxAdd)
+                scaleY = ps * sy * (swell + syAdd)
+                translationX = LiquidPressMath.lean(press.offset.x, maxDim)
+                translationY = LiquidPressMath.lean(press.offset.y, maxDim)
+            } else {
+                scaleX = ps * sx
+                scaleY = ps * sy
+            }
         }
         return this
             .then(scaleModifier)
@@ -91,8 +145,174 @@ fun Modifier.glassSurface(
             .then(hairlineModifier)
     }
 
+    val baseBackdrop = source.backdrop ?: emptyBackdrop()
+    val backdrop = if (extraSource?.backdrop != null) {
+        rememberCombinedBackdrop(baseBackdrop, extraSource.backdrop!!)
+    } else {
+        baseBackdrop
+    }
+
+    val isLiquid = glassLook == GlassLook.Liquid && backend == GlassBackendKind.Refraction
+    val isBalanced = level == ResolvedEffects.Balanced
+
+    val layerBlockLambda: androidx.compose.ui.graphics.GraphicsLayerScope.() -> Unit = {
+        val i = interaction
+        val ps = i?.pressScale ?: 1f
+        val sx = i?.stretchX ?: 1f
+        val sy = i?.stretchY ?: 1f
+        if (press != null && !isLight) {
+            val p = press.pressProgress
+            val swell = LiquidPressMath.swellScale(size.height, density, p)
+            val (sxAdd, syAdd) = LiquidPressMath.stretch(press.offset, size, density)
+            val maxDim = maxOf(size.width, size.height)
+            scaleX = ps * sx * (swell + sxAdd)
+            scaleY = ps * sy * (swell + syAdd)
+            translationX = LiquidPressMath.lean(press.offset.x, maxDim)
+            translationY = LiquidPressMath.lean(press.offset.y, maxDim)
+        } else {
+            scaleX = ps * sx
+            scaleY = ps * sy
+        }
+    }
+
+    if (isLiquid) {
+        val resolvedLiquid = if (isBalanced) LiquidSpecs.balanced(liquid) else liquid
+        val tunedLiquid = LiquidSpecs.tuned(resolvedLiquid, liquidTuning)
+        val isPressedSpec = liquid == LiquidSpecs.BarLens || liquid == LiquidSpecs.Thumb
+        val fillColor = LiquidSurfaceFill.color(colors.g1, tunedLiquid, liquidTuning)
+        val restLens = material.lensA
+
+        // Every press-driven value below is read inside a Backdrop lambda (effect, highlight,
+        // shadow and surface phases), never in composition: a press animates without
+        // recomposing the caller.
+        fun pressP(): Float = if (press != null && isPressedSpec) press.pressProgress.coerceIn(0f, 1f) else 1f
+
+        val effectsLambda: BackdropEffectScope.() -> Unit = {
+            val p = pressP()
+            val blurDp = if (isPressedSpec && press != null) 8f * (1f - p) + tunedLiquid.blurDp * p else tunedLiquid.blurDp
+            val lensH = tunedLiquid.lensHeightDp * p
+            val lensA = tunedLiquid.lensAmountDp * p
+            if (tunedLiquid.vibrancy) {
+                vibrancy()
+            }
+            if (blurDp > 0f) {
+                blur(blurDp.dp.toPx())
+            }
+            if (lensH > 0f && lensA > 0f) {
+                lens(
+                    refractionHeight = lensH.dp.toPx(),
+                    refractionAmount = lensA.dp.toPx(),
+                    depthEffect = tunedLiquid.depth,
+                    chromaticAberration = tunedLiquid.fringe
+                )
+            }
+        }
+
+        val highlightLambda: () -> Highlight = {
+            val edgeAlpha = liquidTuning.edgeLight.coerceIn(0f, 1.5f)
+            when (tunedLiquid.rim) {
+                RimLight.Ambient -> {
+                    Highlight.Ambient.copy(
+                        alpha = (Highlight.Ambient.alpha * edgeAlpha).coerceIn(0f, 1f)
+                    )
+                }
+                RimLight.Directional -> {
+                    val angle = interaction?.specularAngleDeg
+                        ?: if (press != null && press.offset != Offset.Zero) {
+                            Math.toDegrees(atan2(press.offset.y.toDouble(), press.offset.x.toDouble())).toFloat()
+                        } else {
+                            45f
+                        }
+                    Highlight(
+                        style = HighlightStyle.Default(
+                            color = material.glassEdge,
+                            angle = angle
+                        ),
+                        alpha = (1f * edgeAlpha).coerceIn(0f, 1f)
+                    )
+                }
+                RimLight.Plain -> {
+                    Highlight.Plain.copy(
+                        alpha = (Highlight.Plain.alpha * edgeAlpha).coerceIn(0f, 1f)
+                    )
+                }
+            }
+        }
+
+        val shadowLambda: () -> Shadow? = {
+            if (tunedLiquid.shadowDp > 0f) {
+                val prog = if (isPressedSpec) (press?.pressProgress ?: 0f).coerceIn(0f, 1f) else 1f
+                if (prog > 0f) {
+                    Shadow(
+                        radius = (tunedLiquid.shadowDp * prog).dp,
+                        color = Color.Black.copy(alpha = tunedLiquid.shadowAlpha * prog)
+                    )
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
+        }
+
+        val innerShadowLambda: () -> InnerShadow? = {
+            if (tunedLiquid.innerShadowDp > 0f) {
+                val prog = (press?.pressProgress ?: 1f).coerceIn(0f, 1f)
+                InnerShadow(
+                    radius = (tunedLiquid.innerShadowDp * prog).dp,
+                    color = material.glassEdge,
+                    alpha = (0.35f * prog).coerceIn(0f, 1f)
+                )
+            } else {
+                null
+            }
+        }
+
+        val onDrawSurfaceLambda: DrawScope.() -> Unit = {
+            val outline = shape.createOutline(size, layoutDirection, this)
+            val shapePath = outline.toPath()
+            clipPath(shapePath) {
+                if (solidColor != null) {
+                    drawRect(color = solidColor)
+                } else if (press != null && isPressedSpec) {
+                    // At rest a thumb, bead or tab lens is a tinted pill (the theme's lens
+                    // colour, so dark themes keep light ink legible); pressed, it clears into a lens.
+                    val prog = press.pressProgress.coerceIn(0f, 1f)
+                    drawRect(color = restLens.copy(alpha = restLens.alpha * (1f - prog)))
+                } else {
+                    drawRect(color = fillColor)
+                }
+            }
+        }
+
+        return this.drawBackdrop(
+            backdrop = backdrop,
+            shape = { shape },
+            effects = effectsLambda,
+            highlight = highlightLambda,
+            shadow = shadowLambda,
+            innerShadow = innerShadowLambda,
+            layerBlock = layerBlockLambda,
+            exportedBackdrop = effectiveExportedBackdrop,
+            onDrawSurface = onDrawSurfaceLambda,
+            onDrawFront = {
+                val outline = shape.createOutline(size, layoutDirection, this)
+                val shapePath = outline.toPath()
+                clipPath(shapePath) {
+                    val strokeWidthPx = 0.5.dp.toPx()
+                    drawPath(
+                        path = shapePath,
+                        color = material.glassLine,
+                        style = Stroke(width = strokeWidthPx * 2f)
+                    )
+                }
+            }
+        )
+    }
+
+    // Frost look
+    val tunedBlurDp = spec.blurDp * frostTuning.blur
     val shadowLayers = GlassSpecs.shadowLayers(spec.shadow, material)
-    val backdrop = source.backdrop ?: emptyBackdrop()
 
     return this
         .enkShadow(shadowLayers, shape)
@@ -101,7 +321,7 @@ fun Modifier.glassSurface(
             shape = { shape },
             effects = {
                 colorControls(saturation = spec.saturation)
-                blur(spec.blurDp.dp.toPx())
+                blur(tunedBlurDp.dp.toPx())
                 if (backend == GlassBackendKind.Refraction && spec.lensHeightDp > 0f) {
                     val widthDp = size.width.toDp().value
                     val heightDp = size.height.toDp().value
@@ -123,16 +343,21 @@ fun Modifier.glassSurface(
                 }
             },
             highlight = {
+                val edgeAlpha = frostTuning.edgeLight.coerceIn(0f, 1.5f)
                 if (backend == GlassBackendKind.Refraction) {
                     Highlight(
                         width = spec.highlightWidthDp.dp,
                         style = HighlightStyle.Default(
                             color = material.glassEdge,
                             angle = interaction?.specularAngleDeg ?: 45f
-                        )
+                        ),
+                        alpha = (1f * edgeAlpha).coerceIn(0f, 1f)
                     )
                 } else {
-                    Highlight.Plain.copy(width = spec.highlightWidthDp.dp)
+                    Highlight.Plain.copy(
+                        width = spec.highlightWidthDp.dp,
+                        alpha = (Highlight.Plain.alpha * edgeAlpha).coerceIn(0f, 1f)
+                    )
                 }
             },
             shadow = null,
@@ -148,14 +373,8 @@ fun Modifier.glassSurface(
                     null
                 }
             },
-            layerBlock = {
-                val i = interaction
-                val ps = i?.pressScale ?: 1f
-                val sx = i?.stretchX ?: 1f
-                val sy = i?.stretchY ?: 1f
-                scaleX = ps * sx
-                scaleY = ps * sy
-            },
+            layerBlock = layerBlockLambda,
+            exportedBackdrop = effectiveExportedBackdrop,
             onDrawSurface = {
                 val outline = shape.createOutline(size, layoutDirection, this)
                 val shapePath = outline.toPath()
@@ -163,10 +382,25 @@ fun Modifier.glassSurface(
                     if (solidColor != null) {
                         drawRect(color = solidColor)
                     } else if (spec.tint != GlassTint.None) {
+                        val tintMult = frostTuning.tint.coerceIn(0.5f, 1.5f)
                         when (spec.tint) {
-                            GlassTint.Regular -> drawRect(brush = Brush.verticalGradient(listOf(material.glassA, material.glassB)))
-                            GlassTint.Thick -> drawRect(color = colors.thick)
-                            GlassTint.Lens -> drawRect(brush = Brush.verticalGradient(listOf(material.lensA, material.lensB)))
+                            GlassTint.Regular -> drawRect(
+                                brush = Brush.verticalGradient(
+                                    listOf(
+                                        material.glassA.copy(alpha = (material.glassA.alpha * tintMult).coerceIn(0f, 1f)),
+                                        material.glassB.copy(alpha = (material.glassB.alpha * tintMult).coerceIn(0f, 1f))
+                                    )
+                                )
+                            )
+                            GlassTint.Thick -> drawRect(color = colors.thick.copy(alpha = (colors.thick.alpha * tintMult).coerceIn(0f, 1f)))
+                            GlassTint.Lens -> drawRect(
+                                brush = Brush.verticalGradient(
+                                    listOf(
+                                        material.lensA.copy(alpha = (material.lensA.alpha * tintMult).coerceIn(0f, 1f)),
+                                        material.lensB.copy(alpha = (material.lensB.alpha * tintMult).coerceIn(0f, 1f))
+                                    )
+                                )
+                            )
                             GlassTint.None -> {}
                         }
                     }

@@ -21,8 +21,11 @@ import androidx.compose.ui.unit.sp
 import app.enk.design.EnkColors
 import app.enk.design.glass.GlassButton
 import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.LiquidSpecs
 import app.enk.design.glass.glassSurface
-import app.enk.design.logo.LogoSpec
+import app.enk.design.glass.liquidPress
+import app.enk.design.glass.rememberLiquidPressState
+import app.enk.design.theme.LocalShellColors
 import app.enk.design.shell.GlassSource
 import app.enk.design.shell.rememberGlassSource
 
@@ -35,17 +38,26 @@ fun DarkPaperAsk(
     glassSource: GlassSource = rememberGlassSource()
 ) {
     val shape = RoundedCornerShape(20.dp)
+    val ink = LocalShellColors.current.t1
+    val pressState = rememberLiquidPressState()
     Box(
         modifier = modifier
             .testTag("dark_paper_ask")
-            .glassSurface(spec = GlassSpecs.Toast, shape = shape, source = glassSource)
+            .liquidPress(pressState)
+            .glassSurface(
+                spec = GlassSpecs.Toast,
+                liquid = LiquidSpecs.Panel,
+                shape = shape,
+                source = glassSource,
+                press = pressState
+            )
             .clip(shape)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Column {
             Text(
                 text = "Your phone is in dark mode. Start with the lamp on?",
-                color = LogoSpec.CREAM,
+                color = ink,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -72,7 +84,7 @@ fun DarkPaperAsk(
                 ) {
                     Text(
                         text = "Normal paper",
-                        color = LogoSpec.CREAM,
+                        color = ink,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )

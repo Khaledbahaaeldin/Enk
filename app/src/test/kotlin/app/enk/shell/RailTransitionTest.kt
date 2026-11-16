@@ -47,24 +47,22 @@ class RailTransitionTest {
         assertEquals(0.96f, RailTransitionMath.boxScale(1f), 0.001f)
         assertEquals(0f, RailTransitionMath.boxTranslationY(0f), 0.001f)
         assertEquals(-8f, RailTransitionMath.boxTranslationY(1f), 0.001f)
-        assertEquals(0f, RailTransitionMath.boxBlurDp(0f), 0.001f)
-        assertEquals(8f, RailTransitionMath.boxBlurDp(1f), 0.001f)
         assertEquals(1f, RailTransitionMath.boxBrightness(0f), 0.001f)
         assertEquals(0.35f, RailTransitionMath.boxBrightness(1f), 0.001f)
         assertEquals(1f, RailTransitionMath.boxAlpha(0f), 0.001f)
         assertEquals(0f, RailTransitionMath.boxAlpha(1f), 0.001f)
 
-        // Beat 2: Nav bar becomes the rail
-        assertEquals(12f, RailTransitionMath.navLeft(0f, startLeft = 12f), 0.001f)
-        assertEquals(0f, RailTransitionMath.navLeft(1f, startLeft = 12f), 0.001f)
-        assertEquals(336f, RailTransitionMath.navWidth(0f, 336f, 360f), 0.001f)
-        assertEquals(360f, RailTransitionMath.navWidth(1f, 336f, 360f), 0.001f)
-        assertEquals(64f, RailTransitionMath.navHeight(0f, 64f, 16f), 0.001f)
-        assertEquals(16f, RailTransitionMath.navHeight(1f, 64f, 16f), 0.001f)
-        assertEquals(32f, RailTransitionMath.navRadius(0f, 32f, 8f), 0.001f)
-        assertEquals(8f, RailTransitionMath.navRadius(1f, 32f, 8f), 0.001f)
-        assertEquals(1f, RailTransitionMath.navContentAlpha(0f), 0.001f)
-        assertEquals(0f, RailTransitionMath.navContentAlpha(1f), 0.001f)
+        // Beat 2: Write button becomes the rail
+        assertEquals(12f, RailTransitionMath.writeLeft(0f, startLeft = 12f), 0.001f)
+        assertEquals(0f, RailTransitionMath.writeLeft(1f, startLeft = 12f), 0.001f)
+        assertEquals(336f, RailTransitionMath.writeWidth(0f, 336f, 360f), 0.001f)
+        assertEquals(360f, RailTransitionMath.writeWidth(1f, 336f, 360f), 0.001f)
+        assertEquals(64f, RailTransitionMath.writeHeight(0f, 64f, 16f), 0.001f)
+        assertEquals(16f, RailTransitionMath.writeHeight(1f, 64f, 16f), 0.001f)
+        assertEquals(32f, RailTransitionMath.writeRadius(0f, 32f, 8f), 0.001f)
+        assertEquals(8f, RailTransitionMath.writeRadius(1f, 32f, 8f), 0.001f)
+        assertEquals(1f, RailTransitionMath.barAlpha(0f), 0.001f)
+        assertEquals(0f, RailTransitionMath.barAlpha(1f), 0.001f)
 
         // Beat 3: Glass to steel
         assertEquals(0f, RailTransitionMath.steelRailAlpha(0f), 0.001f)
@@ -78,7 +76,6 @@ class RailTransitionTest {
 
         // Beat 5: Carriage lands
         assertEquals(-80f * (1f - RailTransitionMath.back(0f)), RailTransitionMath.carriageTranslationY(0f), 0.001f)
-        assertEquals(0f, RailTransitionMath.carriageTranslationY(1f), 0.001f)
         assertEquals(0f, RailTransitionMath.carriageAlpha(0f), 0.001f)
         assertEquals(1f, RailTransitionMath.carriageAlpha(1f), 0.001f)
 
@@ -89,6 +86,54 @@ class RailTransitionTest {
         assertEquals(1f, RailTransitionMath.islandAlpha(1f), 0.001f)
         assertEquals(0f, RailTransitionMath.caretAlpha(0f), 0.001f)
         assertEquals(1f, RailTransitionMath.caretAlpha(1f), 0.001f)
+    }
+
+    @Test
+    fun writeButtonBeatEndpoints() {
+        val startLeft = 280f
+        val startTop = 700f
+        val startW = 62f
+        val startH = 62f
+        val startR = 31f
+        val railY = 500f
+        val screenW = 360f
+
+        // At p = 0: equals the button bounds
+        assertEquals(startLeft, RailTransitionMath.writeLeft(0f, startLeft), 0.001f)
+        assertEquals(startW, RailTransitionMath.writeWidth(0f, startW, screenW), 0.001f)
+        assertEquals(startH, RailTransitionMath.writeHeight(0f, startH, 16f), 0.001f)
+        assertEquals(startTop, RailTransitionMath.writeTop(0f, startTop, railY), 0.001f)
+        assertEquals(startR, RailTransitionMath.writeRadius(0f, startR, 8f), 0.001f)
+
+        // At p = 1: equals the rail rectangle (left 0, full width, height 16, top railY - 8, radius 8)
+        assertEquals(0f, RailTransitionMath.writeLeft(1f, startLeft), 0.001f)
+        assertEquals(screenW, RailTransitionMath.writeWidth(1f, startW, screenW), 0.001f)
+        assertEquals(16f, RailTransitionMath.writeHeight(1f, startH, 16f), 0.001f)
+        assertEquals(railY - 8f, RailTransitionMath.writeTop(1f, startTop, railY), 0.001f)
+        assertEquals(8f, RailTransitionMath.writeRadius(1f, startR, 8f), 0.001f)
+    }
+
+    @Test
+    fun barSinksAndFades() {
+        assertEquals(0f, RailTransitionMath.barTranslationY(0f), 0.001f)
+        assertEquals(24f, RailTransitionMath.barTranslationY(1f), 0.001f)
+        assertEquals(1f, RailTransitionMath.barAlpha(0f), 0.001f)
+        assertEquals(0f, RailTransitionMath.barAlpha(1f), 0.001f)
+    }
+
+    @Test
+    fun noBlurInRecede() {
+        // RailTransitionMath no longer has boxBlurDp, and railRecede does not set renderEffect
+        for (p in listOf(0f, 0.25f, 0.5f, 0.75f, 1f)) {
+            val scale = RailTransitionMath.boxScale(p)
+            val transY = RailTransitionMath.boxTranslationY(p)
+            val alpha = RailTransitionMath.boxAlpha(p)
+            val brightness = RailTransitionMath.boxBrightness(p)
+            assertTrue("Scale in range: $scale", scale in 0.95f..1.0f)
+            assertTrue("TransY in range: $transY", transY in -8.0f..0.0f)
+            assertTrue("Alpha in range: $alpha", alpha in 0.0f..1.0f)
+            assertTrue("Brightness in range: $brightness", brightness in 0.3f..1.0f)
+        }
     }
 
     @Test

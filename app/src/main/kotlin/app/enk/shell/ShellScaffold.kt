@@ -66,16 +66,19 @@ fun ShellScaffold(
     var largeTitleHeightPx by remember { mutableIntStateOf(0) }
     val topPaddingDp = if (largeTitleHeightPx > 0) with(density) { largeTitleHeightPx.toDp() } else 124.dp
     val contentPadding = PaddingValues(top = topPaddingDp, bottom = 120.dp)
+    val host = LocalRailTransition.current
 
     // The nav bar sits beside the background, not in it: the Rail transition recedes the screen
     // (beats 1 and 7) while the bar morphs into the rail on its own.
     Box(modifier = modifier.fillMaxSize()) {
         ShellBackground(modifier = Modifier.fillMaxSize().railRecede()) {
+            val isScrolling = listState.isScrollInProgress
+            val isTransitionRunning = host?.flight == true
             // Scrolling content layer, registered as glass backdrop source
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .glassSource(glassSource)
+                    .glassSource(glassSource, live = { isScrolling || isTransitionRunning })
             ) {
                 content(listState, contentPadding)
             }
@@ -109,6 +112,7 @@ fun ShellScaffold(
         // Floating GlassNavBar at bottom
         if (showNav) {
             val navSelected = selected ?: Dest.Write
+            val host = LocalRailTransition.current
             GlassNavBar(
                 selected = navSelected,
                 onSelect = onNavigate,
@@ -116,7 +120,14 @@ fun ShellScaffold(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(start = 22.dp, end = 22.dp, bottom = 22.dp)
+                    .padding(bottom = 22.dp)
+                    .graphicsLayer {
+                        if (host != null && host.flight) {
+                            val p = host.boxP()
+                            translationY = RailTransitionMath.barTranslationY(p).dp.toPx()
+                            alpha = RailTransitionMath.barAlpha(p)
+                        }
+                    }
             )
         }
     }

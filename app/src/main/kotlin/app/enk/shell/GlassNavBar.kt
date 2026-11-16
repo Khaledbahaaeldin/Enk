@@ -1,7 +1,24 @@
 package app.enk.shell
 
+import kotlin.math.sign
+import app.enk.writer.AndroidHaptics
+import app.enk.design.glass.LiquidControlsMath
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.layout.layout
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -16,6 +33,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,17 +75,27 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.ResolvedEffects
 import app.enk.design.glass.GlassInteraction
 import app.enk.design.glass.GlassLensMath
 import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.LiquidGroup
+import app.enk.design.glass.LiquidShape
+import app.enk.design.glass.LiquidSpecs
 import app.enk.design.glass.glassSurface
+import app.enk.design.glass.liquidPress
+import app.enk.design.glass.rememberLiquidGroupState
+import app.enk.design.glass.rememberLiquidPressState
 import app.enk.design.motion.ItemBounds
 import app.enk.design.motion.LensController
 import app.enk.design.motion.ShellMotion
 import app.enk.design.shell.GlassBackendKind
 import app.enk.design.shell.GlassSource
+import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.shell.rememberGlassBackend
 import app.enk.design.shell.rememberGlassSource
+import app.enk.design.EnkColors
 import app.enk.design.theme.LocalShellColors
 import app.enk.design.theme.LocalShellMaterial
 import kotlin.math.abs
@@ -82,81 +110,93 @@ fun GlassNavBar(
     glassSource: GlassSource = rememberGlassSource()
 ) {
     val colors = LocalShellColors.current
-    val material = LocalShellMaterial.current
     val density = LocalDensity.current
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val reduceEffects = rememberGlassBackend() == GlassBackendKind.Solid
+    val reduceEffects = rememberGlassBackend() == GlassBackendKind.Solid || LocalReduceEffects.current || LocalEffects.current == ResolvedEffects.Light
 
-    val dests = remember { listOf(Dest.Write, Dest.Box, Dest.Find, Dest.Setup) }
+    // 3 tabs: Box, Find, Setup
+    val dests = remember { listOf(Dest.Box, Dest.Find, Dest.Setup) }
     val rail = LocalRailTransition.current
+
+    val barSource = rememberGlassSource()
+    val liquidGroupState = rememberLiquidGroupState()
+    val writePressState = rememberLiquidPressState()
+    val currentOnSelect by rememberUpdatedState(onSelect)
 
     BoxWithConstraints(
         modifier = modifier
             .testTag("glass_nav_bar")
             .fillMaxWidth()
-            .height(64.dp)
-            .onGloballyPositioned { rail?.navBounds = it.boundsInRoot() }
+            .padding(horizontal = 22.dp)
+            .height(62.dp)
     ) {
-        // The glass body. While the Rail transition flies, the overlay draws the morphing pill instead.
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .graphicsLayer { alpha = if (rail?.flightP() != null) 0f else 1f }
-                .glassSurface(spec = GlassSpecs.NavBody, shape = RoundedCornerShape(32.dp), source = glassSource)
-        )
         val totalWidthPx = constraints.maxWidth.toFloat()
-        val paddingPx = with(density) { 5.dp.toPx() }
-        val availableWidthPx = totalWidthPx - 2 * paddingPx
-        val itemWidthPx = availableWidthPx / 4f
+        val writeButtonSizePx = with(density) { 62.dp.toPx() }
+        val gapPx = with(density) { 10.dp.toPx() }
+        val barWidthPx = maxOf(0f, totalWidthPx - writeButtonSizePx - gapPx)
+        val barWidthDp = with(density) { barWidthPx.toDp() }
+        val itemWidthPx = barWidthPx / 3f
+        val itemWidthDp = with(density) { itemWidthPx.toDp() }
 
-        val itemBoundsList = remember(totalWidthPx, paddingPx, itemWidthPx) {
-            (0 until 4).map { i ->
-                ItemBounds(left = paddingPx + i * itemWidthPx, width = itemWidthPx)
+        val itemBoundsList = remember(barWidthPx, itemWidthPx) {
+            (0 until 3).map { i ->
+                ItemBounds(left = i * itemWidthPx, width = itemWidthPx)
             }
         }
         val lensController = remember(itemBoundsList) { LensController(itemBoundsList) }
 
-        val rawIndex = dests.indexOf(selected).coerceAtLeast(0)
-        val selectedIndex = if (isRtl) 3 - rawIndex else rawIndex
-        val targetLeft = paddingPx + selectedIndex * itemWidthPx
+        val rawIndex = dests.indexOf(selected).let { if (it >= 0) it else 0 }
+        val selectedIndex = if (isRtl) 2 - rawIndex else rawIndex
+        val targetLeft = selectedIndex * itemWidthPx
 
-        val lensLeftAnim = remember { Animatable(targetLeft) }
+        val sharedLens = LocalNavLens.current
+        val lensLeftAnim = if (sharedLens != null) sharedLens.position(targetLeft) else remember { Animatable(targetLeft) }
+        val lensPressAnim = remember { Animatable(0f) } // 0f at rest, 1f when pressed
+        val lensPressState = rememberLiquidPressState()
+        val meltBlend = remember { Animatable(0f) }
         val scope = rememberCoroutineScope()
-        val currentOnSelect by rememberUpdatedState(onSelect)
-
+        val context = LocalContext.current
+        val haptics = remember(context) { AndroidHaptics(context) }
         val lensInteraction = remember { GlassInteraction() }
-        val lensPressAnim = remember { Animatable(1f) }
+        // How far the finger has dragged along the bar: the bar leans toward it (rubber-banded).
+        val panelOffsetAnim = remember { Animatable(0f) }
+        // Smoothed drag velocity (dp/s) that stretches the lens.
+        val lensVelocityAnim = remember { Animatable(0f) }
 
         var isDragging by remember { mutableStateOf(false) }
-        var dragHighlightedDest by remember { mutableStateOf<Dest?>(null) }
-        var velocity by remember { mutableFloatStateOf(0f) }
+        var velocity = 0f
+
+        LaunchedEffect(reduceEffects) {
+            snapshotFlow { lensVelocityAnim.value }.collect { v ->
+                val (sx, sy) = if (reduceEffects) Pair(1f, 1f) else LiquidControlsMath.velocityStretch(v)
+                lensInteraction.stretchX = sx
+                lensInteraction.stretchY = sy
+            }
+        }
 
         LaunchedEffect(selectedIndex, targetLeft, reduceEffects) {
             if (!isDragging) {
                 if (reduceEffects) {
                     lensLeftAnim.snapTo(targetLeft)
                 } else {
-                    lensLeftAnim.animateTo(targetLeft, ShellMotion.default.toSpec())
+                    lensLeftAnim.animateTo(targetLeft, ShellMotion.lens.toSpec())
                 }
             }
         }
 
-        // Pointer gestures for tap and drag
-        val barHeightPx = with(density) { 64.dp.toPx() }
-        val lensTopOffsetPx = paddingPx.roundToInt()
         val dragSlopPx = with(density) { ShellMotion.DRAG_SLOP_DP.dp.toPx() }
 
         fun resolveDest(colIndex: Int): Dest? {
-            val idx = if (isRtl) 3 - colIndex else colIndex
+            val idx = if (isRtl) 2 - colIndex else colIndex
             return dests.getOrNull(idx)
         }
 
         fun resolveCol(dest: Dest): Int {
             val idx = dests.indexOf(dest).coerceAtLeast(0)
-            return if (isRtl) 3 - idx else idx
+            return if (isRtl) 2 - idx else idx
         }
 
-        val gestureModifier = Modifier.pointerInput(totalWidthPx, isRtl, selected) {
+        val gestureModifier = Modifier.pointerInput(barWidthPx, isRtl, selected, reduceEffects) {
             while (true) {
                 awaitPointerEventScope {
                     val down = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.pressed } ?: return@awaitPointerEventScope
@@ -165,8 +205,10 @@ fun GlassNavBar(
                     val startTime = System.currentTimeMillis()
 
                     lensController.down(startX, lensLeftAnim.value, itemWidthPx)
-                    val targetPress = if (reduceEffects) 1f else GlassLensMath.NAV_PRESS
-                    scope.launch { lensPressAnim.animateTo(targetPress, ShellMotion.press.toSpec()) }
+                    if (!reduceEffects) {
+                        scope.launch { lensPressAnim.animateTo(1f, ShellMotion.press.toSpec()) }
+                    }
+                    lensPressState.animatePress(scope, 1f, instant = reduceEffects)
 
                     var currentX = startX
                     var currentY = startY
@@ -174,6 +216,8 @@ fun GlassNavBar(
                     var lastTime = startTime
                     var dragged = false
                     var cancelled = false
+                    var prevDragX = startX
+                    var lastTickCol = -1
 
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -205,55 +249,61 @@ fun GlassNavBar(
                         if (!dragged && abs(currentX - startX) >= dragSlopPx) {
                             dragged = true
                             isDragging = true
+                            if (!reduceEffects) {
+                                scope.launch { meltBlend.animateTo(1f, ShellMotion.press.toSpec()) }
+                            }
                         }
 
                         if (dragged) {
                             change.consume()
                             val frame = lensController.move(currentX, lastTime)
-                            dragHighlightedDest = resolveDest(frame.highlighted)
-                            val (sx, sy) = if (reduceEffects) Pair(1f, 1f) else GlassLensMath.stretch(velocity)
-                            lensInteraction.stretchX = sx
-                            lensInteraction.stretchY = sy
-                            val hPx = with(density) { 54.dp.toPx() }
-                            lensInteraction.specularAngleDeg = GlassLensMath.specularAngleDeg(
-                                centreX = itemWidthPx / 2f,
-                                centreY = hPx / 2f,
-                                touchX = currentX - lensLeftAnim.value,
-                                touchY = currentY - lensTopOffsetPx
-                            )
-                            scope.launch { lensLeftAnim.snapTo(frame.left) }
+                            if (frame.highlighted != lastTickCol) {
+                                if (lastTickCol != -1 && !reduceEffects) haptics.pulse(6)
+                                lastTickCol = frame.highlighted
+                            }
+                            val dx = currentX - prevDragX
+                            prevDragX = currentX
+                            scope.launch { panelOffsetAnim.snapTo(panelOffsetAnim.value + dx) }
+                            scope.launch { lensVelocityAnim.animateTo(velocity, VELOCITY_SPRING) }
+                            // The lens follows the finger on the Catalog's damped value spring,
+                            // so it trails it by a hair, like liquid, instead of being glued to it.
+                            scope.launch { lensLeftAnim.animateTo(frame.left, FOLLOW_SPRING) }
                         }
                     }
 
-                    lensInteraction.stretchX = 1f
-                    lensInteraction.stretchY = 1f
-                    lensInteraction.specularAngleDeg = null
-                    scope.launch { lensPressAnim.animateTo(1f, ShellMotion.release.toSpec()) }
+                    if (!reduceEffects) {
+                        scope.launch { lensPressAnim.animateTo(0f, ShellMotion.release.toSpec()) }
+                    }
+                    lensPressState.animatePress(scope, 0f, instant = reduceEffects)
+                    scope.launch { panelOffsetAnim.animateTo(0f, PANEL_RETURN_SPRING) }
+                    scope.launch { lensVelocityAnim.animateTo(0f, VELOCITY_SPRING) }
+                    scope.launch {
+                        if (reduceEffects) meltBlend.snapTo(0f) else meltBlend.animateTo(0f, ShellMotion.release.toSpec())
+                    }
 
+                    val barHeightPx = with(density) { 62.dp.toPx() }
                     val isOutside = currentY < -30f || currentY > barHeightPx + 30f
 
                     if (cancelled || isOutside) {
                         isDragging = false
-                        dragHighlightedDest = null
                         scope.launch {
-                            val resetTarget = paddingPx + resolveCol(selected) * itemWidthPx
+                            val resetTarget = resolveCol(selected) * itemWidthPx
                             if (reduceEffects) {
                                 lensLeftAnim.snapTo(resetTarget)
                             } else {
-                                lensLeftAnim.animateTo(resetTarget, ShellMotion.default.toSpec())
+                                lensLeftAnim.animateTo(resetTarget, ShellMotion.lens.toSpec())
                             }
                         }
                     } else if (dragged) {
                         val release = lensController.up(currentX, lastTime)
                         isDragging = false
-                        dragHighlightedDest = null
                         velocity = release.velocity
                         val targetDest = resolveDest(release.targetIndex)
                         if (targetDest != null && targetDest != selected) {
                             currentOnSelect(targetDest)
                         } else {
                             scope.launch {
-                                val resetTarget = paddingPx + release.targetIndex * itemWidthPx
+                                val resetTarget = release.targetIndex * itemWidthPx
                                 if (reduceEffects) {
                                     lensLeftAnim.snapTo(resetTarget)
                                 } else {
@@ -267,7 +317,6 @@ fun GlassNavBar(
                         }
                     } else {
                         // Quick tap on pointer
-                        dragHighlightedDest = null
                         val tapIdx = lensController.tapIndex(currentX)
                         val targetDest = tapIdx?.let { resolveDest(it) }
                         if (targetDest != null && targetDest != selected) {
@@ -278,192 +327,368 @@ fun GlassNavBar(
             }
         }
 
-        val lensWidthDp = with(density) { itemWidthPx.toDp() }
+        // Lens sizing: at rest 52 dp height; grows by 16 dp height and 14 dp width when pressed.
+        // Read only inside layout, draw and shape lambdas: a lens drag or press never
+        // recomposes the bar.
+        val lensRestHeightPx = with(density) { 52.dp.toPx() }
+        val lensGrowHeightPx = with(density) { 16.dp.toPx() }
+        val lensGrowWidthPx = with(density) { 14.dp.toPx() }
+        val barHeightPx = with(density) { 62.dp.toPx() }
+        fun lensHeightPx(): Float = lensRestHeightPx + lensGrowHeightPx * lensPressAnim.value
+        fun lensWidthPx(): Float = itemWidthPx + lensGrowWidthPx * lensPressAnim.value
+        fun lensCenterXPx(): Float = lensLeftAnim.value + itemWidthPx / 2f
 
-        // Root container for items and lens
-        Box(
+        // The whole bar reacts to the touch: it swells by 16 dp of width while pressed and
+        // leans up to 4 dp toward the finger (rubber-banded, ease-out), as the Catalog's tabs do.
+        val barSwellPx = with(density) { 16.dp.toPx() }
+        val barLeanPx = with(density) { 4.dp.toPx() }
+        fun barScale(): Float = 1f + (barSwellPx / maxOf(1f, barWidthPx)) * lensPressAnim.value
+        fun barTx(): Float {
+            val frac = (panelOffsetAnim.value / maxOf(1f, barWidthPx)).coerceIn(-1f, 1f)
+            return barLeanPx * sign(frac) * EaseOut.transform(abs(frac))
+        }
+
+        // LiquidGroup shapes for melting lens & write button
+        val barOriginX = if (isRtl) writeButtonSizePx + gapPx else 0f
+        val writeOriginX = if (isRtl) 0f else barWidthPx + gapPx
+        val centerY = with(density) { 31.dp.toPx() }
+
+        // LiquidGroup backdrop covering the full nav area. The melt only reaches as far as
+        // [meltBlend] lets it: it grows while the lens is dragged and shrinks back after, so the
+        // lens resting on the last tab (10 dp from Write) is never melted into the button.
+        LiquidGroup(
+            state = liquidGroupState,
+            shapes = {
+                val k = barScale()
+                val h = lensHeightPx() * k
+                val w = lensWidthPx() * k
+                listOf(
+                    LiquidShape(
+                        // The bar scales around its own centre and leans; the melt follows it.
+                        cx = barOriginX + barWidthPx / 2f + (lensCenterXPx() - barWidthPx / 2f) * k + barTx(),
+                        cy = centerY,
+                        halfW = w / 2f,
+                        halfH = h / 2f,
+                        radius = h / 2f
+                    ),
+                    LiquidShape(
+                        cx = writeOriginX + writeButtonSizePx / 2f,
+                        cy = centerY,
+                        halfW = writeButtonSizePx / 2f,
+                        halfH = writeButtonSizePx / 2f,
+                        radius = writeButtonSizePx / 2f
+                    )
+                )
+            },
+            spec = LiquidSpecs.BarLens,
+            source = glassSource,
+            pressed = { isDragging },
+            mergeDistance = 24.dp,
+            blend = { meltBlend.value },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Row holding [Bar] [Gap] [WriteButton]
+        Row(
             modifier = Modifier
                 .fillMaxSize()
-                // Beat 2: the tab row and the lens fade out first.
-                .graphicsLayer { if (rail != null) alpha = RailTransitionMath.navContentAlpha(rail.boxP()) }
-                .then(gestureModifier)
+                .graphicsLayer {
+                    if (rail != null) {
+                        alpha = RailTransitionMath.barAlpha(rail.boxP())
+                    }
+                },
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            lensInteraction.pressScale = lensPressAnim.value
-
-            // Lens behind items with NavLens
+            // The 3-tab Bar
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(lensLeftAnim.value.roundToInt(), lensTopOffsetPx) }
-                    .width(lensWidthDp)
-                    .height(54.dp)
-                    .glassSurface(
-                        spec = GlassSpecs.NavLens,
-                        shape = RoundedCornerShape(27.dp),
-                        source = glassSource,
-                        interaction = lensInteraction
-                    )
-            )
-
-            // Items Row
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(5.dp)
-                    .selectableGroup(),
-                verticalAlignment = Alignment.CenterVertically
+                    .testTag("nav_bar_track")
+                    .width(barWidthDp)
+                    .height(62.dp)
+                    .onGloballyPositioned {
+                        val b = it.boundsInRoot()
+                        rail?.barBounds = b
+                    }
+                    .then(gestureModifier)
             ) {
-                for (dest in dests) {
-                    val isSelected = (dest == selected)
-                    val isHighlighted = (dest == (dragHighlightedDest ?: selected))
-                    val itemColor = if (isHighlighted) colors.t1 else colors.t2
-                    val strokePx = with(density) { 1.6.dp.toPx() }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val k = barScale()
+                            scaleX = k
+                            scaleY = k
+                            translationX = barTx()
+                        }
+                ) {
+                // Bar glass background
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = if (rail?.flightP() != null) 0f else 1f }
+                        .glassSurface(
+                            spec = GlassSpecs.NavBody,
+                            liquid = LiquidSpecs.Bar,
+                            shape = RoundedCornerShape(31.dp),
+                            source = glassSource,
+                            exportedSource = barSource
+                        )
+                )
 
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .semantics(mergeDescendants = true) {
-                                this.role = Role.Tab
-                                this.selected = isSelected
-                                this.contentDescription = dest.name
-                                this.onClick(label = dest.name) {
-                                    if (dest != selected) {
-                                        currentOnSelect(dest)
-                                    }
-                                    true
-                                }
-                            },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
-                    ) {
-                        // 22 dp line icon
-                        Canvas(modifier = Modifier.size(22.dp)) {
-                            when (dest) {
-                                Dest.Write -> {
-                                    // Rail line
-                                    drawLine(
-                                        color = itemColor,
-                                        start = Offset(2f.dp.toPx(), 14f.dp.toPx()),
-                                        end = Offset(20f.dp.toPx(), 14f.dp.toPx()),
-                                        strokeWidth = strokePx,
-                                        cap = StrokeCap.Round
-                                    )
-                                    // Carriage
-                                    drawRoundRect(
-                                        color = itemColor,
-                                        topLeft = Offset(7f.dp.toPx(), 5f.dp.toPx()),
-                                        size = Size(8f.dp.toPx(), 8f.dp.toPx()),
-                                        cornerRadius = CornerRadius(1.5f.dp.toPx()),
-                                        style = Stroke(width = strokePx)
-                                    )
-                                    // Strip in carriage
-                                    drawLine(
-                                        color = colors.ui,
-                                        start = Offset(11f.dp.toPx(), 6.5f.dp.toPx()),
-                                        end = Offset(11f.dp.toPx(), 11.5f.dp.toPx()),
-                                        strokeWidth = strokePx,
-                                        cap = StrokeCap.Round
-                                    )
-                                }
-                                Dest.Box -> {
-                                    // Drawer rect
-                                    drawRoundRect(
-                                        color = itemColor,
-                                        topLeft = Offset(3f.dp.toPx(), 6f.dp.toPx()),
-                                        size = Size(16f.dp.toPx(), 12f.dp.toPx()),
-                                        cornerRadius = CornerRadius(3f.dp.toPx()),
-                                        style = Stroke(width = strokePx)
-                                    )
-                                    // Tab line
-                                    drawLine(
-                                        color = itemColor,
-                                        start = Offset(8f.dp.toPx(), 12f.dp.toPx()),
-                                        end = Offset(14f.dp.toPx(), 12f.dp.toPx()),
-                                        strokeWidth = strokePx,
-                                        cap = StrokeCap.Round
-                                    )
-                                }
-                                Dest.Find -> {
-                                    // Circle magnifier
-                                    drawCircle(
-                                        color = itemColor,
-                                        radius = 5.5f.dp.toPx(),
-                                        center = Offset(9.5f.dp.toPx(), 9.5f.dp.toPx()),
-                                        style = Stroke(width = strokePx)
-                                    )
-                                    // Handle
-                                    drawLine(
-                                        color = itemColor,
-                                        start = Offset(13.5f.dp.toPx(), 13.5f.dp.toPx()),
-                                        end = Offset(18.5f.dp.toPx(), 18.5f.dp.toPx()),
-                                        strokeWidth = strokePx,
-                                        cap = StrokeCap.Round
-                                    )
-                                }
-                                Dest.Setup -> {
-                                    // 3 slider lines with 3 rings
-                                    drawLine(
-                                        color = itemColor,
-                                        start = Offset(3f.dp.toPx(), 6f.dp.toPx()),
-                                        end = Offset(19f.dp.toPx(), 6f.dp.toPx()),
-                                        strokeWidth = strokePx,
-                                        cap = StrokeCap.Round
-                                    )
-                                    drawCircle(
-                                        color = itemColor,
-                                        radius = 2f.dp.toPx(),
-                                        center = Offset(8f.dp.toPx(), 6f.dp.toPx()),
-                                        style = Fill
-                                    )
-                                    drawLine(
-                                        color = itemColor,
-                                        start = Offset(3f.dp.toPx(), 11f.dp.toPx()),
-                                        end = Offset(19f.dp.toPx(), 11f.dp.toPx()),
-                                        strokeWidth = strokePx,
-                                        cap = StrokeCap.Round
-                                    )
-                                    drawCircle(
-                                        color = itemColor,
-                                        radius = 2f.dp.toPx(),
-                                        center = Offset(14f.dp.toPx(), 11f.dp.toPx()),
-                                        style = Fill
-                                    )
-                                    drawLine(
-                                        color = itemColor,
-                                        start = Offset(3f.dp.toPx(), 16f.dp.toPx()),
-                                        end = Offset(19f.dp.toPx(), 16f.dp.toPx()),
-                                        strokeWidth = strokePx,
-                                        cap = StrokeCap.Round
-                                    )
-                                    drawCircle(
-                                        color = itemColor,
-                                        radius = 2f.dp.toPx(),
-                                        center = Offset(9f.dp.toPx(), 16f.dp.toPx()),
-                                        style = Fill
-                                    )
-                                }
+                // Lens behind items inside the bar
+                Box(
+                    modifier = Modifier
+                        .layout { measurable, _ ->
+                            val w = lensWidthPx().roundToInt()
+                            val h = lensHeightPx().roundToInt()
+                            val placeable = measurable.measure(Constraints.fixed(w, h))
+                            layout(w, h) {
+                                placeable.place(
+                                    (lensCenterXPx() - w / 2f).roundToInt(),
+                                    ((barHeightPx - h) / 2f).roundToInt()
+                                )
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(3.dp))
-
-                        Text(
-                            text = dest.name,
-                            fontSize = 10.5.sp,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                            color = itemColor
+                        .graphicsLayer { alpha = if (liquidGroupState.merging) 0f else 1f }
+                        .glassSurface(
+                            spec = GlassSpecs.NavLens,
+                            liquid = LiquidSpecs.BarLens,
+                            shape = RoundedCornerShape(50),
+                            source = glassSource,
+                            extraSource = barSource,
+                            interaction = lensInteraction,
+                            press = lensPressState
                         )
+                )
+
+                // Tabs container: the base row (ink t2), and a second copy of the row in the accent
+                // colour that shows only inside the lens, where the glyphs also grow while pressed:
+                // the lens reads as glass that colours and magnifies what it passes over.
+                fun lensClip(): Path {
+                    val h = lensHeightPx()
+                    val w = lensWidthPx()
+                    val l = lensCenterXPx() - w / 2f
+                    val t = (barHeightPx - h) / 2f
+                    return Path().apply {
+                        addRoundRect(RoundRect(l, t, l + w, t + h, CornerRadius(h / 2f)))
                     }
+                }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    NavTabsRow(
+                        dests = dests,
+                        selected = selected,
+                        ink = colors.t2,
+                        glyphScale = { 1f },
+                        interactive = true,
+                        onSelectDest = { dest -> if (dest != selected) currentOnSelect(dest) },
+                        modifier = Modifier.drawWithContent {
+                            clipPath(lensClip(), clipOp = ClipOp.Difference) { this@drawWithContent.drawContent() }
+                        }
+                    )
+                    NavTabsRow(
+                        dests = dests,
+                        selected = selected,
+                        ink = EnkColors.accent,
+                        glyphScale = { 1f + 0.2f * lensPressAnim.value },
+                        interactive = false,
+                        onSelectDest = {},
+                        modifier = Modifier
+                            .clearAndSetSemantics {}
+                            .drawWithContent {
+                                clipPath(lensClip()) { this@drawWithContent.drawContent() }
+                            }
+                    )
+                }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            // Round Write button (62 dp circle)
+            Box(
+                modifier = Modifier
+                    .testTag("write_button")
+                    .size(62.dp)
+                    .onGloballyPositioned { rail?.writeButtonBounds = it.boundsInRoot() }
+                    .semantics(mergeDescendants = true) {
+                        this.role = Role.Button
+                        this.contentDescription = "Write"
+                        this.onClick(label = "Write") {
+                            currentOnSelect(Dest.Write)
+                            true
+                        }
+                    }
+                    .liquidPress(writePressState)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { currentOnSelect(Dest.Write) }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                // Button glass surface
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = if (liquidGroupState.merging) 0f else 1f }
+                        .glassSurface(
+                            spec = GlassSpecs.Button,
+                            liquid = LiquidSpecs.Button,
+                            shape = CircleShape,
+                            source = glassSource,
+                            press = writePressState
+                        )
+                )
+
+                // Write glyph in EnkColors.accent
+                Canvas(modifier = Modifier.size(24.dp)) {
+                    val strokePx = with(density) { 1.6.dp.toPx() }
+                    // Rail line
+                    drawLine(
+                        color = EnkColors.accent,
+                        start = Offset(2f.dp.toPx(), 14f.dp.toPx()),
+                        end = Offset(22f.dp.toPx(), 14f.dp.toPx()),
+                        strokeWidth = strokePx,
+                        cap = StrokeCap.Round
+                    )
+                    // Carriage
+                    drawRoundRect(
+                        color = EnkColors.accent,
+                        topLeft = Offset(8f.dp.toPx(), 5f.dp.toPx()),
+                        size = Size(8f.dp.toPx(), 8f.dp.toPx()),
+                        cornerRadius = CornerRadius(1.5f.dp.toPx()),
+                        style = Stroke(width = strokePx)
+                    )
+                    // Strip in carriage
+                    drawLine(
+                        color = colors.ui,
+                        start = Offset(12f.dp.toPx(), 6.5f.dp.toPx()),
+                        end = Offset(12f.dp.toPx(), 11.5f.dp.toPx()),
+                        strokeWidth = strokePx,
+                        cap = StrokeCap.Round
+                    )
                 }
             }
         }
     }
 }
 
-private fun Outline.toPath(): Path = Path().apply {
-    when (val outline = this@toPath) {
-        is Outline.Rectangle -> addRect(outline.rect)
-        is Outline.Rounded -> addRoundRect(outline.roundRect)
-        is Outline.Generic -> addPath(outline.path)
+private val FOLLOW_SPRING = spring<Float>(dampingRatio = 1f, stiffness = 1000f)
+private val VELOCITY_SPRING = spring<Float>(dampingRatio = 0.5f, stiffness = 300f)
+private val PANEL_RETURN_SPRING = spring<Float>(dampingRatio = 0.5f, stiffness = 300f)
+
+/** One row of the three tabs. Drawn twice by the bar: the base row, and an accent copy seen through the lens. */
+@Composable
+private fun NavTabsRow(
+    dests: List<Dest>,
+    selected: Dest,
+    ink: Color,
+    glyphScale: () -> Float,
+    interactive: Boolean,
+    onSelectDest: (Dest) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val density = LocalDensity.current
+    val strokePx = with(density) { 1.6.dp.toPx() }
+    Row(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(vertical = 5.dp)
+            .then(if (interactive) Modifier.selectableGroup() else Modifier),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        for (dest in dests) {
+            val isSelected = dest == selected
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        val k = glyphScale()
+                        scaleX = k
+                        scaleY = k
+                    }
+                    .then(
+                        if (interactive) {
+                            Modifier.semantics(mergeDescendants = true) {
+                                this.role = Role.Tab
+                                this.selected = isSelected
+                                this.contentDescription = dest.name
+                                this.onClick(label = dest.name) {
+                                    onSelectDest(dest)
+                                    true
+                                }
+                            }
+                        } else {
+                            Modifier
+                        }
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+            ) {
+                Canvas(modifier = Modifier.size(22.dp)) {
+                    when (dest) {
+                        Dest.Box -> {
+                            drawRoundRect(
+                                color = ink,
+                                topLeft = Offset(3f.dp.toPx(), 6f.dp.toPx()),
+                                size = Size(16f.dp.toPx(), 12f.dp.toPx()),
+                                cornerRadius = CornerRadius(3f.dp.toPx()),
+                                style = Stroke(width = strokePx)
+                            )
+                            drawLine(
+                                color = ink,
+                                start = Offset(8f.dp.toPx(), 12f.dp.toPx()),
+                                end = Offset(14f.dp.toPx(), 12f.dp.toPx()),
+                                strokeWidth = strokePx,
+                                cap = StrokeCap.Round
+                            )
+                        }
+                        Dest.Find -> {
+                            drawCircle(
+                                color = ink,
+                                radius = 5.5f.dp.toPx(),
+                                center = Offset(9.5f.dp.toPx(), 9.5f.dp.toPx()),
+                                style = Stroke(width = strokePx)
+                            )
+                            drawLine(
+                                color = ink,
+                                start = Offset(13.5f.dp.toPx(), 13.5f.dp.toPx()),
+                                end = Offset(18.5f.dp.toPx(), 18.5f.dp.toPx()),
+                                strokeWidth = strokePx,
+                                cap = StrokeCap.Round
+                            )
+                        }
+                        Dest.Setup -> {
+                            for ((y, x) in listOf(6f to 8f, 11f to 14f, 16f to 9f)) {
+                                drawLine(
+                                    color = ink,
+                                    start = Offset(3f.dp.toPx(), y.dp.toPx()),
+                                    end = Offset(19f.dp.toPx(), y.dp.toPx()),
+                                    strokeWidth = strokePx,
+                                    cap = StrokeCap.Round
+                                )
+                                drawCircle(
+                                    color = ink,
+                                    radius = 2f.dp.toPx(),
+                                    center = Offset(x.dp.toPx(), y.dp.toPx()),
+                                    style = Fill
+                                )
+                            }
+                        }
+                        Dest.Write -> Unit
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(3.dp))
+
+                Text(
+                    text = dest.name,
+                    fontSize = 10.5.sp,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    color = ink
+                )
+            }
+        }
     }
 }

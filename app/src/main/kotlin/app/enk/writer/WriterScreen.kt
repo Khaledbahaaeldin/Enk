@@ -1,5 +1,7 @@
 package app.enk.writer
 
+import app.enk.design.theme.ThemeMode
+import app.enk.design.theme.EnkShellTheme
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -605,7 +607,14 @@ fun WriterScreen(
                         .onGloballyPositioned { coords ->
                             rail?.railCenterYPx = coords.positionInRoot().y + railY * density.density
                         }
-                        .glassSource(glassSource)
+                        .glassSource(
+                            glassSource,
+                            live = {
+                                val isTypingActive = typingActive || carriageMotion == CarriageMotion.Dragging
+                                val isTransitionRunning = rail?.flight == true
+                                isTypingActive || isTransitionRunning
+                            }
+                        )
                         .markerGestures(
                             geometry = geometry,
                             pageLength = { state.currentPage.text.length },
@@ -831,6 +840,13 @@ fun WriterScreen(
                     }
                 }
 
+                // Glass over the paper takes the paper's appearance (light glass and dark ink over
+                // day paper, dark glass over night paper), like iOS glass adapting to the content
+                // beneath it; the shell's own mode would put light ink on light paper.
+                // Hint text (DS 6.9, Finding 5): hidden when paper is short (landscape keyboard, etc.)
+                val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
+                val paperGlassMode = if (state.lampOn) ThemeMode.Dark else ThemeMode.Light
+                EnkShellTheme(theme = settings.theme, mode = paperGlassMode) {
                 // TopIsland (replaces top bar and control panel)
                 TopIsland(
                     metaText = TopBarFormatter.formatMeta(state.pageIndex, page.text.length),
@@ -855,16 +871,16 @@ fun WriterScreen(
                     interactive = rail?.islandInteractive() ?: true
                 )
 
-                // Hint text (DS 6.9, Finding 5): hidden when paper is short (landscape keyboard, etc.)
-                val isShortPaper = WriterGeometry.isCompact(screenHeightDp) || (screenHeightDp - geometry.railYDp) < 100f
                 if (showAsk) {
                     DarkPaperAsk(
                         onLamp = { onSettingsChange { it.copy(darkPaper = DarkPaper.Lamp) } },
                         onNormal = { onSettingsChange { it.copy(darkPaper = DarkPaper.Normal) } },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        glassSource = glassSource
                     )
+                }
                 }
 
                 if (!showAsk && !isShortPaper && !hintPolicy.isDismissed && !settings.hintDismissed && !state.lampOn) {

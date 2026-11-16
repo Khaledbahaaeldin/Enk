@@ -2,7 +2,6 @@ package app.enk.shell
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -30,7 +29,7 @@ class GlassNavBarTest {
     fun navBarHasSelectableGroup() {
         composeTestRule.setContent {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                GlassNavBar(selected = Dest.Write, onSelect = {})
+                GlassNavBar(selected = Dest.Box, onSelect = {})
             }
         }
         composeTestRule.waitForIdle()
@@ -41,27 +40,32 @@ class GlassNavBarTest {
     }
 
     @Test
-    fun navBarHasFourLabelledItems() {
+    fun navBarHasThreeLabelledTabsAndWriteButton() {
         composeTestRule.setContent {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                GlassNavBar(selected = Dest.Write, onSelect = {})
+                GlassNavBar(selected = Dest.Box, onSelect = {})
             }
         }
         composeTestRule.waitForIdle()
 
-        val dests = listOf("Write", "Box", "Find", "Setup")
+        val dests = listOf("Box", "Find", "Setup")
         for (name in dests) {
             val node = composeTestRule.onNode(
                 hasText(name) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
             )
             node.assertExists()
             node.assertContentDescriptionEquals(name)
-            if (name == "Write") {
+            if (name == "Box") {
                 node.assertIsSelected()
             } else {
                 node.assertIsNotSelected()
             }
         }
+
+        val write = composeTestRule.onNodeWithTag("write_button")
+        write.assertExists().assertIsDisplayed()
+        write.assertContentDescriptionEquals("Write")
+        write.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
     }
 
     @Test
@@ -69,7 +73,25 @@ class GlassNavBarTest {
         var selectedDest: Dest? = null
         composeTestRule.setContent {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                GlassNavBar(selected = Dest.Write, onSelect = { selectedDest = it })
+                GlassNavBar(selected = Dest.Box, onSelect = { selectedDest = it })
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNode(
+            hasText("Find") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
+        ).performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(Dest.Find, selectedDest)
+    }
+
+    @Test
+    fun sameItemTappedTwice() {
+        var callCount = 0
+        composeTestRule.setContent {
+            EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
+                GlassNavBar(selected = Dest.Box, onSelect = { callCount++ })
             }
         }
         composeTestRule.waitForIdle()
@@ -79,29 +101,11 @@ class GlassNavBarTest {
         ).performClick()
         composeTestRule.waitForIdle()
 
-        assertEquals(Dest.Box, selectedDest)
-    }
-
-    @Test
-    fun sameItemTappedTwice() {
-        var callCount = 0
-        composeTestRule.setContent {
-            EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                GlassNavBar(selected = Dest.Write, onSelect = { callCount++ })
-            }
-        }
-        composeTestRule.waitForIdle()
-
-        composeTestRule.onNode(
-            hasText("Write") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
-        ).performClick()
-        composeTestRule.waitForIdle()
-
         assertEquals(0, callCount)
     }
 
     @Test
-    fun dragLensFromFindToWriteNavigates() {
+    fun dragLensFromFindToBoxNavigates() {
         var selectedDest: Dest? = null
         composeTestRule.setContent {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
@@ -113,21 +117,21 @@ class GlassNavBarTest {
         val findNode = composeTestRule.onNode(
             hasText("Find") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
         )
-        val writeNode = composeTestRule.onNode(
-            hasText("Write") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
+        val boxNode = composeTestRule.onNode(
+            hasText("Box") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
         )
 
         val findCenter = findNode.fetchSemanticsNode().boundsInRoot.center
-        val writeCenter = writeNode.fetchSemanticsNode().boundsInRoot.center
+        val boxCenter = boxNode.fetchSemanticsNode().boundsInRoot.center
 
         composeTestRule.onNodeWithTag("glass_nav_bar").performTouchInput {
             down(findCenter)
-            moveTo(writeCenter)
+            moveTo(boxCenter)
             up()
         }
         composeTestRule.waitForIdle()
 
-        assertEquals(Dest.Write, selectedDest)
+        assertEquals(Dest.Box, selectedDest)
     }
 
     @Test
@@ -216,13 +220,13 @@ class GlassNavBarTest {
     fun touchTargetsAreAtLeast48Dp() {
         composeTestRule.setContent {
             EnkShellTheme(theme = ThemeId.Graphite, mode = ThemeMode.Dark) {
-                GlassNavBar(selected = Dest.Write, onSelect = {})
+                GlassNavBar(selected = Dest.Box, onSelect = {})
             }
         }
         composeTestRule.waitForIdle()
 
         val density = composeTestRule.density
-        for (name in listOf("Write", "Box", "Find", "Setup")) {
+        for (name in listOf("Box", "Find", "Setup")) {
             val node = composeTestRule.onNode(
                 hasText(name) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
             )
@@ -232,6 +236,13 @@ class GlassNavBarTest {
             assertTrue("Tab $name width ($widthDp) must be >= 48 dp", widthDp >= 48.dp)
             assertTrue("Tab $name height ($heightDp) must be >= 48 dp", heightDp >= 48.dp)
         }
+
+        val write = composeTestRule.onNodeWithTag("write_button")
+        val writeBounds = write.fetchSemanticsNode().boundsInRoot
+        val writeWidthDp = with(density) { writeBounds.width.toDp() }
+        val writeHeightDp = with(density) { writeBounds.height.toDp() }
+        assertTrue("Write button width ($writeWidthDp) must be >= 48 dp", writeWidthDp >= 48.dp)
+        assertTrue("Write button height ($writeHeightDp) must be >= 48 dp", writeHeightDp >= 48.dp)
     }
 
     @Test
@@ -248,12 +259,12 @@ class GlassNavBarTest {
 
         val find = composeTestRule.onNode(hasText("Find") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab))
             .fetchSemanticsNode().boundsInRoot.center
-        val write = composeTestRule.onNode(hasText("Write") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab))
+        val box = composeTestRule.onNode(hasText("Box") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab))
             .fetchSemanticsNode().boundsInRoot.center
 
         composeTestRule.onNodeWithTag("glass_nav_bar").performTouchInput {
             down(find)
-            moveTo(write)
+            moveTo(box)
         }
         composeTestRule.runOnIdle { useSecond.value = true }
         composeTestRule.waitForIdle()
@@ -261,6 +272,6 @@ class GlassNavBarTest {
         composeTestRule.waitForIdle()
 
         assertTrue("the old callback must not be called after it was replaced: $first", first.isEmpty())
-        assertEquals(listOf(Dest.Write), second)
+        assertEquals(listOf(Dest.Box), second)
     }
 }

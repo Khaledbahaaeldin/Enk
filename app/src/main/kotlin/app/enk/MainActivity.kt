@@ -24,8 +24,12 @@ import androidx.lifecycle.Lifecycle
 import app.enk.design.effects.EffectsLevel
 import app.enk.design.effects.FrameGovernor
 import app.enk.design.effects.LocalEffects
+import app.enk.design.effects.LocalFrostTuning
+import app.enk.design.effects.LocalGlassLook
+import app.enk.design.effects.LocalLiquidTuning
 import app.enk.design.effects.ResolvedEffects
 import app.enk.design.effects.resolveEffects
+import app.enk.design.effects.resolveGlassLook
 import app.enk.design.shell.LocalReduceEffects
 import app.enk.design.theme.EnkShellTheme
 import app.enk.settings.rememberEffectsEnvironment
@@ -113,10 +117,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
             val isLight = resolved == ResolvedEffects.Light
+            val resolvedLook = resolveGlassLook(settings.glassLook, android.os.Build.VERSION.SDK_INT)
 
             CompositionLocalProvider(
                 LocalEffects provides resolved,
-                LocalReduceEffects provides isLight
+                LocalReduceEffects provides isLight,
+                LocalGlassLook provides resolvedLook,
+                LocalLiquidTuning provides settings.liquidTuning,
+                LocalFrostTuning provides settings.frostTuning
             ) {
                 EnkShellTheme(theme = settings.theme, mode = settings.themeMode) {
                     SplashHost(

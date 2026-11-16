@@ -51,7 +51,7 @@ class SettingsScreenTest {
         composeTestRule.onNode(hasScrollAction()).performScrollToKey("group_display")
 
         // Verify footer text matches specification exactly
-        val expectedFooter = "Light is solid and still. Balanced blurs without bending. Full bends the picture behind glass."
+        val expectedFooter = "Liquid bends light like a drop of water; Frost blurs it. Effects sets how much the phone may spend: Light is solid and still."
         composeTestRule.onNodeWithText(expectedFooter).assertIsDisplayed()
 
         // Verify initial selection is Auto

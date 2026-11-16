@@ -9,6 +9,9 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.enk.design.effects.EffectsLevel
+import app.enk.design.effects.FrostTuning
+import app.enk.design.effects.GlassLook
+import app.enk.design.effects.LiquidTuning
 import app.enk.design.theme.ThemeId
 import app.enk.design.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +38,16 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
             prefs[Keys.BELL_VOLUME] = updated.bellVolume
             prefs[Keys.HAPTICS] = updated.haptics
             prefs[Keys.EFFECTS] = updated.effects.name
+            prefs[Keys.GLASS_LOOK] = updated.glassLook.name
+            prefs[Keys.LIQUID_REFRACTION] = updated.liquidTuning.refraction
+            prefs[Keys.LIQUID_LENS_DEPTH] = updated.liquidTuning.lensDepth
+            prefs[Keys.LIQUID_FRINGE] = updated.liquidTuning.fringe
+            prefs[Keys.LIQUID_FROST_DP] = updated.liquidTuning.frostDp
+            prefs[Keys.LIQUID_TINT] = updated.liquidTuning.tint
+            prefs[Keys.LIQUID_EDGE_LIGHT] = updated.liquidTuning.edgeLight
+            prefs[Keys.FROST_BLUR] = updated.frostTuning.blur
+            prefs[Keys.FROST_TINT] = updated.frostTuning.tint
+            prefs[Keys.FROST_EDGE_LIGHT] = updated.frostTuning.edgeLight
             prefs[Keys.THEME] = updated.theme.name
             prefs[Keys.THEME_MODE] = updated.themeMode.name
             prefs[Keys.WARMTH] = updated.warmth
@@ -54,6 +67,16 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val BELL_VOLUME = floatPreferencesKey("bell_volume")
         val HAPTICS = booleanPreferencesKey("haptics")
         val EFFECTS = stringPreferencesKey("effects")
+        val GLASS_LOOK = stringPreferencesKey("glass_look")
+        val LIQUID_REFRACTION = floatPreferencesKey("liquid_refraction")
+        val LIQUID_LENS_DEPTH = floatPreferencesKey("liquid_lens_depth")
+        val LIQUID_FRINGE = floatPreferencesKey("liquid_fringe")
+        val LIQUID_FROST_DP = floatPreferencesKey("liquid_frost_dp")
+        val LIQUID_TINT = floatPreferencesKey("liquid_tint")
+        val LIQUID_EDGE_LIGHT = floatPreferencesKey("liquid_edge_light")
+        val FROST_BLUR = floatPreferencesKey("frost_blur")
+        val FROST_TINT = floatPreferencesKey("frost_tint")
+        val FROST_EDGE_LIGHT = floatPreferencesKey("frost_edge_light")
         val REDUCE_EFFECTS = booleanPreferencesKey("reduce_effects")
         val THEME = stringPreferencesKey("theme")
         val THEME_MODE = stringPreferencesKey("theme_mode")
@@ -86,7 +109,9 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
                 bellVolume = sanitizeBellVolume(s.bellVolume),
                 warmth = sanitizeWarmth(s.warmth),
                 intensity = sanitizeIntensity(s.intensity),
-                beam = sanitizeBeam(s.beam)
+                beam = sanitizeBeam(s.beam),
+                liquidTuning = s.liquidTuning.coerced(),
+                frostTuning = s.frostTuning.coerced()
             )
         }
 
@@ -100,6 +125,21 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
                 EffectsLevel.Auto
             }
 
+            val glassLook = safeEnumValueOf(prefs[Keys.GLASS_LOOK], GlassLook.Liquid)
+            val liquidTuning = LiquidTuning(
+                refraction = prefs[Keys.LIQUID_REFRACTION] ?: 1f,
+                lensDepth = prefs[Keys.LIQUID_LENS_DEPTH] ?: 1f,
+                fringe = prefs[Keys.LIQUID_FRINGE] ?: 1f,
+                frostDp = prefs[Keys.LIQUID_FROST_DP] ?: 0f,
+                tint = prefs[Keys.LIQUID_TINT] ?: 0.08f,
+                edgeLight = prefs[Keys.LIQUID_EDGE_LIGHT] ?: 1f
+            ).coerced()
+            val frostTuning = FrostTuning(
+                blur = prefs[Keys.FROST_BLUR] ?: 1f,
+                tint = prefs[Keys.FROST_TINT] ?: 1f,
+                edgeLight = prefs[Keys.FROST_EDGE_LIGHT] ?: 1f
+            ).coerced()
+
             return Settings(
                 correction = safeEnumValueOf(prefs[Keys.CORRECTION], CorrectionMode.CleanErase),
                 autocorrect = prefs[Keys.AUTOCORRECT] ?: false,
@@ -108,6 +148,9 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
                 bellVolume = sanitizeBellVolume(prefs[Keys.BELL_VOLUME]),
                 haptics = prefs[Keys.HAPTICS] ?: true,
                 effects = resolvedEffects,
+                glassLook = glassLook,
+                liquidTuning = liquidTuning,
+                frostTuning = frostTuning,
                 theme = safeEnumValueOf(prefs[Keys.THEME], ThemeId.Graphite),
                 themeMode = safeEnumValueOf(prefs[Keys.THEME_MODE], ThemeMode.System),
                 warmth = sanitizeWarmth(prefs[Keys.WARMTH]),

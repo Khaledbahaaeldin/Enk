@@ -39,7 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.enk.data.DividerEntity
 import app.enk.design.glass.GlassSpecs
+import app.enk.design.glass.LiquidSpecs
 import app.enk.design.glass.glassSurface
+import app.enk.design.glass.liquidPress
+import app.enk.design.glass.rememberLiquidPressState
 import app.enk.design.motion.ShellMotion
 import app.enk.design.shell.GlassSource
 import app.enk.design.shell.rememberGlassSource
@@ -80,11 +83,20 @@ fun DividerStrip(
 
     val stripShape = RoundedCornerShape(22.dp)
     val lensShape = RoundedCornerShape(18.dp)
+    val stripPressState = rememberLiquidPressState()
+    val lensPressState = rememberLiquidPressState()
 
     Box(
         modifier = modifier
             .height(44.dp)
-            .glassSurface(GlassSpecs.SegmentedBody, stripShape, glassSource)
+            .liquidPress(stripPressState)
+            .glassSurface(
+                spec = GlassSpecs.SegmentedBody,
+                liquid = LiquidSpecs.Bar,
+                shape = stripShape,
+                source = glassSource,
+                press = stripPressState
+            )
             .padding(4.dp)
     ) {
         Box(
@@ -99,7 +111,14 @@ fun DividerStrip(
                         .offset { IntOffset(animatedX.roundToInt(), 0) }
                         .width(with(density) { animatedWidth.toDp() })
                         .height(36.dp)
-                        .glassSurface(GlassSpecs.SegmentedLens, lensShape, glassSource)
+                        .liquidPress(lensPressState)
+                        .glassSurface(
+                            spec = GlassSpecs.SegmentedLens,
+                            liquid = LiquidSpecs.BarLens,
+                            shape = lensShape,
+                            source = glassSource,
+                            press = lensPressState
+                        )
                 )
             }
 

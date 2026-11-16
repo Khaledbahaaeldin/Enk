@@ -104,7 +104,10 @@ fun EnkNavHost(
         mainViewModel.handleBack()
     }
 
-    CompositionLocalProvider(LocalRailTransition provides rail) {
+    val navLens = remember { NavLensState() }
+    if (isWriterRoute) navLens.forgetPosition()
+
+    CompositionLocalProvider(LocalRailTransition provides rail, LocalNavLens provides navLens) {
         Box(modifier = modifier.fillMaxSize()) {
             // Behind the receding Box: the writer's chassis, which the Box fades away to show.
             Box(
@@ -143,17 +146,17 @@ fun EnkNavHost(
                         }
                         fun isPushed(r: Route) = r == Route.Trash || r == Route.Credits
 
-                        val tabSlidePx = with(density) { 12.dp.roundToPx() }
                         val writerSlidePx = with(density) { 48.dp.roundToPx() }
                         val pushedSlidePx = with(density) { 24.dp.roundToPx() }
 
                         if (isTab(fromRoute) && isTab(toRoute)) {
-                            val direction = if (tabIndex(toRoute) > tabIndex(fromRoute)) 1 else -1
-                            val enter = slideInHorizontally(ShellMotion.page.toSpec()) { tabSlidePx * direction } +
-                                    fadeIn(ShellMotion.page.toSpec())
-                            val exit = slideOutHorizontally(ShellMotion.page.toSpec()) { -tabSlidePx * direction } +
-                                    fadeOut(ShellMotion.page.toSpec())
-                            enter togetherWith exit
+                            // Dissolve over: the old tab stays opaque underneath while the new one
+                            // fades in on top, so the (identical) nav bar never dips or shifts and
+                            // the shared lens slides across it. Nothing slides sideways: that would
+                            // drag the bar with it. The lens leads, the content follows.
+                            val enter = fadeIn(tween(190, delayMillis = 40))
+                            val exit = fadeOut(tween(230), targetAlpha = 0.999f)
+                            (enter togetherWith exit).apply { targetContentZIndex = 1f }
                         } else if (isWriter(toRoute) && !isWriter(fromRoute)) {
                             val enter = slideInVertically(ShellMotion.page.toSpec()) { writerSlidePx } +
                                     fadeIn(ShellMotion.page.toSpec())

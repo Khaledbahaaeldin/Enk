@@ -19,7 +19,7 @@ fun rememberGlassSource(): GlassSource {
     return remember(backdrop) { GlassSource(backdrop) }
 }
 
-fun Modifier.glassSource(source: GlassSource): Modifier = composed {
+fun Modifier.glassSource(source: GlassSource, live: () -> Boolean = { true }): Modifier = composed {
     val backdrop = source.backdrop ?: rememberLayerBackdrop().also { source.backdrop = it }
     this.layerBackdrop(backdrop)
 }
